@@ -14,7 +14,7 @@ const VAULT_DL = 'https://drive.google.com/uc?export=download&id=';
 
 /* ───────────────────────── Page ───────────────────────── */
 
-const SV_BUILD = '51';
+const SV_BUILD = '52';
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -251,6 +251,7 @@ function getShare(token) {
              series_name: r.series_name || '', series_part: String(r.series_part || '').replace(/^'/, ''),
              chapter_colors: r.chapter_colors || '', videos_meta: r.videos_meta || '', bg_style: r.bg_style || '',
              photos_meta: r.photos_meta || '', chapter_meta: r.chapter_meta || '', genre: r.genre || '', bsides_of: r.bsides_of || '',
+             clean_cover_file_id: isLockedRel ? '' : (r.clean_cover_file_id || ''), clean_cover_thumb: isLockedRel ? '' : (r.clean_cover_thumb || ''),
              unlock_at: isLockedRel ? new Date(r.unlock_at).toISOString() : '', locked: !!isLockedRel };
   };
   return {
@@ -349,7 +350,7 @@ function allowedIds_(token) {
   sc.releases.concat(sc.locked || []).forEach(function (r) { if (r.cover_file_id) ids[r.cover_file_id] = 1; });
   sc.versions.forEach(function (v) { ids[v.audio] = 1; if (v.preview) ids[v.preview] = 1; ids['v:' + v.version_id] = 1; });
   sc.tracks.forEach(function (t) { if (t.voice_note_id) ids[t.voice_note_id] = 1; if (t.track_cover) ids[t.track_cover] = 1; });
-  sc.releases.forEach(function (r) { if (r.bg_file_id) ids[r.bg_file_id] = 1; });
+  sc.releases.forEach(function (r) { if (r.bg_file_id) ids[r.bg_file_id] = 1; if (r.clean_cover_file_id) ids[r.clean_cover_file_id] = 1; });
   const open = {};
   sc.releases.forEach(function (r) { open[r.release_id] = true; });
   extrasFor_(open).forEach(function (x) { if (x.file_id) ids[x.file_id] = 1; });
@@ -783,6 +784,7 @@ function doPost(e) {
     setDuration: setDuration, saveLyrics: saveLyrics, backupNow: backupNow, saveVideosMeta: saveVideosMeta,
     saveArtistLinks: saveArtistLinks, fetchLyrics: fetchLyrics, saveBio: saveBio, addYoutubeSong: addYoutubeSong,
     savePlaylist: savePlaylist, deletePlaylist: deletePlaylist, logListens: logListens, getInsights: getInsights, setTrackCover: setTrackCover, setReleaseBg: setReleaseBg,
+    shareLinkFor: shareLinkFor, shareLinksForAll: shareLinksForAll, setCleanCover: setCleanCover,
     logClientError: logClientError
   };
   let out;
@@ -1725,4 +1727,84 @@ function deletePlaylist(key, id) {
   if (!row) return false;
   sh.deleteRow(row._row);
   return true;
+}
+
+/* ───────────────────────── Build 52: a standing link for every song and project, clean covers ───────────────────────── */
+
+// Links made with the Share button carry this label. The same link is reused each time, so it never changes.
+const PUBLIC_LABEL = 'Public link';
+
+function publicShareKey_(s) {
+  return s.label === PUBLIC_LABEL && liveShare_(s) && !s.expires ? s.target_type + '|' + String(s.target_id) : '';
+}
+
+// The standing link for one song ('track') or project ('release'); made the first time it is asked for.
+function shareLinkFor(key, type, id) {
+  requireOwner_(key);
+  if (['release', 'track'].indexOf(type) === -1) throw new Error('Unknown share type.');
+  id = String(id || '');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Another save is running. Try again in a moment.');
+  try {
+    const hit = readTable_('Shares').filter(function (s) { return publicShareKey_(s) === type + '|' + id; })[0];
+    if (hit) return { created: false, share: sharesOut_([hit])[0], url: appUrl_() + '?s=' + hit.token };
+    const exists = type === 'release'
+      ? readTable_('Releases').some(function (r) { return r.release_id === id; })
+      : readTable_('Tracks').some(function (t) { return t.track_id === id; });
+    if (!exists) throw new Error(type === 'release' ? 'Release not found.' : 'Song not found.');
+    const r = createShare(key, { targetType: type, targetId: id, label: PUBLIC_LABEL, allowDownload: false, expiresDays: 0 });
+    return { created: true, url: r.url,
+             share: { token: r.token, target_type: type, target_id: id, label: PUBLIC_LABEL, allow_download: false, expires: '', active: true,
+                      plays: 0, created: new Date().toISOString(), fan_name: '', member_no: 0 } };
+  } finally { lock.releaseLock(); }
+}
+
+// Makes the standing link for every song and project that doesn't have one. Hidden and sealed releases are skipped.
+function shareLinksForAll(key) {
+  requireOwner_(key);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) throw new Error('Another save is running. Try again in a moment.');
+  try {
+    const T = tables_(), now = new Date(), skip = {}, playable = {}, relHasSongs = {}, have = {};
+    T.releases.forEach(function (r) { if (r.hidden === true || isLocked_(r, now)) skip[r.release_id] = true; });
+    T.versions.forEach(function (v) { if (v.hidden !== true) playable[v.track_id] = true; });
+    const targets = [];
+    T.tracks.forEach(function (t) {
+      if (skip[t.release_id] || t.hidden === true || !playable[t.track_id]) return;
+      relHasSongs[t.release_id] = true;
+      targets.push(['track', t.track_id]);
+    });
+    T.releases.forEach(function (r) { if (relHasSongs[r.release_id]) targets.unshift(['release', r.release_id]); });
+    readTable_('Shares').forEach(function (s) { const k = publicShareKey_(s); if (k) have[k] = true; });
+    const todo = targets.filter(function (x) { return !have[x[0] + '|' + x[1]]; });
+    if (!todo.length) return { created: [], total: targets.length };
+    const sh = ensureHeaders_('Shares'), start = sh.getLastRow() + 1, made = new Date();
+    const rows = todo.map(function (x) {
+      return [Utilities.getUuid().replace(/-/g, '').slice(0, 12), x[0], x[1], PUBLIC_LABEL, false, '', true, 0, made, '', ''];
+    });
+    sh.getRange(start, 1, rows.length, rows[0].length).setValues(rows);
+    sh.getRange(start, colOf_(sh, 'allow_download'), rows.length, 1).insertCheckboxes();
+    sh.getRange(start, colOf_(sh, 'active'), rows.length, 1).insertCheckboxes();
+    return { total: targets.length, created: rows.map(function (r) {
+      return { token: r[0], target_type: r[1], target_id: r[2], label: PUBLIC_LABEL, allow_download: false, expires: '', active: true,
+               plays: 0, created: made.toISOString(), fan_name: '', member_no: 0 };
+    }) };
+  } finally { lock.releaseLock(); }
+}
+
+// Cover shown whenever a Clean version from this release plays ('' removes it).
+function setCleanCover(key, releaseId, fileId, thumbUrl) {
+  requireOwner_(key);
+  if (fileId) {
+    const f = DriveApp.getFileById(fileId);
+    if (!/^image\//.test(f.getMimeType() || '')) throw new Error('The clean cover needs to be an image.');
+  }
+  const sh = ensureHeaders_('Releases');
+  const r = readTable_('Releases').filter(function (x) { return x.release_id === releaseId; })[0];
+  if (!r) throw new Error('Release not found.');
+  const thumb = fileId && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(String(thumbUrl || '')) && thumbUrl.length < 45000 ? thumbUrl : '';
+  sh.getRange(r._row, colOf_(sh, 'clean_cover_file_id')).setValue(fileId || '');
+  sh.getRange(r._row, colOf_(sh, 'clean_cover_thumb')).setValue(thumb);
+  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  return { fileId: fileId || '', thumb: thumb };
 }

@@ -569,7 +569,6 @@
   }
 
   /* ═════════ Fan experience ═════════ */
-  .toast.badge { background: linear-gradient(135deg, var(--green), #065C2C); color: #fff; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--red), 0 14px 30px -10px #000; }
   .letter { margin: 20px 0 6px; padding: 18px 18px 14px; border-radius: 20px; border: 1px solid var(--line);
             background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); position: relative; overflow: hidden; }
   .letter::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--flag); transform: rotate(0); }
@@ -636,24 +635,11 @@
   .mname { font: 800 26px/1.1 var(--serif); }
   .mno { font: 800 15px var(--serif); letter-spacing: .18em; color: #fff; }
   .msince { font-size: 12px; color: rgba(255,255,255,.75); }
-  .bh { display: flex; justify-content: space-between; margin: 6px 0 0; font-size: 14px; }
-  .badges { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 40vh; overflow: auto; }
-  .badges li { display: grid; grid-template-columns: 36px 1fr; gap: 10px; align-items: center; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.04); }
-  .badges li:not(.got) strong { color: #CFC9C6; }
-  .badges li:not(.got) .cs { color: #B3ADAA; }
-  .badges li.got { background: rgba(8,122,59,.22); box-shadow: inset 0 0 0 1px rgba(52,194,122,.4); }
-  .badges .bi { font-size: 24px; text-align: center; filter: grayscale(1); opacity: .45; }
-  .badges li.got .bi { opacity: 1; }
-  .badges:focus-visible { outline: 2px solid var(--green-hi); outline-offset: 2px; }
-  .badges li.got .bi { filter: none; }
-  .badges strong { display: block; font-size: 13px; }
-  .badges .cs { font-size: 11px; }
   .tribebtn { justify-content: center; min-height: 48px; }
   @media (max-width: 760px) {
     .tribe { flex-direction: column; align-items: stretch; }
     .tribe .pill { justify-content: center; min-height: 48px; }
     .voicebar { left: 8px; right: 8px; bottom: calc(146px + env(safe-area-inset-bottom)); }
-    .badges { grid-template-columns: 1fr; }
     .drop { flex-basis: min(340px, 88%); }
   }
 
@@ -815,7 +801,7 @@
   <div class="vdoor" aria-hidden="true"><span class="vb t"></span><span class="vb r"></span><span class="vb b"></span><span class="vb l"></span>
     <span class="vwheel"><i></i><i></i><i></i></span></div>
   <p class="vtext">Entering Vault<span class="vdots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
-  <small id="buildTag" style="opacity:.5">SV build 51</small></div></main>
+  <small id="buildTag" style="opacity:.5">SV build 52</small></div></main>
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <div class="mini" id="mini" hidden>
@@ -853,11 +839,11 @@
         <p class="exclt" id="npExcl" hidden>★ Vault exclusive</p>
         <div class="scrub"><span data-cur>0:00</span><input type="range" min="0" max="1000" value="0" data-seek aria-label="Position in song"><span data-dur>0:00</span><div class="marks" id="npMarks" aria-hidden="true"></div></div>
         <div class="ctl npctl">
-          <button class="tog" data-ctl="shuffle" aria-pressed="false" aria-label="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+          <button class="npt" data-ctl="shuffle" aria-pressed="false" aria-label="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
           <button class="ib" data-ctl="prev" aria-label="Previous"></button>
           <button class="pp" data-ctl="toggle" aria-label="Pause"></button>
           <button class="ib" data-ctl="next" aria-label="Next"></button>
-          <button class="tog" data-ctl="repeat" aria-pressed="false" aria-label="Repeat: off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="one" hidden>1</span></button>
+          <button class="npt" data-ctl="repeat" aria-pressed="false" aria-label="Repeat: off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="one" hidden>1</span></button>
         </div>
         <div class="npvol"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/></svg></span><input type="range" min="0" max="100" value="100" data-vol aria-label="Volume"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></span></div>
         <div class="npx"><button class="pill soft" data-np-lyrics aria-pressed="false" hidden>Lyrics</button><button class="pill soft" data-np-details>Credits</button></div>
@@ -903,7 +889,7 @@
     var m = document.getElementById('main');
     if (m) m.innerHTML = '<div class="status"><p>Soul Vault could not download its app code from Google.</p>' +
       '<p style="opacity:.75">Check your internet connection. If it keeps happening, make sure the app_url row in the Settings tab is your web app address ending in /exec.</p>' +
-      '<p style="opacity:.5">SV build 51</p></div>';
+      '<p style="opacity:.5">SV build 52</p></div>';
     window.SV_ERRORS.push('download failed');
   };
   window.addEventListener('error', function (e) {
@@ -913,7 +899,7 @@
       if (m) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault could not start on this browser.</p>' +
         '<p style="opacity:.8">' + svClean((e && e.message) || 'Unknown error') + '</p>' +
         '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
-        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 51</p></div>';
+        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 52</p></div>';
     }
   });
   setTimeout(function () {
@@ -921,7 +907,7 @@
     var m = document.getElementById('main');
     if (m && !window.SV_ERRORS.length) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault did not start. Its code never ran on this browser.</p>' +
       '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
-      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 51 / ' + svClean(navigator.userAgent) + '</p></div>';
+      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 52 / ' + svClean(navigator.userAgent) + '</p></div>';
   }, 15000);
 </script>
 <script>window.SV_BOOT = __SV_BOOT__;</script>
@@ -1094,6 +1080,10 @@ function primeThumbs() {
     if (r.cover_thumb && r.cover_file_id && !S.covers[r.cover_file_id]) {
       S.covers[r.cover_file_id] = r.cover_thumb;
       S.coverP[r.cover_file_id] = Promise.resolve(r.cover_thumb);
+    }
+    if (r.clean_cover_thumb && r.clean_cover_file_id && !S.covers[r.clean_cover_file_id]) {
+      S.covers[r.clean_cover_file_id] = r.clean_cover_thumb;
+      S.coverP[r.clean_cover_file_id] = Promise.resolve(r.clean_cover_thumb);
     }
   });
 }
@@ -1346,6 +1336,7 @@ function relDetailsForm(r) {
     </div>`)}
     ${panel('series', 'Series', r.series_name ? r.series_name + (partLabel(r) ? ' · ' + partLabel(r) : '') : 'Not part of a series', seriesFields(r))}
     ${panel('look', 'Look & background', look || 'Page background, theme color, mood words', `
+    ${cleanCoverRow(r)}
     ${bgRow(r)}
     ${bgControls(r)}
     <label>Mood words (comma separated)<input class="field" id="wMood" maxlength="200" value="${esc(r.world_mood || '')}" placeholder="Nairobi nights, heartbreak, neon, rain"></label>
@@ -1353,7 +1344,8 @@ function relDetailsForm(r) {
       <span class="colorrow"><input type="color" id="wColor" value="${esc(r.world_color || '#D21034')}" aria-label="Theme color">
       <button class="pill soft" type="button" data-color-clear>Use the cover's colors</button></span></label>`)}
     ${panel('credits', 'Album credits', nCred ? nCred + (nCred === 1 ? ' credit' : ' credits') : 'Who made it', `
-    <label>Album credits (one per line)<textarea class="field" id="wCredits" maxlength="4000" rows="5" placeholder="Produced by: Nicólas Soul&#10;Mixed by: Shake&#10;Cover photo: NuRenaissance">${esc(r.album_credits || '')}</textarea></label>`)}
+    <label>Album credits (one per line)<textarea class="field" id="wCredits" maxlength="4000" rows="8" placeholder="Produced by: Nicólas Soul&#10;Mixed by: Shake&#10;Cover photo: NuRenaissance&#10;&#10;3. ARES&#10;Produced by: Khairro&#10;Guitar: Aziza">${esc(r.album_credits || '')}</textarea></label>
+    <p class="cs" style="margin:0">Song credits fill in on their own: a line like <b>Produced by: Shake</b> applies to every song; add <b>(1, 3-5)</b> or <b>(ARES, KIRBY)</b> at the end for just those songs; or start a block with a song's number or title (<b>3. ARES</b>) and the lines under it, up to the next blank line, go to that song. Links (https://… or www.…) are clickable.</p>`)}
     ${vids.length ? panel('videos', 'Videos', vids.length + (vids.length === 1 ? ' video' : ' videos') + ' · order and type', `<p class="cs" style="margin:0">Drag to set the order they play in. Mark each as a music video or a short film.</p>${videoEditor(r)}`) : ''}
     ${nPh ? panel('photos', 'Photos', nPh + (nPh === 1 ? ' photo' : ' photos') + ' · covers, shoots, credits', photoEditor(r)) : ''}
     ${panel('artists', 'Artist links', nAl ? nAl + (nAl === 1 ? ' artist' : ' artists') + ' linked · all releases' : 'Make other artists\' names clickable', artistLinksEditor())}
@@ -1456,7 +1448,6 @@ function renderRelease(id) {
   if (OWNER || CLUB()) renderChrome();
   const r = rel(id);
   if (!OWNER && r.locked) { sealedView(r); return; }
-  visitWorld(r);
   const editing = OWNER && S.editing;
   const ts = tracksOf(id, editing);
   const needPreview = OWNER ? previewTodo(id).length : 0;
@@ -1482,7 +1473,7 @@ function renderRelease(id) {
                               <button class="pill soft" data-shuffleall>${I.shuf}Shuffle</button>`}
           </div>
           ${OWNER && !editing ? `<div class="tools" role="group" aria-label="Release tools">
-            <button class="pill soft" data-share="release" data-id="${esc(id)}">${I.share}<span>Share</span></button>
+            <button class="pill soft" data-qshare="${esc('release|' + id)}">${I.share}<span>Share</span></button>
             <button class="pill soft" data-edit>${I.edit}<span>Edit</span></button>
             <button class="pill soft" data-upload="new">${I.plus}<span>Add song</span></button>
             ${needPreview ? `<button class="pill soft" data-previews aria-label="Make previews for ${needPreview} files">${I.up2}<span>Previews (${needPreview})</span></button>` : ''}
@@ -1858,9 +1849,9 @@ function updateNowUI() {
   const sub = [n.v.label !== 'Original' ? n.v.label : '', artistOf(n.t), n.r.title].filter(Boolean).join(', ');
   $('#mT').textContent = n.t.title; $('#mS').textContent = sub;
   $('#npT').textContent = n.t.title; $('#npS').innerHTML = npSubHtml(n);
-  setCover($('#mArt'), artFor(n.t), false);
+  setCover($('#mArt'), artFor(n.t, n.v), false);
   const npArt = $('#npArt');
-  setCover(npArt, artFor(n.t), true, () => { $('#npBg').style.backgroundImage = `url("${npArt.src}")`; });
+  setCover(npArt, artFor(n.t, n.v), true, () => { $('#npBg').style.backgroundImage = `url("${npArt.src}")`; });
   const vs = versionsOf(n.t.track_id);
   $('#npVers').innerHTML = vs.length > 1 ? `<h4>Versions</h4><div class="chips">${vs.map(v => `<button class="chip${isExclusive(v) ? ' excl' : ''}" data-play="${esc(v.version_id)}"${isExclusive(v) ? ' title="Vault exclusive"' : ''}>${isExclusive(v) ? I.star : ''}${esc(v.label)}</button>`).join('')}</div>` : '';
   const next = S.queue.slice(S.qi + 1, S.qi + 8).map((vid, k) => ({ v: ver(vid), qi: S.qi + 1 + k })).filter(x => x.v);
@@ -1880,7 +1871,7 @@ function updateNowUI() {
 
 function mediaSession(n) {
   if (!('mediaSession' in navigator)) return;
-  const k = artFor(n.t), art = S.covers[k + '|f'] || S.covers[k];
+  const k = artFor(n.t, n.v), art = S.covers[k + '|f'] || S.covers[k];
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: n.t.title, artist: artistOf(n.t) || relArtist(n.r), album: n.r.title,
@@ -1971,17 +1962,17 @@ function openMore(tid) {
 const CREDIT_FIELDS = [['features', 'Features'], ['producer', 'Producer'], ['engineer', 'Engineer'], ['bpm', 'BPM'], ['key', 'Key']];
 function renderCredits() {
   const n = S.now; if (!n) return;
-  const rows = CREDIT_FIELDS.filter(([k]) => String(n.t[k] || '').trim());
+  const rows = songCreditRows(n.t);
   const notes = OWNER && String(n.t.notes || '').trim();
-  $('#npCredits').innerHTML = (rows.length || notes) ? `<h4>Credits</h4><dl class="credits">${rows.map(([k, l]) => `<dt>${l}</dt><dd>${k === 'features' ? linkNames(n.t[k]) : esc(n.t[k])}</dd>`).join('')}
+  $('#npCredits').innerHTML = (rows.length || notes) ? `<h4>Credits</h4><dl class="credits">${rows.map(([l, h]) => `<dt>${esc(l)}</dt><dd>${h}</dd>`).join('')}
     ${notes ? `<dt>Notes</dt><dd>${esc(n.t.notes)}</dd>` : ''}</dl>` : '';
 }
 function openDetails(tid) {
   const t = trk(tid);
   if (!OWNER) {
-    const rows = CREDIT_FIELDS.filter(([k]) => String(t[k] || '').trim());
+    const rows = songCreditRows(t);
     $('#modal').innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h2 id="mTitle">${esc(t.title)}</h2>
-      ${rows.length ? `<dl class="credits">${rows.map(([k, l]) => `<dt>${l}</dt><dd>${k === 'features' ? linkNames(t[k]) : esc(t[k])}</dd>`).join('')}</dl>` : '<p class="cs">No credits added yet.</p>'}
+      ${rows.length ? creditsDl(rows) : '<p class="cs">No credits added yet.</p>'}
       <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
   } else {
     const f = (k, l, ph, cls) => `<label class="${cls || ''}">${l}<input class="field" data-cred="${k}" value="${esc(t[k] || '')}" maxlength="200" placeholder="${ph || ''}"></label>`;
@@ -1993,6 +1984,7 @@ function openDetails(tid) {
         <label class="full">Lyrics (fans can read these)<textarea class="field" data-cred="lyrics" rows="8" maxlength="20000">${esc(t.lyrics || '')}</textarea></label>
         <label class="full">Private notes (only you see these)<textarea class="field" data-cred="notes" maxlength="2000">${esc(t.notes || '')}</textarea></label>
       </div>
+      ${albumCreditNote(t)}
       <p class="err" id="dErr" hidden></p>
       <div class="end"><button class="pill soft" data-close>Cancel</button><button class="pill main" data-details-save="${esc(tid)}">Save</button></div></div>`;
   }
@@ -2034,13 +2026,13 @@ function renderComments() {
     <div id="cForm"></div>
     ${list.length ? `<ol class="clist">${list.map(c => `<li class="${c.resolved ? 'done' : ''}">
       <button class="when" data-seek-to="${c.time_sec}" aria-label="Jump to ${fmt(c.time_sec)}">${fmt(c.time_sec)}</button>
-      <div style="min-width:0"><div class="who">${esc(c.name)}${OWNER && c.via && c.via !== 'owner' ? ' · ' + esc(linkName(c.via)) : ''}</div><p>${esc(c.text)}</p></div>
+      <div style="min-width:0"><div class="who">${esc(c.name)}${OWNER && c.via && c.via !== 'owner' ? ' · ' + esc(shareLabel(c.via)) : ''}</div><p>${esc(c.text)}</p></div>
       ${OWNER ? `<div class="cact"><button class="ib" data-resolve="${esc(c.comment_id)}" aria-label="${c.resolved ? 'Reopen' : 'Mark resolved'}">${I.check}</button>
                 <button class="ib" data-cdel="${esc(c.comment_id)}" aria-label="Delete comment">${I.trash}</button></div>` : '<span></span>'}
     </li>`).join('')}</ol>` : '<p class="cs">No comments on this version yet.</p>'}`;
   renderMarks();
 }
-function linkName(token) { const s = (S.lib.shares || []).find(x => x.token === token); return s ? (s.label || 'share link') : 'share link'; }
+function shareLabel(token) { const s = (S.lib.shares || []).find(x => x.token === token); return s ? (s.label || s.fan_name || 'share link') : 'share link'; }
 function renderMarks() {
   const n = S.now, list = n && S.comments[n.v.version_id], d = audio.duration;
   $('#npMarks').innerHTML = (list && d) ? list.filter(c => !c.resolved).map(c => `<i style="left:${Math.min(100, c.time_sec / d * 100)}%"></i>`).join('') : '';
@@ -2068,7 +2060,7 @@ async function postComment(btn) {
     const c = await run('addComment', BOOT.key, BOOT.token, S.now.v.version_id, at, name, text);
     (S.comments[S.now.v.version_id] = S.comments[S.now.v.version_id] || []).push(c);
     S.comments[S.now.v.version_id].sort((a, b) => a.time_sec - b.time_sec);
-    renderComments(); toast('Comment posted'); award('comment');
+    renderComments(); toast('Comment posted');
   } catch (e) { btn.disabled = false; btn.textContent = 'Post'; err.hidden = false; err.textContent = e.message || 'Could not post.'; }
 }
 async function resolveComment(id) {
@@ -2270,7 +2262,6 @@ function setMode(mode) {
   const wantVideo = mode === 'video' && !!id;
   S.videoMode = wantVideo;
   if (wantVideo && S.lyrMode) { S.lyrMode = false; S.sync = null; $('#npLyr').hidden = true; $('#lyNote').hidden = true; }
-  if (wantVideo) award('video');
   $$('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === (wantVideo ? 'video' : 'song'))));
   const box = $('#npVid');
   if (wantVideo) {
@@ -2334,7 +2325,6 @@ audio.addEventListener('play', () => { setToggle(true); markPlaying(); });
 audio.addEventListener('pause', () => { setToggle(false); markPlaying(); });
 audio.addEventListener('timeupdate', () => {
   const pct = audio.duration ? audio.currentTime / audio.duration : 0;
-  if (S.now && !S.now.heard && audio.src !== SILENT && audio.duration && audio.currentTime > Math.min(30, audio.duration * 0.5)) { S.now.heard = true; markHeard(S.now.t); }
   $$('[data-cur]').forEach(e => e.textContent = fmt(audio.currentTime));
   $$('[data-dur]').forEach(e => e.textContent = fmt(audio.duration));
   $$('[data-seek]').forEach(e => { if (document.activeElement !== e) e.value = Math.round(pct * 1000); e.style.setProperty('--p', (pct * 100) + '%'); });
@@ -2399,10 +2389,15 @@ function targetOf(s) {
 function renderShares() {
   clearPageBg();
   S.view = 'shares'; renderChrome();
-  const rows = S.lib.shares.slice().reverse();
+  const f = S.shareFilter || 'all';
+  const rows = S.lib.shares.slice().reverse().filter(s => f === 'all' || (f === 'club' ? s.target_type === 'all'
+    : f === 'track' ? (s.target_type === 'track' || s.target_type === 'version') : s.target_type === f));
+  const tools = `<div class="shtools"><div class="seg" role="group" aria-label="Show links for">${[['all', 'All'], ['club', 'Fan club'], ['release', 'Projects'], ['track', 'Songs']]
+      .map(([k, l]) => `<button data-sfilter="${k}" aria-pressed="${k === f}">${l}</button>`).join('')}</div>
+    <button class="pill soft" data-share-all>${I.link}Links for every song and project</button></div>`;
   $('#main').innerHTML = `<div class="wrap"><h1 class="page-h"><b>Share</b> links</h1>
     <div class="clubcta"><div><strong>Fan club</strong><span class="cs">One link that opens your whole vault: every release that isn't hidden, videos, worlds and comments. Make one for everyone, or one per fan so you can switch people off individually.</span></div>
-      <button class="pill main" data-share="all" data-id="all">${I.star}New fan club link</button></div>` + (rows.length ? `<div class="links">${rows.map(s => {
+      <button class="pill main" data-share="all" data-id="all">${I.star}New fan club link</button></div>` + tools + (rows.length ? `<div class="links">${rows.map(s => {
     const tg = targetOf(s);
     return `<div class="link">
       ${tg.club ? `<span class="art clubart" aria-hidden="true">${I.star}</span>` : `<img class="art" data-cover="${esc(tg.r ? tg.r.cover_file_id : '')}" alt="">`}
@@ -2415,7 +2410,7 @@ function renderShares() {
         <button class="pill soft" data-copy="${esc(S.lib.base + '?s=' + s.token)}">Copy link</button>
       </div>
     </div>`;
-  }).join('')}</div></div>` : `<p class="status" style="padding-left:0">No share links yet. Open a release and choose Share, or use the share button next to a song.</p></div>`);
+  }).join('')}</div></div>` : `<p class="status" style="padding-left:0">${f === 'all' ? 'No share links yet. Open a release and choose Share, or use Share in a song\'s ⋯ menu.' : 'No links of this kind yet.'}</p></div>`);
   loadCovers();
   window.scrollTo(0, 0);
 }
@@ -2471,7 +2466,7 @@ async function copy(text, btn) {
 }
 
 
-/* ═════════ Fan experience: members, drops, letter, voice notes, lyrics, exclusives, badges ═════════ */
+/* ═════════ Fan experience: members, drops, letter, voice notes, lyrics, exclusives ═════════ */
 const isLocked = r => !!(r && r.unlock_at && new Date(r.unlock_at) > new Date());
 const EXCL = /(demo|draft|rough|mix\s*v?\d|^v\d|\balt\b|alternate|a\s?c+ap+el+a|instrumental|live|stage|slowed|reverb|sped|snippet|unreleased|idea|voice memo)/i;
 const isExclusive = v => !!(v && EXCL.test(String(v.label || '')));
@@ -2499,7 +2494,6 @@ function tick() {
 setInterval(tick, 1000);
 async function refreshClub() {
   S.refreshing = true; S.lastRefresh = Date.now();
-  award('drop');
   await new Promise(z => setTimeout(z, 3000));   // give the server a moment past the unlock time
   try {
     const d = await run('getShare', BOOT.token);
@@ -2596,7 +2590,7 @@ async function playVoice(tid) {
   $('#vbT').textContent = 'On ' + t.title; $('#voicebar').hidden = false;
   try {
     const src = await run('prepareAudio', t.voice_note_id, BOOT.key, BOOT.token);
-    vn.src = src.stream; await vn.play(); award('voice');
+    vn.src = src.stream; await vn.play();
   } catch (e) { $('#vbT').textContent = 'This voice note could not be played right now.'; }
 }
 vn.addEventListener('timeupdate', () => $('#vnBar').style.setProperty('--p', (vn.duration ? vn.currentTime / vn.duration * 100 : 0) + '%'));
@@ -2647,50 +2641,12 @@ function openLyrics(tid) {
   const t = trk(tid);
   $('#modal').innerHTML = `<div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h2 id="mTitle">${esc(t.title)}</h2>
     <div class="lyrics">${esc(plainLyrics(t.lyrics))}</div><div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
-  $('#modal').hidden = false; award('lyrics');
+  $('#modal').hidden = false;
 }
 
-/* badges (saved on this device) */
-const BADGES = [
-  { id: 'first', icon: '🎧', name: 'First listen', how: 'Play any song' },
-  { id: 'ten', icon: '🔟', name: 'Ten deep', how: 'Hear 10 different songs' },
-  { id: 'night', icon: '🌙', name: 'Night owl', how: 'Listen between midnight and 4 AM' },
-  { id: 'video', icon: '🎬', name: 'Front row', how: 'Watch a music video' },
-  { id: 'voice', icon: '🎙️', name: 'Inner circle', how: 'Hear a voice note from Nicólas' },
-  { id: 'world3', icon: '🌍', name: 'Era explorer', how: 'Open 3 different releases' },
-  { id: 'comment', icon: '💬', name: 'In the room', how: 'Leave a comment on a song' },
-  { id: 'lyrics', icon: '📝', name: 'Word for word', how: 'Open the lyrics' },
-  { id: 'drop', icon: '⏳', name: 'There at the drop', how: 'Be here the moment a sealed drop opens' }
-];
-const bKey = () => 'sv_b_' + (OWNER ? 'owner' : BOOT.token);
-const bState = () => Object.assign({ e: {}, h: {}, w: {} }, ls.get(bKey(), {}));
-function award(id, name, icon) {
-  if (OWNER) return;
-  const st = bState(); if (st.e[id]) return;
-  st.e[id] = { at: new Date().toISOString(), name: name || '', icon: icon || '' }; ls.set(bKey(), st);
-  const b = BADGES.find(x => x.id === id) || { icon: icon || '💿', name: name };
-  toast('Badge unlocked: ' + b.icon + ' ' + b.name, 'badge');
-}
-function markHeard(t) {
-  if (OWNER) return;
-  const st = bState(); st.h[t.track_id] = 1; ls.set(bKey(), st);
-  award('first');
-  if (Object.keys(st.h).length >= 10) award('ten');
-  const hr = new Date().getHours(); if (hr < 4) award('night');
-  const r = rel(t.release_id), all = tracksOf(t.release_id);
-  if (r && all.length > 1 && all.every(x => st.h[x.track_id])) award('done:' + r.release_id, 'Front to back: ' + r.title, '💿');
-}
-function visitWorld(r) {
-  if (OWNER || !r) return;
-  const st = bState(); st.w[r.release_id] = 1; ls.set(bKey(), st);
-  if (Object.keys(st.w).length >= 3) award('world3');
-}
 function openMemberCard() {
-  const sh = S.share || {}, st = bState();
+  const sh = S.share || {};
   const since = sh.created ? new Date(sh.created).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : '';
-  const extra = Object.keys(st.e).filter(k => k.startsWith('done:')).map(k => ({ icon: st.e[k].icon || '💿', name: st.e[k].name, how: 'Every song, start to finish', got: true }));
-  const list = BADGES.map(b => Object.assign({}, b, { got: !!st.e[b.id] })).concat(extra);
-  const got = list.filter(b => b.got).length;
   $('#modal').innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <div class="mcard">
       <div class="mtop"><span class="brand">Soul <span>Vault</span></span><span class="flagband" aria-hidden="true"></span></div>
@@ -2698,10 +2654,7 @@ function openMemberCard() {
       <div class="mno">${sh.member_no ? 'Member #' + pad3(sh.member_no) : 'Fan Club'}</div>
       ${since ? `<div class="msince">Since ${esc(since)}</div>` : ''}
     </div>
-    <h4 class="bh">Badges <span class="cs">${got} of ${list.length}</span></h4>
-    <ul class="badges" tabindex="0" aria-label="Your badges">${list.map(b => `<li class="${b.got ? 'got' : ''}"><span class="bi" aria-hidden="true">${b.icon}</span>
-      <span><strong>${esc(b.name)}</strong><span class="cs">${b.got ? 'Unlocked' : esc(b.how)}</span></span></li>`).join('')}</ul>
-    <p class="cs">Badges are saved on this device. Hear every song on a release to earn its Front to back badge. <a class="plink" href="https://www.soulnicolas.com/privacy-policy" target="_blank" rel="noopener">Privacy policy</a></p>
+    <p class="cs"><a class="plink" href="https://www.soulnicolas.com/privacy-policy" target="_blank" rel="noopener">Privacy policy</a></p>
     ${S.lib.newsletter ? `<a class="pill main tribebtn" href="${esc(S.lib.newsletter)}" target="_blank" rel="noopener">${I.mail}Join the Soul Tribe newsletter</a>` : ''}
     <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
   $('#modal').hidden = false;
@@ -2880,7 +2833,8 @@ const safeHref = u => /^https?:\/\//i.test(String(u || '')) ? String(u) : '#';
 const delBtn = id => `<button class="ib xdel" data-xdel="${esc(id)}" aria-label="Remove this item">${I.trash}</button>`;
 function creditLines(txt) {
   return String(txt || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
-    const i = l.indexOf(':'); return i > 0 ? [l.slice(0, i).trim(), l.slice(i + 1).trim()] : ['', l];
+    const m = /^(?!https?:\/\/|www\.)([^:]{1,60}?)\s*:\s*(.*)$/i.exec(l);
+    return m ? [m[1].trim(), m[2].trim()] : ['', l];
   });
 }
 function eraVideos(r, ts) {
@@ -2950,7 +2904,7 @@ function aboutSection(r) {
   return `<section id="era-about" class="erasec about"><h2 class="sh"><span><b>About</b> ${esc(r.title)}</span>${OWNER ? '<button class="seeall" data-world-edit>Edit</button>' : ''}</h2>
     ${moods.length ? `<div class="wmoods">${moods.map(m => `<i>${esc(m)}</i>`).join('')}</div>` : ''}
     ${story ? `<div class="story${long ? '' : ' open'}" id="story">${paras(story)}</div>${long ? '<button class="seeall" data-story="1">Read more</button>' : ''}` : ''}
-    ${cr.length ? `<h3 class="subh">Album credits</h3><dl class="credits">${cr.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${linkifyText(v)}</dd>`).join('')}</dl>` : ''}
+    ${cr.length ? albumCreditsHtml(r) : ''}
   </section>`;
 }
 function photosSection(r) {
@@ -2981,32 +2935,44 @@ function loadPhotos() {
   imgs.forEach(i => S.photoObs.observe(i));
 }
 function openPhoto(i) {
-  const ps = orderedPhotos(rel(S.releaseId)); if (!ps.length) return;
+  const r = rel(S.releaseId), ps = photoSlides(r); if (!ps.length) return;
   i = (i + ps.length) % ps.length; S.photoAt = i;
   const p = ps[i];
-  $('#modal').innerHTML = `<div class="lightbox" role="dialog" aria-modal="true" aria-label="Photo ${i + 1} of ${ps.length}">
-    <img id="lbImg" alt="${esc(p.title || '')}">
-    <div class="lbbar"><span class="cs">${i + 1} / ${ps.length}${p.title ? ' · ' + esc(p.title) : ''}</span>
-      <span><button class="ib" data-photo-step="-1" aria-label="Previous photo">${I.back}</button><button class="ib" data-photo-step="1" aria-label="Next photo"><span style="transform:scaleX(-1);display:grid">${I.back}</span></button>
-      <button class="ib" data-close aria-label="Close">${I.x}</button></span></div></div>`;
-  $('#modal').hidden = false;
-  const img = $('#lbImg'), small = S.coverP[p.file_id + '|600'];
-  if (small) small.then(u => { if (u && !img.src) img.src = u; });
+  if (!$('#modal .lightbox')) {
+    $('#modal').innerHTML = `<div class="lightbox" role="dialog" aria-modal="true" aria-label="Photos from ${esc(r.title)}">
+      <div class="lbbar"><span class="cs" id="lbCap" aria-live="polite"></span>
+        <span class="lbbtns">${OWNER ? `<button class="ib" id="lbDel" aria-label="Remove this photo">${I.trash}</button>` : ''}<button class="ib" data-close aria-label="Close">${I.x}</button></span></div>
+      <div class="lbmain"><img id="lbImg" alt="">
+        ${ps.length > 1 ? `<button class="ib lbnav prev" data-photo-step="-1" aria-label="Previous photo">${I.back}</button>
+        <button class="ib lbnav next" data-photo-step="1" aria-label="Next photo"><span style="transform:scaleX(-1);display:grid">${I.back}</span></button>` : ''}</div>
+      ${ps.length > 1 ? `<div class="lbstrip" id="lbStrip" role="group" aria-label="All photos">${ps.map((x, k) => `<button class="lbthumb" data-photo="${k}" aria-label="Photo ${k + 1} of ${ps.length}${x.title ? ': ' + esc(x.title) : ''}"><img data-photo-src="${esc(x.file_id)}" alt=""></button>`).join('')}</div>` : ''}
+    </div>`;
+    $('#modal').hidden = false;
+    photoSwipe($('.lbmain'));
+    loadPhotos();
+    $('#modal [data-close]').focus();
+  }
+  const img = $('#lbImg'); img.removeAttribute('src'); img.alt = p.title || '';
+  const small = S.coverP[p.file_id + '|600'];
+  if (small) small.then(u => { if (u && S.photoAt === i && !img.src) img.src = u; });
   run('getCover', p.file_id, BOOT.key, BOOT.token, 1600).then(u => { if (u && S.photoAt === i) img.src = u; }).catch(() => {});
-  $('#modal').querySelector('[data-close]').focus();
+  $('#lbCap').textContent = `${i + 1} / ${ps.length} · ${photoCaption(p)}`;
+  const del = $('#lbDel'); if (del) del.dataset.xdel = p.extra_id;
+  $$('#lbStrip .lbthumb').forEach((b, k) => { b.setAttribute('aria-current', String(k === i));
+    if (k === i) b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
 }
 function openXVideo(id, title) {
   audio.pause();
   $('#modal').innerHTML = `<div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h2 id="mTitle">${esc(title)}</h2>
     <div class="npvid"><iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1" title="Video: ${esc(title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
     <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
-  $('#modal').hidden = false; award('video');
+  $('#modal').hidden = false;
 }
 
 /* song page: tap a title */
 function openSong(tid) {
   const t = trk(tid), r = rel(t.release_id), vs = versionsOf(tid), p = vs[0];
-  const rows = CREDIT_FIELDS.filter(([k]) => String(t[k] || '').trim()), ly = plainLyrics(t.lyrics);
+  const rows = songCreditRows(t), ly = plainLyrics(t.lyrics);
   $('#modal').innerHTML = `<div class="sheet wide song" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <div class="shead"><img class="art" id="songArt" alt="">
       <div style="min-width:0"><div class="kind">${esc(r.title)}${numLabel(t) ? ', track ' + esc(numLabel(t)) : ''}</div><h2 id="mTitle">${esc(t.title)}</h2>
@@ -3015,17 +2981,17 @@ function openSong(tid) {
     <div class="acts"><button class="pill main" data-song-play="${esc(p.version_id)}">${I.play}Play</button>
       ${videoOf(t) ? `<button class="pill soft" data-song-watch="${esc(tid)}">${I.film}Watch video</button>` : ''}
       ${t.voice_note_id ? `<button class="pill soft" data-song-voice="${esc(tid)}">${I.mic}Voice note</button>` : ''}
-      ${OWNER ? `<button class="pill soft" data-song-edit="${esc(tid)}">${I.edit}Edit</button>
+      ${OWNER ? `<button class="pill soft" data-qshare="${esc('track|' + tid)}">${I.share}Share</button>
+                 <button class="pill soft" data-song-edit="${esc(tid)}">${I.edit}Edit</button>
                  <button class="pill soft" data-song-cover="${esc(tid)}">${I.img}Song cover</button>
                  ${t.track_cover ? `<button class="pill soft" data-song-cover-del="${esc(tid)}">Remove song cover</button>` : ''}` : ''}</div>
     ${vs.length > 1 ? `<h4>Versions</h4><div class="chips">${vs.map(v => `<button class="chip${isExclusive(v) ? ' excl' : ''}" data-song-play="${esc(v.version_id)}">${isExclusive(v) ? I.star : ''}${esc(v.label)}</button>`).join('')}</div>` : ''}
     <h4>Lyrics</h4>${ly ? `<div class="lyrics">${esc(ly)}</div>` : '<p class="cs">No lyrics yet.</p>'}
-    <h4>Credits</h4>${rows.length ? `<dl class="credits">${rows.map(([k, l]) => `<dt>${l}</dt><dd>${k === 'features' ? linkNames(t[k]) : esc(t[k])}</dd>`).join('')}</dl>` : '<p class="cs">No credits yet.</p>'}
+    <h4>Credits</h4>${rows.length ? creditsDl(rows) : '<p class="cs">No credits yet.</p>'}
     ${OWNER && String(t.notes || '').trim() ? `<h4>Private notes</h4><p class="cs">${esc(t.notes)}</p>` : ''}
     <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
-  setCover($('#songArt'), artFor(t), false);
+  setCover($('#songArt'), artFor(t, p), false);
   $('#modal').hidden = false; $('#modal').querySelector('[data-song-play]').focus();
-  if (ly) award('lyrics');
 }
 
 /* owner: add to this era */
@@ -3047,6 +3013,7 @@ function openExtraForm(kind) {
     <label>Link<input class="field" id="xUrl" type="url" inputmode="url" placeholder="https://" maxlength="1000"></label>
     <label>Title (optional: filled in from the link)<input class="field" id="xTitle" maxlength="200"></label>
     ${kind === 'app' ? '<label>Short description (optional)<input class="field" id="xDesc" maxlength="300"></label>' : ''}
+    ${kind === 'video' ? `<label>What kind of video?<select class="field" id="xType">${Object.keys(VTYPE).map(k => `<option value="${k}">${VTYPE[k]}</option>`).join('')}</select></label>` : ''}
     <p class="err" id="xErr" hidden></p>
     <div class="end"><button class="pill soft" data-close>Cancel</button><button class="pill main" data-xsave="${kind}">Add</button></div></div>`;
   $('#modal').hidden = false; $('#xUrl').focus();
@@ -3058,13 +3025,20 @@ async function saveExtra(kind, btn) {
   btn.disabled = true; btn.textContent = 'Getting the preview…';
   try {
     const x = await run('addExtra', BOOT.key, S.releaseId, { kind, url, title: $('#xTitle').value.trim(), description: $('#xDesc') ? $('#xDesc').value.trim() : '' });
-    (S.lib.extras = S.lib.extras || []).push(x); closeModal(); toast('Added'); renderRelease(S.releaseId);
+    (S.lib.extras = S.lib.extras || []).push(x);
+    const vt = $('#xType') ? $('#xType').value : 'music';
+    if (kind === 'video' && vt !== 'music') {   // file it under the right section (live, trailer, behind the scenes…)
+      const r = rel(S.releaseId), m = videosMeta(r); m.types['x:' + x.extra_id] = vt;
+      try { r.videos_meta = await run('saveVideosMeta', BOOT.key, r.release_id, m); } catch (e) { toast('Added, but the video type did not save. Use the edit button on the video.'); }
+    }
+    closeModal(); toast('Added'); renderRelease(S.releaseId);
     const sec = $('#era-' + (kind === 'video' ? 'videos' : kind + 's')); if (sec) sec.scrollIntoView();
   } catch (e) { btn.disabled = false; btn.textContent = 'Add'; err.hidden = false; err.textContent = e.message || 'Could not add that link.'; }
 }
 async function removeExtra(id) {
   if (!confirm('Remove this from the release page?')) return;
-  try { await run('deleteExtra', BOOT.key, id); S.lib.extras = S.lib.extras.filter(x => x.extra_id !== id); renderRelease(S.releaseId); toast('Removed'); }
+  try { await run('deleteExtra', BOOT.key, id); S.lib.extras = S.lib.extras.filter(x => x.extra_id !== id);
+    if ($('#modal .lightbox')) closeModal(); renderRelease(S.releaseId); toast('Removed'); }
   catch (e) { toast('Could not remove'); }
 }
 function openPhotoUpload() {
@@ -3215,7 +3189,10 @@ function agesLine(r) {
 }
 
 /* ── song covers ── */
-const artFor = t => (t && t.track_cover) || ((t && rel(t.release_id)) || {}).cover_file_id || '';
+const isCleanVer = v => !!v && /\bclean\b/i.test(String(v.label || ''));
+// Song cover first; a Clean version uses the release's clean cover when there is one; otherwise the release cover.
+const artFor = (t, v) => { const r = (t && rel(t.release_id)) || {};
+  return (t && t.track_cover) || (isCleanVer(v) && r.clean_cover_file_id) || r.cover_file_id || ''; };
 function primeTrackThumbs() {
   (S.lib.tracks || []).forEach(t => {
     if (t.track_cover && t.track_cover_thumb && !S.covers[t.track_cover]) {
@@ -3402,7 +3379,7 @@ function setLyrMode(on) {
   $('#npLyr').hidden = !S.lyrMode;
   $('#npArt').hidden = S.lyrMode || S.videoMode;
   const b = $('[data-np-lyrics]'); if (b) b.setAttribute('aria-pressed', String(S.lyrMode));
-  if (S.lyrMode) { renderLyr(); award('lyrics'); }
+  if (S.lyrMode) renderLyr();
 }
 function renderLyr() {
   const n = S.now, box = $('#npLyr'); if (!n || !box) return;
@@ -4252,7 +4229,7 @@ function openVideoList(r, start) {
       <span class="n">${i + 1}</span>${vThumb(v)}
       <span style="min-width:0"><span class="t">${esc(v.title)}</span><span class="vtype ${v.type}">${VTYPE[v.type]}</span></span></button></li>`).join('')}</ol>` : ''}
     <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
-  $('#modal').hidden = false; award('video');
+  $('#modal').hidden = false;
 }
 
 /* ── Edit: compact panels ── */
@@ -4415,20 +4392,14 @@ function photoCell(p, i) {
       <img data-photo-src="${esc(p.file_id)}" alt="${esc(p.title || '')}"></button>${OWNER ? delBtn(p.extra_id) : ''}</div>`;
 }
 function photosSectionV2(r) {
-  const ps = orderedPhotos(r), m = photosMeta(r);
+  const ps = photoSlides(r), m = photosMeta(r);
   if (!ps.length && !m.credits) return '';
-  const covers = ps.map((p, i) => [p, i]).filter(([p]) => p.cat === 'cover');
-  const grouped = cat => { const gs = []; ps.map((p, i) => [p, i]).filter(([p]) => p.cat === cat).forEach(([p, i]) => { const g = p.group || ''; let gr = gs.find(x => x.name === g); if (!gr) gs.push(gr = { name: g, items: [] }); gr.items.push([p, i]); }); return gs; };
-  const groups = grouped('shoot'), bts = grouped('bts'), social = ps.map((p, i) => [p, i]).filter(([p]) => p.cat === 'social');
+  const kinds = [...new Set(ps.map(p => PHOTO_CAT[p.cat]))].join(' · '), n = ps.length;
   return `<section id="era-photos" class="erasec"><h2 class="sh"><span><b>Photos</b> from the era</span></h2>
-    <div class="phgroup"><h3>Album covers</h3><div class="pgrid">
-      ${r.cover_file_id ? `<div class="pcell coverart"><img class="art" data-cover="${esc(r.cover_file_id)}" alt="${esc(r.title)} cover" style="width:100%;aspect-ratio:1;border-radius:12px"></div>` : ''}
-      ${covers.map(([p, i]) => photoCell(p, i)).join('')}</div></div>
-    ${groups.map(g => `<div class="phgroup"><h3>${esc(g.name || (groups.length > 1 ? 'More from the shoots' : 'Photoshoot'))}</h3>
-      <div class="pgrid">${g.items.map(([p, i]) => photoCell(p, i)).join('')}</div></div>`).join('')}
-    ${bts.map(g => `<div class="phgroup"><h3>${esc(g.name ? 'Behind the scenes: ' + g.name : 'Behind the scenes')}</h3>
-      <div class="pgrid">${g.items.map(([p, i]) => photoCell(p, i)).join('')}</div></div>`).join('')}
-    ${social.length ? `<div class="phgroup"><h3>Social media graphics</h3><div class="pgrid">${social.map(([p, i]) => photoCell(p, i)).join('')}</div></div>` : ''}
+    ${n ? `<button class="phcard" data-photo="0" aria-label="Open the photo slideshow, ${n} ${n === 1 ? 'photo' : 'photos'}">
+      <span class="phcover"><img data-photo-src="${esc(ps[0].file_id)}" alt=""></span>
+      <span class="phinfo"><span class="phn">${I.img}${n} ${n === 1 ? 'photo' : 'photos'}</span><span class="cs">${esc(kinds)}</span>
+        <span class="phgo">View slideshow${I.chev}</span></span></button>` : ''}
     ${m.credits ? `<div class="phcredits"><b>Photo credits</b>${linkifyText(m.credits)}</div>` : ''}</section>`;
 }
 function photoEditor(r) {
@@ -4472,11 +4443,11 @@ function linkNames(list) { return String(list || '').split(/(\s*,\s*|\s+&\s+|\s+
 // each piece escaped on its own, so a link can never land inside another link, a URL, or an "&amp;".
 function linkifyText(text) {
   text = String(text || '');
-  const URL_RE = /\bhttps?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]]/gi;
+  const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"']*[^\s<>"'.,;:!?)\]]/gi;
   if (URL_RE.test(text)) {   // web addresses become links; the text between them still gets artist links
     URL_RE.lastIndex = 0; let out = '', last = 0, mm;
     while ((mm = URL_RE.exec(text))) {
-      out += linkifyText(text.slice(last, mm.index)) + `<a class="alink" href="${esc(mm[0])}" target="_blank" rel="noopener noreferrer">${esc(mm[0].replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''))}</a>`;
+      out += linkifyText(text.slice(last, mm.index)) + `<a class="alink" href="${esc(/^www\./i.test(mm[0]) ? 'https://' + mm[0] : mm[0])}" target="_blank" rel="noopener noreferrer">${esc(mm[0].replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''))}</a>`;
       last = mm.index + mm[0].length;
     }
     return out + linkifyText(text.slice(last));
@@ -4712,7 +4683,7 @@ function loreText() {
 }
 
 
-/* ═════════ Build 49: songs from YouTube + the audio theater ═════════ */
+/* ═════════ Build 49: songs from YouTube + theater lighting ═════════ */
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: `
   /* ── house: darkened edges like a theater ── */
   /* the vignette sits behind all content (body is its own layer), so nothing needs repositioning */
@@ -4724,18 +4695,6 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .relhead { position: relative; overflow: hidden; }
   .relhead::after { content: ''; position: absolute; left: 50%; top: -30%; width: 140%; height: 140%; transform: translateX(-50%); pointer-events: none;
     background: radial-gradient(ellipse 35% 55% at 50% 0%, rgba(255,236,196,.16), transparent 70%); mix-blend-mode: screen; }
-  /* ── curtains part when a release opens ── */
-  .curtain { position: fixed; inset: 0; z-index: 80; pointer-events: none; display: flex; }
-  .curtain i { flex: 1; background:
-      repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 6px, transparent 6px 26px, rgba(255,255,255,.05) 26px 30px, transparent 30px 44px),
-      linear-gradient(180deg, #7a0c1e, #4a0612 60%, #2a030a); box-shadow: inset 0 -40px 60px rgba(0,0,0,.5); }
-  .curtain i:first-child { animation: curtL 1.05s cubic-bezier(.7,0,.25,1) .12s forwards; transform-origin: left; }
-  .curtain i:last-child  { animation: curtR 1.05s cubic-bezier(.7,0,.25,1) .12s forwards; transform-origin: right; }
-  .curtain::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48px; background: linear-gradient(180deg, #5a0915, #3a0510);
-    box-shadow: 0 6px 18px rgba(0,0,0,.6); animation: valance 1.2s ease .4s forwards; }
-  @keyframes curtL { to { transform: translateX(-102%) skewY(-2deg); } }
-  @keyframes curtR { to { transform: translateX(102%) skewY(2deg); } }
-  @keyframes valance { to { transform: translateY(-100%); } }
   /* ── now playing is the stage ── */
   #np .npmedia { position: relative; }
   #np .npmedia::before { content: ''; position: absolute; left: 50%; top: -60px; width: 120%; height: calc(100% + 60px); transform: translateX(-50%); pointer-events: none; z-index: 0;
@@ -4748,16 +4707,9 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
     text-transform: uppercase; color: #1a1205; background: linear-gradient(180deg, #F6D77A, #C9A227); box-shadow: 0 0 0 2px rgba(0,0,0,.35), 0 0 14px rgba(201,162,39,.45); }
   .slide .marquee { position: absolute; top: 14px; right: 14px; z-index: 2; }
   .ytadd { margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
-  @media (prefers-reduced-motion: reduce) { .curtain { display: none; } body.house-dim::before { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { body.house-dim::before { transition: none; } }
 ` }));
 
-/* ── curtains: once per release you open (not on every redraw) ── */
-function raiseCurtain(id) {
-  if (S.curtainFor === id || matchMedia('(prefers-reduced-motion: reduce)').matches) { S.curtainFor = id; return; }
-  S.curtainFor = id;
-  const c = document.createElement('div'); c.className = 'curtain'; c.setAttribute('aria-hidden', 'true'); c.innerHTML = '<i></i><i></i>';
-  document.body.appendChild(c); setTimeout(() => c.remove(), 1500);
-}
 audio.addEventListener('playing', () => document.body.classList.add('house-dim'));
 audio.addEventListener('pause', () => { if (!S.ytSong) document.body.classList.remove('house-dim'); });
 
@@ -4864,7 +4816,7 @@ function renderPlaylist(id) {
     <header class="plhead">${mosaic(ts)}<div><div class="kick">Playlist${OWNER ? ' · ' + (p.fans ? 'shared with the fan club' : 'private') : ''}</div>
       <h1>${esc(p.title)}</h1>${p.description ? `<p class="cs" style="margin:0 0 4px;white-space:pre-line">${esc(p.description)}</p>` : ''}
       <div class="cs">${songs(ts.length)}${fmtRuntime(runtimeOf(ts)) ? ' · ' + fmtRuntime(runtimeOf(ts)) : ''}</div>
-      <div class="acts">${ts.length ? `<button class="pill main" data-pl-play>${I.play}Play</button><button class="pill soft" data-pl-shuffle>${I.shuffle || ''}Shuffle</button>` : ''}
+      <div class="acts">${ts.length ? `<button class="pill main" data-pl-play>${I.play}Play</button><button class="pill soft" data-pl-shuffle>${I.shuf}Shuffle</button>` : ''}
         ${OWNER && !ed ? `<button class="pill soft" data-pl-edit>${I.edit}Edit</button>` : ''}</div></div></header>
     ${ed ? plEditor() : ts.length ? `<ol class="tracks">${ts.map((t, i) => trackRow(t, true).replace(/<span class="n">[^<]*<\/span>/, `<span class="n">${i + 1}</span>`)).join('')}</ol>`
          : `<div class="ins-empty">No songs yet. Use the ⋯ menu on any song and choose <b>Add to playlist</b>.</div>`}
@@ -4938,11 +4890,11 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
     background: radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,240,210,.28), transparent 70%); mix-blend-mode: screen; }
   /* Apple-Music-style controls: shuffle · prev · play · next · repeat, then volume */
   .npctl { display: grid; grid-template-columns: 44px 1fr auto 1fr 44px; align-items: center; justify-items: center; gap: 4px; margin-top: 8px; }
-  .npctl .tog { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: rgba(246,243,239,.6); position: relative; }
-  .npctl .tog svg { width: 20px; height: 20px; }
-  .npctl .tog[aria-pressed="true"] { color: var(--green-hi); }
-  .npctl .tog[aria-pressed="true"]::after { content: ''; position: absolute; bottom: 5px; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
-  .npctl .tog .one { position: absolute; font: 900 9px var(--sans); top: 11px; left: 50%; transform: translateX(-50%); }
+  .npctl .npt { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: rgba(246,243,239,.6); position: relative; }
+  .npctl .npt svg { width: 20px; height: 20px; }
+  .npctl .npt[aria-pressed="true"] { color: var(--green-hi); }
+  .npctl .npt[aria-pressed="true"]::after { content: ''; position: absolute; bottom: 5px; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+  .npctl .npt .one { position: absolute; font: 900 9px var(--sans); top: 11px; left: 50%; transform: translateX(-50%); }
   .npvol { display: grid; grid-template-columns: 18px minmax(0,1fr) 22px; gap: 10px; align-items: center; margin: 14px auto 0; max-width: 360px; color: rgba(246,243,239,.6); }
   .npvol svg { width: 18px; height: 18px; }
   .npvol input { width: 100%; accent-color: #fff; min-height: 28px; }
@@ -4955,7 +4907,7 @@ const canSetVolume = (() => { try { const a = new Audio(); a.volume = 0.5; retur
 function initVolume() {
   const box = $('.npvol'); if (!box) return;
   if (!canSetVolume) { box.hidden = true; return; }
-  const v = ls.get('sv_volume', 1); audio.volume = v; const r = $('[data-vol]'); if (r) r.value = Math.round(v * 100);
+  const v = ls.get('sv_volume', 1); audio.volume = v; const r = $('[data-vol]'); if (r) { r.value = Math.round(v * 100); r.style.setProperty('--p', r.value + '%'); }
 }
 /* ── shuffle + repeat ── */
 S.repeat = 'off'; S.shuffle = false;
@@ -4982,16 +4934,278 @@ function cycleRepeat() { S.repeat = { off: 'all', all: 'one', one: 'off' }[S.rep
 
 /* ── videos: sections by type ── */
 const VSECTION = { music: 'music', film: 'music', live: 'live', trailer: 'extras', bts: 'extras' };
-const VSECTION_TITLE = { music: '<b>Music</b> videos', live: '<b>Live</b> performances', extras: '<b>Extras</b>: trailers and behind the scenes' };
+const VSECTION_TITLE = { music: '<b>Music</b> videos', live: '<b>Live</b> performances', extras: '<b>Extras</b>: album promo, trailers and behind the scenes' };
+
+/* ═════════ Build 52: compact now playing, photo slideshow, share links, credits that reach each song, clean covers ═════════ */
+document.head.appendChild(Object.assign(document.createElement('style'), { textContent: `
+  /* now playing: compact, and it only ever scrolls up and down */
+  #np { overflow-x: hidden; overscroll-behavior: contain; overscroll-behavior-x: none; touch-action: pan-y; }
+  #np .np-in, #np .np-body { max-width: 100%; overflow-x: hidden; }
+  #np .np-body > * { min-width: 0; }
+  #np .np-body { padding: 8px 0; }
+  #np .npmedia { max-width: min(300px, 74vw, 38vh); width: 100%; justify-self: center; }
+  #np .np-body .npmedia .art { width: 100%; justify-self: stretch; }
+  #np .npvol input { min-height: 0; height: 4px; margin: 12px 0; }
+  #np h4 { margin: 18px 0 6px; }
+  #np .npctl { gap: 4px; }
+  #np .credits { grid-template-columns: auto minmax(0,1fr); }
+  #np .credits dd, .credits dd { min-width: 0; overflow-wrap: anywhere; }
+  #np .upnext button { grid-template-columns: 26px minmax(0,1fr) auto; }
+  #np .upnext button > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #np .chips { max-width: 100%; }
+  @media (max-width: 760px) { #np .np-body { gap: 12px; } #np .np-t { font-size: 28px; } }
+  /* the whole song row plays when tapped */
+  .row[data-track] { cursor: pointer; }
+  .row .tt { display: block; width: 100%; }
+  /* photos: one thumbnail that opens a slideshow */
+  .phcard { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 18px; align-items: center; width: min(520px, 100%); padding: 10px 14px 10px 10px;
+            border-radius: 18px; border: 1px solid var(--line); background: rgba(255,255,255,.04); text-align: left; }
+  .phcard:hover { background: rgba(255,255,255,.07); }
+  .phcover { position: relative; display: block; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,.06);
+             box-shadow: 7px -7px 0 -2px rgba(255,255,255,.14), 14px -14px 0 -4px rgba(255,255,255,.07); }
+  .phcover img { width: 100%; height: 100%; object-fit: cover; }
+  .phinfo { display: grid; gap: 4px; min-width: 0; }
+  .phn { display: inline-flex; align-items: center; gap: 8px; font: 800 18px var(--serif); }
+  .phn svg { width: 18px; height: 18px; }
+  .phgo { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--red-hi); font-weight: 800; font-size: 13px; }
+  .phgo svg { width: 16px; height: 16px; }
+  .lightbox { grid-template-rows: auto minmax(0,1fr) auto; }
+  .lbmain { position: relative; min-height: 0; display: grid; touch-action: pan-y pinch-zoom; }
+  .lbmain img { width: 100%; height: 100%; object-fit: contain; min-height: 0; }
+  .lbnav { position: absolute; top: 50%; transform: translateY(-50%); width: 48px !important; height: 48px !important; background: rgba(0,0,0,.55); }
+  .lbnav.prev { left: 8px; } .lbnav.next { right: 8px; }
+  .lbbtns { display: flex; gap: 4px; }
+  .lbstrip { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 6px; overscroll-behavior-x: contain; scrollbar-width: thin; }
+  .lbthumb { flex: 0 0 72px; height: 72px; border-radius: 8px; overflow: hidden; opacity: .5; background: rgba(255,255,255,.06);
+             outline: 2px solid transparent; outline-offset: -2px; transition: opacity .15s; }
+  .lbthumb:hover { opacity: .85; }
+  .lbthumb[aria-current="true"] { opacity: 1; outline-color: var(--green-hi); }
+  .lightbox .lbthumb img { width: 100%; height: 100%; object-fit: cover; }
+  @media (max-width: 760px) { .phcard { grid-template-columns: 110px minmax(0,1fr); } .lbthumb { flex-basis: 58px; height: 58px; } .lbnav { display: none !important; } }
+  /* album credits split into songs */
+  .acblock { margin: 12px 0 0; }
+  .acsong { display: block; margin: 0 0 4px; font-weight: 800; font-size: 14px; color: var(--text); }
+  .acsong:hover { color: var(--green-hi); }
+  .acfrom { margin: 0; font-size: 12px; }
+  /* share links */
+  .shtools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 0 0 14px; }
+  .qsurl { font-variant-numeric: tabular-nums; }
+  .ccrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .ccrow .lbl { font-size: 13px; font-weight: 600; color: var(--dim); flex-basis: 100%; }
+  .ccrow .art { width: 56px; height: 56px; border-radius: 8px; }
+` }));
+if (!$('#cleanFile')) document.body.appendChild(Object.assign(document.createElement('input'), { type: 'file', id: 'cleanFile', accept: 'image/jpeg,image/png,image/webp,image/gif', hidden: true }));
+
+/* ── album credits → each song's credits ──
+   "Produced by: Shake"            every song (fills in songs that don't list their own)
+   "Vocals: Aziza (1, 3-5)"         just those songs (by number or title)
+   "3. ARES" + lines under it       that song, up to the next blank line                 */
+const normT = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const SONG_ROLE = /produc|prod\b|beat|mix|master|engineer|record|feat|vocal|sing|writ|compos|lyric|arrang|program|guitar|bass|drum|keys|keyboard|piano|synth|string|horn|sax|trumpet|violin|cello|percussion|instrument/i;
+const NOT_SONG_ROLE = /executive|cover|artwork|\bart\b|photo|design|styl|video|director|a&r|manage|label|publicist|marketing|thanks/i;
+const credNames = s => String(s || '').split(/\s*(?:,|&|;|\band\b)\s*/i).map(x => x.trim()).filter(Boolean);
+function creditField(role) {
+  if (/feat|featuring/i.test(role)) return 'features';
+  if (/produc|prod\b|beat/i.test(role) && !/executive/i.test(role)) return 'producer';
+  if (/engineer|record/i.test(role) && !/mix|master/i.test(role)) return 'engineer';
+  return '';
+}
+function creditRole(l) {
+  let m = /^(?!https?:\/\/|www\.)([^:]{1,60}?)\s*:\s*(.+)$/i.exec(l);
+  if (m) return [m[1].trim(), m[2].trim()];
+  m = /^(.{2,40}?\bby)\s+(.+)$/i.exec(l);                 // "Produced by Shake"
+  if (m) return [m[1].trim(), m[2].trim()];
+  m = /^(feat\.?|featuring|ft\.?)\s+(.+)$/i.exec(l);
+  return m ? ['Featuring', m[2].trim()] : null;
+}
+function parseAlbumCredits(r) {
+  const out = { album: [], songs: {}, blocks: [] };
+  const text = String((r && r.album_credits) || ''); if (!text.trim()) return out;
+  const ts = tracksOf(r.release_id, true), byNo = {}, byTitle = {};
+  ts.forEach(t => { const n = String(numLabel(t)).toLowerCase(); if (n) byNo[n] = t; byTitle[normT(t.title)] = t; });
+  ts.forEach((t, i) => { if (!byNo[String(i + 1)]) byNo[String(i + 1)] = t; });
+  const find = x => byNo[String(x).trim().toLowerCase()] || byTitle[normT(x)] || null;
+  const targets = list => {
+    const got = [];
+    for (const part of list.split(/\s*[,;&]\s*|\s+and\s+/i)) {
+      const p = part.trim().replace(/^(tracks?|songs?|on)\s+/i, ''); if (!p) continue;
+      const rg = /^(\d{1,3})\s*[-–]\s*(\d{1,3})$/.exec(p);
+      if (rg) { for (let k = +rg[1]; k <= +rg[2] && k - rg[1] < 100; k++) { const t = find(k); if (!t) return null; got.push(t); } continue; }
+      const t = find(p); if (!t) return null; got.push(t);
+    }
+    return got.length ? got : null;
+  };
+  const header = l => {
+    const bare = l.replace(/:\s*$/, '').trim();
+    const m = /^(?:track\s*)?(\d{1,3}[a-z]?)\s*[.)\-–:]\s*(.+)$/i.exec(bare);
+    if (m) { const t = byNo[m[1].toLowerCase()]; if (t && (normT(m[2]) === normT(t.title) || !creditRole(m[2]))) return t; if (byTitle[normT(m[2])]) return byTitle[normT(m[2])]; }
+    return !creditRole(l) && byTitle[normT(bare)] || null;
+  };
+  const add = (t, row) => (out.songs[t.track_id] = out.songs[t.track_id] || []).push(row);
+  let cur = null;
+  text.split('\n').forEach(raw => {
+    const l = raw.trim();
+    if (!l) { cur = null; return; }
+    const h = header(l);
+    if (h) { cur = { t: h, lines: [] }; out.blocks.push(cur); return; }
+    const rl = creditRole(l);
+    if (cur) { cur.lines.push(rl || ['', l]); if (rl) add(cur.t, rl); return; }
+    if (!rl) { out.album.push(['', l, null]); return; }
+    const tm = /^(.*?)\s*\(([^()]+)\)\s*$/.exec(rl[1]), tg = tm ? targets(tm[2]) : null;
+    if (tg) { tg.forEach(t => add(t, [rl[0], tm[1].trim()])); out.album.push([rl[0], rl[1], tg]); }
+    else out.album.push([rl[0], rl[1], null]);
+  });
+  return out;
+}
+// Credits for one song: its own fields, plus whatever the album credits say about it. Returns [[label, html]].
+function songCreditRows(t) {
+  const ac = parseAlbumCredits(rel(t.release_id));
+  const names = {}; ['features', 'producer', 'engineer'].forEach(k => (names[k] = credNames(t[k])));
+  const push = (k, v) => credNames(v).forEach(n => { if (!names[k].some(x => x.toLowerCase() === n.toLowerCase())) names[k].push(n); });
+  const other = [], seen = new Set(), addOther = (role, v) => { const k = (role + '|' + v).toLowerCase(); if (!seen.has(k)) { seen.add(k); other.push([role || 'Credit', v]); } };
+  const specific = {};   // fields this song names for itself (its own credits, or its lines in the album credits)
+  ['features', 'producer', 'engineer'].forEach(k => { if (names[k].length) specific[k] = true; });
+  (ac.songs[t.track_id] || []).forEach(([role, v]) => { const f = creditField(role); if (f) { push(f, v); specific[f] = true; } else addOther(role, v); });
+  ac.album.forEach(([role, v, tg]) => {
+    if (tg || !role || !SONG_ROLE.test(role) || NOT_SONG_ROLE.test(role)) return;
+    const f = creditField(role);
+    if (!f) addOther(role, v); else if (!specific[f]) push(f, v);   // album-wide credits only fill in what the song doesn't say itself
+  });
+  const nameHtml = n => /https?:\/\/|www\./i.test(n) ? linkifyText(n) : linkName(n);
+  const rows = [];
+  CREDIT_FIELDS.forEach(([k, l]) => {
+    if (names[k]) { if (names[k].length) rows.push([l, names[k].map(nameHtml).join(', ')]); }
+    else if (String(t[k] || '').trim()) rows.push([l, esc(t[k])]);
+  });
+  other.forEach(([role, v]) => rows.push([role, linkifyText(v)]));
+  return rows;
+}
+const creditsDl = rows => `<dl class="credits">${rows.map(([l, h]) => `<dt>${esc(l)}</dt><dd>${h}</dd>`).join('')}</dl>`;
+// The About section: album-wide credits, then any song blocks with the song's name (tap to play).
+function albumCreditsHtml(r) {
+  const ac = parseAlbumCredits(r);
+  const top = ac.album.map(([role, v]) => [role, linkifyText(v)]);
+  return `<h3 class="subh">Album credits</h3>${top.length ? creditsDl(top) : ''}
+    ${ac.blocks.map(b => `<div class="acblock"><button class="acsong" data-track-play="${esc(b.t.track_id)}">${esc(numLabel(b.t))}. ${esc(b.t.title)}</button>
+      ${creditsDl(b.lines.map(([role, v]) => [role, linkifyText(v)]))}</div>`).join('')}`;
+}
+// For the owner's credit editor: what this song picks up from the album credits.
+function albumCreditNote(t) {
+  const own = new Set(CREDIT_FIELDS.map(([, l]) => l));
+  const rows = songCreditRows(t).filter(([l, h]) => !own.has(l) || !String(t[CREDIT_FIELDS.find(x => x[1] === l)[0]] || '').trim());
+  if (!rows.length) return '';
+  return `<p class="cs acfrom">From the album credits: ${rows.map(([l, h]) => `<b>${esc(l)}</b> ${h}`).join(' · ')}. Change these in the release's Album credits.</p>`;
+}
+
+/* ── photos: one thumbnail, then a slideshow with every photo in a strip underneath ── */
+const PHOTO_CAT = { cover: 'Album cover art', shoot: 'Photoshoot', bts: 'Behind the scenes', social: 'Social media graphic' };
+function photoSlides(r) {
+  const rank = { cover: 0, shoot: 1, bts: 2, social: 3 };
+  return orderedPhotos(r).map((p, i) => [p, i]).sort((a, b) => rank[a[0].cat] - rank[b[0].cat] || a[1] - b[1]).map(x => x[0]);
+}
+function photoCaption(p) {
+  return [PHOTO_CAT[p.cat] + (p.group ? ': ' + p.group : ''), p.title].filter(Boolean).join(' · ');
+}
+function photoSwipe(el) {
+  let x0 = null, y0 = null;
+  el.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (x0 == null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) openPhoto(S.photoAt + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+}
+
+/* ── share links: one standing link for any song or project ── */
+async function openQuickShare(type, id) {
+  const r = type === 'release' ? rel(id) : null, t = type === 'track' ? trk(id) : null;
+  const name = r ? r.title : t ? t.title : '';
+  const sealed = r ? isLocked(r) : t ? isLocked(rel(t.release_id)) : false;
+  $('#modal').innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle">Share ${esc(name)}</h2>
+    <p class="cs" style="margin:0">Anyone with this link can listen to this ${type === 'release' ? 'project' : 'song'}. It stays the same every time, and you can switch it off in Share links.${sealed ? ' <b>This release is sealed for the fan club, but this link plays it now.</b>' : ''}</p>
+    <input class="field qsurl" id="qsUrl" readonly value="Getting the link…" aria-label="Share link">
+    <p class="err" id="qsErr" hidden></p>
+    <div class="end" style="flex-wrap:wrap"><button class="pill soft" data-qs-custom="${esc(type + '|' + id)}">Custom link for someone…</button>
+      ${navigator.share ? '<button class="pill soft" id="qsNative" data-qs-native disabled>Share…</button>' : ''}
+      <button class="pill main" id="qsCopy" disabled>Copy link</button></div></div>`;
+  $('#modal').hidden = false;
+  try {
+    const o = await run('shareLinkFor', BOOT.key, type, id);
+    if (o.created) S.lib.shares.push(o.share);
+    const u = $('#qsUrl'); if (!u) return;
+    u.value = o.url; u.select();
+    const c = $('#qsCopy'); c.disabled = false; c.dataset.copy = o.url;
+    const nb = $('#qsNative'); if (nb) { nb.disabled = false; nb.dataset.qsNative = o.url; nb.dataset.qsTitle = name; }
+  } catch (e) { const er = $('#qsErr'); if (er) { er.hidden = false; er.textContent = e.message || 'The link could not be made.'; } }
+}
+async function makeAllLinks(btn) {
+  if (!confirm("Make a link for every song and project that doesn't have one yet?\n\nAnyone you send one of these links to can listen to that song or project. Hidden and sealed releases are skipped.")) return;
+  const label = btn.innerHTML; btn.disabled = true; btn.textContent = 'Making links…';
+  try {
+    const o = await run('shareLinksForAll', BOOT.key);
+    S.lib.shares.push(...o.created);
+    toast(o.created.length ? `Made ${o.created.length} new ${o.created.length === 1 ? 'link' : 'links'}` : 'Every song and project already has a link');
+    renderShares();
+  } catch (e) { btn.disabled = false; btn.innerHTML = label; toast(e.message || 'The links could not be made.'); }
+}
+
+/* ── clean covers: shown whenever a Clean version plays ── */
+function cleanCoverRow(r) {
+  return `<div class="ccrow"><span class="lbl">Clean version cover (shows in the player whenever a Clean version plays)</span>
+    ${r.clean_cover_file_id ? `<img class="art" data-cover="${esc(r.clean_cover_file_id)}" alt="Clean cover">` : ''}
+    <button class="pill soft" type="button" data-cc-pick>${I.img}${r.clean_cover_file_id ? 'Change clean cover' : 'Upload clean cover'}</button>
+    ${r.clean_cover_file_id ? '<button class="pill soft" type="button" data-cc-clear>Remove</button>' : ''}</div>`;
+}
+function afterCleanCover(r) {
+  const row = $('.ccrow'); if (row) { row.outerHTML = cleanCoverRow(r); loadCovers(); }
+  if (S.now && S.now.r.release_id === r.release_id) updateNowUI();
+}
+async function uploadCleanCover(file) {
+  const r = rel(S.releaseId);
+  if (file.size > 15 * 1048576) throw new Error('That image is over 15 MB.');
+  let thumb = await shrinkImage(file, 320, 0.72); if (thumb.length > 44000) thumb = await shrinkImage(file, 240, 0.6);
+  const ticket = await run('getUploadTicket', BOOT.key, r.release_id);
+  let blob = file, name = 'Clean cover.gif', type = 'image/gif';
+  if (file.type !== 'image/gif') { blob = await (await fetch(await shrinkImage(file, 1600, 0.9))).blob(); name = 'Clean cover.jpg'; type = 'image/jpeg'; }
+  const id = await driveUpload(blob, name, type, ticket);
+  const out = await run('setCleanCover', BOOT.key, r.release_id, id, thumb);
+  r.clean_cover_file_id = out.fileId; r.clean_cover_thumb = out.thumb || '';
+  S.covers[id] = out.thumb || thumb; S.coverP[id] = Promise.resolve(S.covers[id]);
+  afterCleanCover(r);
+}
+$('#cleanFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  toast('Uploading clean cover…');
+  try { await uploadCleanCover(f); toast('Clean cover saved'); } catch (err) { toast(err.message || 'The clean cover did not upload.'); }
+});
+async function removeCleanCover() {
+  const r = rel(S.releaseId);
+  try { await run('setCleanCover', BOOT.key, r.release_id, '', ''); r.clean_cover_file_id = ''; r.clean_cover_thumb = ''; afterCleanCover(r); toast('Clean cover removed'); }
+  catch (e) { toast(e.message || 'Could not remove the clean cover'); }
+}
+
 
 /* ── events ── */
 document.addEventListener('click', e => {
   if (e.target.closest && e.target.closest('a.alink')) return;   // artist links open in a new tab
-  const el = e.target.closest('[data-rel],[data-play],[data-share],[data-nav],[data-copy],[data-close],[data-playall],[data-ctl],[data-year],[data-filter],[data-edit],[data-edit-save],[data-edit-cancel],[data-move],[data-cover-change],#openNp,[data-more],[data-sheet],[data-shuffleall],[data-qi],[data-track-play],[data-np-shuffle],[data-np-details],[data-details-save],[data-upload],[data-upload-go],[data-previews],[data-comment-add],[data-comment-post],[data-comment-cancel],[data-seek-to],[data-resolve],[data-cdel],[data-install-x],[data-retry],[data-dot],[data-jump],[data-mode],[data-watch],[data-world-edit],[data-story],[data-color-clear],[data-card],[data-letter-edit],[data-letter-save],[data-letter-clear],[data-letter-more],[data-vn],[data-vn-toggle],[data-vn-close],[data-lyrics],[data-voice-go],[data-unlock-clear],[data-newrel],[data-nr-cover],[data-nr-add],[data-nr-move],[data-nr-del],[data-nr-go],[data-open-rel],[data-song],[data-song-play],[data-song-watch],[data-song-voice],[data-song-edit],[data-era],[data-era-add],[data-xadd],[data-xsave],[data-xdel],[data-photo],[data-photo-step],[data-xvideo],[data-ph-go],[data-songtab],[data-shelf],[data-play-rel],[data-lyrics-all],[data-lyrics-save],[data-song-cover],[data-song-cover-del],[data-chap-add],[data-chap-del],[data-bg-pick],[data-bg-clear],[data-np-lyrics],[data-lt],[data-sync-start],[data-sync-tap],[data-sync-undo],[data-sync-cancel],[data-sync-save],[data-num-reset],[data-backup],[data-resume],[data-resume-x],[data-ins-days],[data-check-playback],[data-vplay],[data-vtype-edit],[data-vtype-save],[data-al-add],[data-al-del],[data-lylink],[data-lyfetch],[data-lore-bio],[data-lore-copy],[data-yt-add],[data-np-rel],[data-pl],[data-pl-new],[data-pl-play],[data-pl-shuffle],[data-pl-edit],[data-pl-save],[data-pl-cancel],[data-pl-delete],[data-pl-rm],[data-pl-add],[data-pl-create]');
-  if (!el) { if (e.target === $('#modal')) closeModal(); return; }
+  const el = e.target.closest('[data-rel],[data-play],[data-share],[data-nav],[data-copy],[data-close],[data-playall],[data-ctl],[data-year],[data-filter],[data-edit],[data-edit-save],[data-edit-cancel],[data-move],[data-cover-change],#openNp,[data-more],[data-sheet],[data-shuffleall],[data-qi],[data-track-play],[data-np-shuffle],[data-np-details],[data-details-save],[data-upload],[data-upload-go],[data-previews],[data-comment-add],[data-comment-post],[data-comment-cancel],[data-seek-to],[data-resolve],[data-cdel],[data-install-x],[data-retry],[data-dot],[data-jump],[data-mode],[data-watch],[data-world-edit],[data-story],[data-color-clear],[data-card],[data-letter-edit],[data-letter-save],[data-letter-clear],[data-letter-more],[data-vn],[data-vn-toggle],[data-vn-close],[data-lyrics],[data-voice-go],[data-unlock-clear],[data-newrel],[data-nr-cover],[data-nr-add],[data-nr-move],[data-nr-del],[data-nr-go],[data-open-rel],[data-song],[data-song-play],[data-song-watch],[data-song-voice],[data-song-edit],[data-era],[data-era-add],[data-xadd],[data-xsave],[data-xdel],[data-photo],[data-photo-step],[data-xvideo],[data-ph-go],[data-songtab],[data-shelf],[data-play-rel],[data-lyrics-all],[data-lyrics-save],[data-song-cover],[data-song-cover-del],[data-chap-add],[data-chap-del],[data-bg-pick],[data-bg-clear],[data-np-lyrics],[data-lt],[data-sync-start],[data-sync-tap],[data-sync-undo],[data-sync-cancel],[data-sync-save],[data-num-reset],[data-backup],[data-resume],[data-resume-x],[data-ins-days],[data-check-playback],[data-vplay],[data-vtype-edit],[data-vtype-save],[data-al-add],[data-al-del],[data-lylink],[data-lyfetch],[data-lore-bio],[data-lore-copy],[data-yt-add],[data-np-rel],[data-pl],[data-pl-new],[data-pl-play],[data-pl-shuffle],[data-pl-edit],[data-pl-save],[data-pl-cancel],[data-pl-delete],[data-pl-rm],[data-pl-add],[data-pl-create],[data-qshare],[data-qs-custom],[data-qs-native],[data-share-all],[data-sfilter],[data-cc-pick],[data-cc-clear]');
+  if (!el) {
+    // a tap anywhere on a song row plays it
+    const row = e.target.closest('.row[data-track]');
+    if (row && !e.target.closest('a, button, input, select, textarea, label')) { const t = trk(row.dataset.track), p = t && primaryOf(t); if (p) playFromTap(p.version_id); return; }
+    if (e.target === $('#modal')) closeModal(); return;
+  }
   const d = el.dataset;
   if ('retry' in el.dataset) { location.reload(); return; }
   if (el.id === 'openNp') openNp();
+  else if (d.qshare) { const [ty, ...rest] = d.qshare.split('|'); openQuickShare(ty, rest.join('|')); }
+  else if (d.qsCustom) { const [ty, ...rest] = d.qsCustom.split('|'); openShare(ty, rest.join('|')); }
+  else if (d.qsNative) navigator.share({ title: d.qsTitle || 'Soul Vault', url: d.qsNative }).catch(() => {});
+  else if ('shareAll' in d) makeAllLinks(el);
+  else if (d.sfilter) { S.shareFilter = d.sfilter; renderShares(); }
+  else if ('ccPick' in d) $('#cleanFile').click();
+  else if ('ccClear' in d) removeCleanCover();
   else if (d.vplay != null) openVideoList(rel(S.releaseId), +d.vplay);
   else if (d.vtypeEdit != null) openVideoType(+d.vtypeEdit);
   else if (d.ytAdd) addYtSong(d.ytAdd, el);
@@ -5065,7 +5279,7 @@ document.addEventListener('click', e => {
   else if (d.vn) playVoice(d.vn);
   else if ('vnToggle' in d) { vn.paused ? vn.play() : vn.pause(); }
   else if ('vnClose' in d) { vn.pause(); $('#voicebar').hidden = true; }
-  else if ('lyrics' in d) { const l = $('#lyr'); l.hidden = !l.hidden; el.textContent = l.hidden ? 'Show lyrics' : 'Hide lyrics'; el.setAttribute('aria-expanded', String(!l.hidden)); if (!l.hidden) award('lyrics'); }
+  else if ('lyrics' in d) { const l = $('#lyr'); l.hidden = !l.hidden; el.textContent = l.hidden ? 'Show lyrics' : 'Hide lyrics'; el.setAttribute('aria-expanded', String(!l.hidden)); }
   else if (d.voiceGo) uploadVoice(el);
   else if ('unlockClear' in d) { $('#relUnlock').value = ''; toast('No seal: saves when you press Save changes'); }
   else if (d.mode) setMode(d.mode);
@@ -5087,7 +5301,7 @@ document.addEventListener('click', e => {
     else if (d.sheet === 'addpl') openAddToPlaylist(tid);
     else if (d.sheet === 'voicedel') removeVoice(tid);
     else if (d.sheet === 'version') openUpload(trk(tid).release_id, tid);
-    else if (d.sheet === 'share') openShare('track', tid);
+    else if (d.sheet === 'share') openQuickShare('track', tid);
   }
   else if ('shuffleall' in d) { const l = shuffled(releaseQueue(S.releaseId)); playQueue(l, 0); }
   else if (d.qi != null) { S.qi = +d.qi; play(S.queue[S.qi]); }
@@ -5159,7 +5373,7 @@ document.addEventListener('input', e => {
   if (e.target.dataset && e.target.dataset.ly != null) lyCount();
   if (e.target.dataset && e.target.dataset.chapName != null && S.chaps) S.chaps[+e.target.dataset.chapName].name = e.target.value;
   if (e.target.dataset && e.target.dataset.bgctl) bgCtlInput(e.target);
-  if (e.target.dataset && e.target.dataset.vol != null) { audio.volume = +e.target.value / 100; ls.set('sv_volume', audio.volume); }
+  if (e.target.dataset && e.target.dataset.vol != null) { audio.volume = +e.target.value / 100; ls.set('sv_volume', audio.volume); e.target.style.setProperty('--p', e.target.value + '%'); }
   const dsi = e.target.dataset || {};
   if (dsi.pgroup != null && S.pdraft) S.pdraft.list[+dsi.pgroup].group = e.target.value;
   if (dsi.alName != null && S.aldraft) S.aldraft[+dsi.alName].name = e.target.value;
