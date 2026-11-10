@@ -27,6 +27,6 @@ fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recu
 fs.writeFileSync('dist/index.html', page); fs.writeFileSync('dist/app.js', code);
 const lame = fs.readFileSync('apps-script/Lame.html', 'utf8').replace(/^\s*<script[^>]*>/, '').replace(/<\/script>\s*$/, '');
 fs.writeFileSync('dist/lame.js', lame);
-for (const f of fs.readdirSync('public')) fs.copyFileSync(path.join('public', f), path.join('dist', f));
+fs.cpSync('public', 'dist', { recursive: true });   // includes public/fonts/
 fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n');
 console.log('built dist/ (build ' + build + ', ' + Math.round(code.length / 1024) + ' KB app.js)');

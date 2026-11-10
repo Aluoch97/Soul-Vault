@@ -20,6 +20,12 @@ Home, Vault, Tour, Press, Lore: same five on the sidebar (desktop) and bottom ta
 The internal nav id `vault` still means the owner's Settings screen. Strangers and fan links open on Home; the owner opens on the Vault.
 Static pages in `public/`: `roadto100shows.html` (tour tracker, reads a Google Sheet), `join.html` (fan sign-up, posts to the soulMATES Apps Script).
 
+## Layout (phone app on every screen)
+Like the Certified and NuDirectory apps, the phone layout is used at every width: no sidebar, a tab bar along the bottom of the
+window, and on a computer the content sits in a centered column (max 820px). The old `@media (max-width: 760px)` rules were switched to
+`@media (min-width: 0px)`, and the `<style id="desk">` block just before the app script centers the column. To change the column
+width, edit that block. The sidebar code in `renderChrome` is still there but hidden.
+
 ## Access model (important)
 - Owner: open `https://soulnicolas.com/?k=<owner key>` once; key is saved in that device's localStorage and removed from the URL.
 - Fans with a link: `/?s=<share token>` (unchanged).
