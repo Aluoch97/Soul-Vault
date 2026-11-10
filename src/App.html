@@ -323,6 +323,14 @@
   .sitecard .tt2 { font: 400 20px var(--serif); } .sitecard .tt2 b { font-weight: 800; }
   .sitecard p { margin: 4px 0 0; max-width: 52ch; }
   .sitepg .pill { text-decoration: none; }
+  .homepg { text-align: center; }
+  .homepg .sitehero { margin: 0 auto; text-align: center; }
+  .homepg .sitehero .herop { margin-left: auto; margin-right: auto; }
+  .homepg .sh { justify-content: center; }
+  .homepg .linkgrid { justify-content: center; }
+  .homepg .tribe { flex-direction: column; align-items: stretch; text-align: center; }
+  .homepg .tribe .pill { justify-content: center; min-height: 48px; }
+  .homepg .ctrack .cap { text-align: left; }
   .sitepg p a { color: var(--green-hi); }
   .linkgrid { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 18px; }
   .soc { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: var(--ink, #f6f3ef); background: rgba(255,255,255,.07);
@@ -341,14 +349,13 @@
   .vid .thumb i { position: absolute; right: 10px; bottom: 10px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
                   background: var(--red); color: #fff; } .vid .thumb i svg { width: 16px; height: 16px; }
   .vid .vt { font-size: 14px; line-height: 1.35; font-weight: 600; }
-  .tourpg { max-width: 760px; }
-  .tourframe { width: 100%; height: calc(100vh - 190px); height: calc(100dvh - 190px); min-height: 520px; border: 1px solid var(--line); border-radius: 16px; background: #E9DAAF; display: block; }
+  .wrap.tourpg { position: fixed; left: 0; right: 0; top: 0; bottom: var(--tabh, 70px); max-width: none; margin: 0; padding: 0; }
+  .tourframe { display: block; width: 100%; height: 100%; border: 0; background: #E9DAAF; }
   @media (min-width: 0px) {
     .tabs button { min-width: 0; flex: 1; padding: 4px 2px; }
     .tabs button[aria-current="page"] { color: var(--red-hi); }
     .sitecard { flex-direction: column; align-items: stretch; }
     .sitecard .pill { justify-content: center; min-height: 48px; }
-    .tourframe { height: calc(100dvh - 250px); min-height: 420px; }
     .herob .pill { flex: 1; justify-content: center; min-height: 48px; }
   }
 
@@ -1298,7 +1305,7 @@ function renderHome() {
   clearPageBg(); S.view = 'home'; renderChrome();
   const rs = shelfOrder(S.lib.releases.filter(r => OWNER || !isUnrel(r)));
   const latest = rs[0], join = JOIN_URL();
-  $('#main').innerHTML = `<div class="wrap sitepg">
+  $('#main').innerHTML = `<div class="wrap sitepg homepg">
     <section class="sitehero">
       <div class="eyebrow">Heal hop · NuRenaissance</div>
       <h1 class="herot">Nicólas <span>Soul</span></h1>
@@ -1324,11 +1331,9 @@ function renderHome() {
 
 function renderTour() {
   clearPageBg(); S.view = 'tour'; renderChrome();
-  $('#main').innerHTML = `<div class="wrap sitepg tourpg">
-    <h1 class="page-h" style="padding-left:0"><b>Tour</b></h1>
-    <p class="cs" style="margin-top:0">#ROADTO100SHOWS: tap a state to read the log. <a href="/roadto100shows" target="_blank" rel="noopener">Open full page</a></p>
-    <iframe class="tourframe" src="/roadto100shows.html" title="Road to 100 Shows tracker" loading="lazy"></iframe>
-  </div>`;
+  const fit = () => document.documentElement.style.setProperty('--tabh', ($('#tabs') ? $('#tabs').offsetHeight : 70) + 'px');
+  fit();
+  $('#main').innerHTML = `<div class="wrap tourpg"><iframe class="tourframe" src="/roadto100shows.html" title="Road to 100 Shows tracker"></iframe></div>`;
   window.scrollTo(0, 0);
 }
 
@@ -1453,7 +1458,7 @@ function renderLibBody() {
   const chips = `<div class="seg" role="group" aria-label="Filter by type">${types.map(t => `<button data-filter="${esc(t)}" aria-pressed="${t === S.filter}">${esc(t)}</button>`).join('')}</div>`;
   const empty = `<p class="status" style="padding-left:0">${q ? `Nothing matches "${esc(S.q)}". Try part of a song or release title.` : 'Nothing matches this filter yet.'}</p>`;
   $('#libBody').innerHTML = (!q ? resumeCard() : '') + chips + (rs.length ? shelf(rs) : (songList || lyList ? '' : empty)) + songList + lyList +
-    (!q ? seriesRow() + playlistsRow() + dropsRow() + recentRow() + tribeCard() : '') +
+    (!q ? seriesRow() + playlistsRow() + dropsRow() + recentRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
   wireShelf();
