@@ -332,7 +332,7 @@
   .homepg .tribe .pill { justify-content: center; min-height: 48px; }
   .homepg .ctrack .cap { text-align: left; }
   /* moving background: the Home page only (the video sits behind everything, with a dark veil so text stays readable) */
-  .homebg { position: fixed; inset: 0; z-index: 0; background: #0A0A0B url(/home-bg-poster.jpg) center / cover no-repeat; overflow: hidden; pointer-events: none; }
+  .homebg { position: fixed; inset: 0; z-index: 0; background: #0A0A0B url(/home-bg-hd-poster.jpg) center / cover no-repeat; overflow: hidden; pointer-events: none; }
   .homebg video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .9; }
   .homebg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,11,.35), rgba(10,10,11,.72) 55%, rgba(10,10,11,.88)); }
   .homepg { position: relative; z-index: 1; }
@@ -1498,7 +1498,7 @@ function startHomeVideo(v, delay) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')))) { v.parentNode.classList.add('still'); v.remove(); return; }
   // Slow cellular (3g or worse): keep the still picture.
   if (c && /(^|-)3g$/.test(c.effectiveType || '')) { v.parentNode.classList.add('still'); v.remove(); return; }
-  const go = () => { if (v.dataset.started || !v.isConnected) return; v.dataset.started = '1'; v.src = '/home-bg.mp4'; v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+  const go = () => { if (v.dataset.started || !v.isConnected) return; v.dataset.started = '1'; v.src = '/home-bg-hd.mp4'; v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
   clearTimeout(v._t); v._t = setTimeout(() => (window.requestIdleCallback || (f => f()))(go, { timeout: 1500 }), delay);
 }
 // First visit: draw the parts of Home that need no data (name, Support, sign-up, links, YouTube) right away.
@@ -1512,7 +1512,7 @@ function renderHome() {
   const yt = (v, label) => `<figure class="lat"><button class="latvid" data-yt="${esc(v[0])}" aria-label="Play ${esc(v[1])}">
       <img src="https://i.ytimg.com/vi/${esc(v[0])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></button>
       <div class="lattitle">${esc(v[1])}</div><figcaption class="latlabel">${label}</figcaption></figure>`;
-  $('#main').innerHTML = `<div class="homebg" aria-hidden="true"><video muted loop playsinline preload="none" poster="/home-bg-poster.jpg"></video></div>
+  $('#main').innerHTML = `<div class="homebg" aria-hidden="true"><video muted loop playsinline preload="none" poster="/home-bg-hd-poster.jpg"></video></div>
   <div class="wrap sitepg homepg">
     <section class="sitehero">
       <h1 class="herot">Nicólas <span>Soul</span></h1>
