@@ -1048,6 +1048,21 @@
   .tabs button { font-size: 12px; }
   .tabs svg { width: 24px; height: 24px; }
 }
+/* Vault on a computer: every shelf is an even grid that lines up with the page edges (no half-cut cards, no sideways scrolling). */
+@media (min-width: 900px) {
+  #main .shelfbar { display: none; }
+  #main .shelf .ctrack { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 18px; overflow: visible; margin: 0; padding: 0; }
+  #main .shelf .ctrack .slide { flex: none; width: auto; aspect-ratio: 4 / 5; border-radius: 18px; }
+  #main .shelf .slide .ttl { font-size: clamp(17px, 1.45vw, 23px); }
+  #main .shelf .slide .cap { left: 14px; right: 62px; bottom: 14px; }
+  #main .shelf .slide .go { width: 40px; height: 40px; right: 12px; bottom: 12px; }
+  #main .hrow { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; overflow: visible; }
+  #main .hrow .scard, #main .hrow .plcard, #main .hrow .drop { flex: none; width: auto; min-width: 0; }
+  #main .hrow.recent { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  #main .recent .rc { flex: none; }
+  #main .recent .rc .art { width: 100%; height: auto; aspect-ratio: 1; }
+}
+@media (min-width: 1700px) { .wrap:has(#libBody) { max-width: 1640px; margin-left: auto; margin-right: auto; } }
 </style>
 <script id="sv-app">
 const BOOT = window.SV_BOOT || {};
@@ -1481,10 +1496,9 @@ function startHomeVideo(v, delay) {
   if (!v || v.dataset.started) return;
   const c = navigator.connection;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')))) { v.parentNode.classList.add('still'); v.remove(); return; }
-  // Slow cellular (3g or worse): keep the still picture. Phones get a small copy of the video (0.6 MB instead of 2.5 MB).
+  // Slow cellular (3g or worse): keep the still picture.
   if (c && /(^|-)3g$/.test(c.effectiveType || '')) { v.parentNode.classList.add('still'); v.remove(); return; }
-  const small = matchMedia('(max-width: 820px)').matches;
-  const go = () => { if (v.dataset.started || !v.isConnected) return; v.dataset.started = '1'; v.src = small ? '/home-bg-m.mp4' : '/home-bg.mp4'; v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+  const go = () => { if (v.dataset.started || !v.isConnected) return; v.dataset.started = '1'; v.src = '/home-bg.mp4'; v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
   clearTimeout(v._t); v._t = setTimeout(() => (window.requestIdleCallback || (f => f()))(go, { timeout: 1500 }), delay);
 }
 // First visit: draw the parts of Home that need no data (name, Support, sign-up, links, YouTube) right away.
@@ -1503,7 +1517,7 @@ function renderHome() {
     <section class="sitehero">
       <h1 class="herot">Nicólas <span>Soul</span></h1>
       <p class="herop">${esc(SITE.tagline)}</p>
-      <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
+      <div class="linkgrid" role="group" aria-label="Listen and follow">${SITE.links.map(l => `<a class="soc" href="${esc(l[1])}" target="_blank" rel="noopener" aria-label="${esc(l[0])}" title="${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : esc(l[0])}</a>`).join('')}</div>
     </section>
     <section class="latest" aria-label="Latest">
       <h2 class="lathead">Latest</h2>
@@ -1512,8 +1526,7 @@ function renderHome() {
     ${join ? `<section class="tribe"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
       <a class="pill main" href="${esc(join)}">${I.mail}Join the Soul Tribe</a></section>` : ''}
-    <h2 class="sh"><span><b>Listen</b> and follow</span></h2>
-    <div class="linkgrid">${SITE.links.map(l => `<a class="soc" href="${esc(l[1])}" target="_blank" rel="noopener" aria-label="${esc(l[0])}" title="${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : esc(l[0])}</a>`).join('')}</div>
+    <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
     <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · © ${new Date().getFullYear()} Nicólas Soul</p>
   </div>`;
   // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
