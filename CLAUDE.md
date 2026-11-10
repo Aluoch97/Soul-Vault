@@ -20,8 +20,8 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
   Build 68: PageSpeed (live, Nov 10, after build 67) still showed LCP 7.3 s because the Home cover is ~380 px wide and Chrome counts a small thumbnail as a small image, so `getHome` now also sends a sharp 420 px cover
   (`img`, from `driveThumb_`, kept 6 h as `hcov_<id>`; the `getHome` answer itself is cached 60 s with `bigPut_`/`bigGet_`).
   On a first public visit the app calls it alongside `getShare` and shows the two covers at once (`paintHomeLite`); a tap before the library arrives is remembered (`S.pendingRel`) and opens when it does. Measure with Lighthouse (mobile) against a local copy of dist/.
-  PageSpeed (live, mobile, Nov 10): Performance 74, others 100; LCP 7.7 s (covers wait for the library), page weight 3.7 MB. Done since: phones get `public/home-bg-m.mp4` (0.6 MB; the 2.5 MB
-  `home-bg.mp4` is for wider screens), no video on 3g or Save-Data, longer cache headers in `build.js` (media 7 days, fonts 30 days; rename a file when you replace it).
+  PageSpeed (live, mobile, Nov 10): Performance 74, others 100; LCP 7.7 s (covers wait for the library), page weight 3.7 MB. Done since: no video on 3g or Save-Data, longer cache headers in `build.js` (media 7 days, fonts 30 days; rename a file when you replace it).
+  The background video `public/home-bg.mp4` is only 854x480 at ~170 kbps (the file taken from the Wix site), so it looks soft on big screens; a small 426 px phone copy was tried and removed (too soft). For a sharper background, replace it with a higher-resolution original (720p or 1080p, no sound, H.264, under ~6 MB) under a new file name.
 - `site.config.json` — Apps Script URL, public token, site name.
 - Audio streams straight from Google Drive with an API key (Settings tab: `drive_api_key`); covers via `getCover`.
 - The app already has a fetch transport (`runFetch`, `BOOT.api`), so the Apps Script page itself is no longer the host.
@@ -40,6 +40,9 @@ Back/Forward work and the tab title changes. Owner screens (Settings, Share link
 Cloudflare Pages serves index.html for any unknown path, which is what makes this work. Old Wix addresses are 301 redirects written to `dist/_redirects` by `build.js`
 (list `wix` there; do not redirect `/shows` or `/roadto100shows`, those are real files used inside the Tour tab). Press images live in `public/press-img/` so `/press` stays free.
 Checked on the live site (pages load, old Wix links redirect, iPhone confirmed by Nick).
+
+Home order: name, tagline, social icons, Latest, Soul Tribe card (links to `/join`, which has a "Back to home" link), then the Support button, footer.
+Vault on a computer (>= 900 px): every shelf (releases, series, playlists, drops, recently played) is an even grid in the `<style id="desk">` block, no sideways scrolling; on phones the shelves still scroll sideways.
 
 ## Layout (phone app on every screen)
 Like the Certified and NuDirectory apps, the phone layout is used at every width: no sidebar, a tab bar along the bottom of the

@@ -65,7 +65,7 @@ for (const f of fs.readdirSync('dist')) {
 }
 // Big files that rarely change are kept by the browser for a week (fonts, 30 days); app.js stays at 5 minutes so updates show up quickly. If you replace a picture or video, give it a new file name.
 fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n'
-  + ['/home-bg.mp4', '/home-bg-m.mp4', '/home-bg-poster.jpg', '/press-img/*', '/photos/*', '/og-image.jpg', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
+  + ['/home-bg.mp4', '/home-bg-poster.jpg', '/press-img/*', '/photos/*', '/og-image.jpg', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
   + '/fonts/*\n  Cache-Control: public, max-age=2592000\n'
   + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Strict-Transport-Security: max-age=15552000\n');
 // Old Wix addresses -> new ones (permanent redirects). Real files in dist/ (join, shows, privacy-policy, roadto100shows) are not listed.

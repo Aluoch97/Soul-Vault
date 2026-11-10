@@ -42,6 +42,8 @@
       padding: 18px 14px;
     }
 
+    .back-home { display: inline-block; margin: 0 0 14px; padding: 6px 0; color: var(--ink); opacity: .75; font-size: 14px; text-decoration: none; }
+    .back-home:hover, .back-home:focus-visible { opacity: 1; text-decoration: underline; }
     .card {
       width: 100%;
       max-width: 460px;
@@ -591,6 +593,7 @@
 
   <div class="card">
     <div class="heritage-trim" aria-hidden="true"></div>
+    <a class="back-home" href="/">&larr; Back to home</a>
     <div class="progress" id="progress" aria-hidden="true">
       <div class="progress-seg" data-seg="0"><span></span></div>
       <div class="progress-seg" data-seg="1"><span></span></div>
