@@ -41,7 +41,7 @@ Cloudflare Pages serves index.html for any unknown path, which is what makes thi
 (list `wix` there; do not redirect `/shows` or `/roadto100shows`, those are real files used inside the Tour tab). Press images live in `public/press-img/` so `/press` stays free.
 Checked on the live site (pages load, old Wix links redirect, iPhone confirmed by Nick).
 
-Home order: name, tagline, social icons, Latest, Soul Tribe card (links to `/join`, which has a "Back to home" link), then the Support button, footer.
+Home order: name, tagline, social icons, Support button, Latest, Soul Tribe card (links to `/join`, which has a "Back to home" link), footer.
 Vault on a computer (>= 900 px): every shelf (releases, series, playlists, drops, recently played) is an even grid in the `<style id="desk">` block, no sideways scrolling; on phones the shelves still scroll sideways.
 
 ## Layout (phone app on every screen)

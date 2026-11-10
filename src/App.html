@@ -1518,6 +1518,7 @@ function renderHome() {
       <h1 class="herot">Nicólas <span>Soul</span></h1>
       <p class="herop">${esc(SITE.tagline)}</p>
       <div class="linkgrid" role="group" aria-label="Listen and follow">${SITE.links.map(l => `<a class="soc" href="${esc(l[1])}" target="_blank" rel="noopener" aria-label="${esc(l[0])}" title="${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : esc(l[0])}</a>`).join('')}</div>
+      <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
     </section>
     <section class="latest" aria-label="Latest">
       <h2 class="lathead">Latest</h2>
@@ -1526,7 +1527,6 @@ function renderHome() {
     ${join ? `<section class="tribe"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
       <a class="pill main" href="${esc(join)}">${I.mail}Join the Soul Tribe</a></section>` : ''}
-    <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
     <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · © ${new Date().getFullYear()} Nicólas Soul</p>
   </div>`;
   // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
