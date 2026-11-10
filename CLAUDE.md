@@ -1,7 +1,7 @@
 # soulnicolas.com — Soul Vault as the website
 
 Owner: Nick (Nicólas Soul). Goal (DONE Nov 10, 2026): soulnicolas.com is Soul Vault, a web app on Cloudflare Pages (project `soul-vault`). DNS is on Cloudflare (nameservers cleo/molly.ns.cloudflare.com);
-the domain registration is still with Wix (keep it renewed; Wix has no email records for this domain). www redirects to soulnicolas.com, app.soulnicolas.com also still works.
+the domain registration is still with Wix (keep it renewed; Wix has no email records for this domain). www redirects to soulnicolas.com (a line in the boot script in `build.js`; Pages `_redirects` cannot match a host. A Cloudflare Redirect Rule would also work), app.soulnicolas.com also still works.
 Plain language for Nick: short explanations, no jargon. Do not overstate certainty; say what is untested.
 
 ## How it fits together
