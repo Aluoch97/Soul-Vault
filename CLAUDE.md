@@ -25,6 +25,14 @@ Home, Vault, Tour, Press, Lore: same five on the sidebar (desktop) and bottom ta
 The internal nav id `vault` still means the owner's Settings screen. Strangers and fan links open on Home; the owner opens on the Vault.
 Static pages in `public/`: `roadto100shows.html` (tour tracker, reads a Google Sheet), `join.html` (fan sign-up, posts to the soulMATES Apps Script).
 
+## Tab addresses and old links
+Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
+`/vault/<release>` (release id without `rel_`, `_` becomes `-`, e.g. `/vault/2019-soulless`), `/tour`, `/tour/road-to-100`, `/press`, `/press/video`, `/lore`.
+Back/Forward work and the tab title changes. Owner screens (Settings, Share links, Insights) have no address; single-release share links keep theirs.
+Cloudflare Pages serves index.html for any unknown path, which is what makes this work. Old Wix addresses are 301 redirects written to `dist/_redirects` by `build.js`
+(list `wix` there; do not redirect `/shows` or `/roadto100shows`, those are real files used inside the Tour tab). Press images live in `public/press-img/` so `/press` stays free.
+Tested locally with a Pages-like server, not yet on Cloudflare.
+
 ## Layout (phone app on every screen)
 Like the Certified and NuDirectory apps, the phone layout is used at every width: no sidebar, a tab bar along the bottom of the
 window, and on a computer the content sits in a centered column (max 820px). The old `@media (max-width: 760px)` rules were switched to

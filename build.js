@@ -56,6 +56,12 @@ for (const f of fs.readdirSync('dist')) {
 }
 // Big files that rarely change are kept by the browser for a day (fonts, a week); app.js stays at 5 minutes so updates show up quickly.
 fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n/home-bg.mp4\n  Cache-Control: public, max-age=86400\n/home-bg-poster.jpg\n  Cache-Control: public, max-age=86400\n'
-  + '/fonts/*\n  Cache-Control: public, max-age=604800\n/press/*\n  Cache-Control: public, max-age=86400\n/photos/*\n  Cache-Control: public, max-age=86400\n'
+  + '/fonts/*\n  Cache-Control: public, max-age=604800\n/press-img/*\n  Cache-Control: public, max-age=86400\n/photos/*\n  Cache-Control: public, max-age=86400\n'
   + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n');
+// Old Wix addresses -> new ones (permanent redirects). Real files in dist/ (join, shows, privacy-policy, roadto100shows) are not listed.
+const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault/2019-soulless'], ['/riseofthelost', '/vault/2025-rise-of-the-lost'],
+  ['/causeitfeelsgood', '/vault/2024-cause-it-feels-good-ep'], ['/soulsearching', '/vault/2022-soulsearching'], ['/troubleinparadise', '/vault/2018-trouble-in-paradise'],
+  ['/survivingthenuworld', '/vault/2020-bluu-redd'], ['/jambojacquetesphaye', '/vault/2022-jambo-jacque-tesphaye'], ['/alltc', '/vault/2020-a-love-letter-to-cali-ep'],
+  ['/about', '/lore'], ['/bio', '/lore'], ['/roadto100', '/tour/road-to-100']];
+fs.writeFileSync('dist/_redirects', wix.map(r => r[0] + ' ' + r[1] + ' 301').join('\n') + '\n');
 console.log('built dist/ (build ' + build + ', ' + Math.round(code.length / 1024) + ' KB app.js' + (minified ? ', minified' : ', NOT minified') + ')');
