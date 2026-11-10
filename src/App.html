@@ -919,7 +919,7 @@
   <div class="vdoor" aria-hidden="true"><span class="vb t"></span><span class="vb r"></span><span class="vb b"></span><span class="vb l"></span>
     <span class="vwheel"><i></i><i></i><i></i></span></div>
   <p class="vtext">Entering Vault<span class="vdots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
-  <small id="buildTag" style="opacity:.5">SV build 65</small></div></main>
+  <small id="buildTag" style="opacity:.5">SV build 66</small></div></main>
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <div class="mini" id="mini" hidden>
@@ -1007,7 +1007,7 @@
     var m = document.getElementById('main');
     if (m) m.innerHTML = '<div class="status"><p>Soul Vault could not download its app code from Google.</p>' +
       '<p style="opacity:.75">Check your internet connection. If it keeps happening, make sure the app_url row in the Settings tab is your web app address ending in /exec.</p>' +
-      '<p style="opacity:.5">SV build 65</p></div>';
+      '<p style="opacity:.5">SV build 66</p></div>';
     window.SV_ERRORS.push('download failed');
   };
   window.addEventListener('error', function (e) {
@@ -1017,7 +1017,7 @@
       if (m) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault could not start on this browser.</p>' +
         '<p style="opacity:.8">' + svClean((e && e.message) || 'Unknown error') + '</p>' +
         '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
-        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 65</p></div>';
+        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 66</p></div>';
     }
   });
   setTimeout(function () {
@@ -1025,7 +1025,7 @@
     var m = document.getElementById('main');
     if (m && !window.SV_ERRORS.length) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault did not start. Its code never ran on this browser.</p>' +
       '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
-      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 65 / ' + svClean(navigator.userAgent) + '</p></div>';
+      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 66 / ' + svClean(navigator.userAgent) + '</p></div>';
   }, 15000);
 </script>
 <script>window.SV_BOOT = __SV_BOOT__;</script>
