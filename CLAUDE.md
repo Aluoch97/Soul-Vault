@@ -32,6 +32,12 @@ width, edit that block. The sidebar code in `renderChrome` is still there but hi
 - Everyone else gets the **public token** from `site.config.json`. Create it in the app (Share > a link covering the public
   releases) and paste it in. Anything that link can see is public on the internet. Unreleased/private material must not be in it.
   Verify what a logged-out visitor sees before launch.
+- The public token is an "all" (fan club) link: it carries every release that is not hidden or sealed (28 releases, 264 songs, lyrics,
+  photos, demo versions). Marking a release "Unreleased" only adds a label; to keep something out use "Hide" or seal it with an unlock date.
+  Checked Nov 10, 2026 (scripted, read-only; re-run `node tools/casecheck.js` after changes): wrong, capitalised or empty links are refused,
+  owner-only calls with the public link are denied, no other links or owner key are in the data, downloads are off.
+  Owner decisions: the music by other artists (The Birdhouse, SHiKi, Berhani, LyriCal) is cleared; demo versions stay public;
+  "A Love Letter to Kenya" is sealed until Feb 14, 2027.
 
 ## Cloudflare Pages deploy (same as app.nrnszn.com)
 1. `node build.js`, then upload `dist/` (Pages > Create > Direct upload) or connect a git repo with build command `node build.js`, output `dist`.
@@ -44,8 +50,9 @@ width, edit that block. The sidebar code in `renderChrome` is still there but hi
    (soulnicolas.com/privacy-policy must still exist and be updated: fan names/comments, play counting, YouTube, Errors tab, fonts self-hosted).
 2. Home for strangers: today the app opens on the library. Decide what a first-time visitor sees (hero, latest release, shows, sign-up).
 3. Speed: Apps Script calls take ~0.5-2s and have cold starts. Measure after launch; Firebase/Cloudflare move is the staged follow-up, not step one.
-4. Rights for The Birdhouse tracks by other artists before anything public.
-5. Separate `youtube_api_key`; embedding/framing decision; real-iPhone pass (share sheet, lock screen, playback ladder).
+4. Rights for The Birdhouse tracks by other artists: DONE (owner confirmed he has them, Nov 10, 2026).
+5. Tour tracker has its own website-only YouTube key (done). Still optional: a separate `youtube_api_key` for the Vault so "API key 1" can be Drive-only;
+   real-iPhone pass (share sheet, lock screen, playback ladder).
 6. Add a web manifest + service worker only after the above (installable app), and SEO basics (title/description, Open Graph, a crawlable
    text fallback since the app renders client-side).
 
