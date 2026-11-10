@@ -1266,10 +1266,10 @@ async function init() {
   try {
     if (BOOT.token) {
       const cached = libCacheGet();
-      const show = d => { if (CLUB()) { document.body.classList.add('club-mode'); renderChrome(); renderHome(); }
+      const show = d => { if (CLUB()) { document.body.classList.add('club-mode'); routeTo(parseRoute()); }
                           else { document.body.classList.add('share-mode'); renderRelease(d.releases[0].release_id); } };
       if (cached && cached.releases && cached.releases.length) { S.lib = normalizeLib(cached); S.share = cached.share; primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; show(cached); }
-      else if (BOOT.pub) { document.body.classList.add('club-mode'); paintHomeShell(); }   // first visit to the public site: show Home now, fill in the covers when the library arrives
+      else if (BOOT.pub) { document.body.classList.add('club-mode'); const r0 = parseRoute(); if (r0.v === 'tour' || r0.v === 'press') routeTo(r0); else if (r0.v === 'home') paintHomeShell(); }   // first visit to the public site: show Home now, fill in the covers when the library arrives
       let d;
       try { d = await firstCall('getShare', BOOT.token); } catch (e) { if (cached) { S.stale = false; toast("Couldn't refresh. Showing your last copy."); return; } throw e; }
       if (d.error) { libCacheClear(); document.body.classList.add('share-mode'); return empty(d.error); }
@@ -1278,11 +1278,11 @@ async function init() {
       if (cached) refreshView(); else show(d);
     } else if (BOOT.key) {
       const cached = libCacheGet();
-      if (cached) { S.lib = normalizeLib(cached); primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; renderChrome(); renderLibrary(); }
+      if (cached) { S.lib = normalizeLib(cached); primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; renderChrome(); routeTo(parseRoute()); }
       let d;
       try { d = await firstCall('getLibrary', BOOT.key); } catch (e) { if (cached) { S.stale = false; toast("Couldn't refresh. Showing your last copy."); return; } throw e; }
       S.lib = normalizeLib(d); primeThumbs(); S.streamKey = S.lib.stream_key || ''; S.stale = false; libCacheSet(d);
-      if (cached) refreshView(); else { renderChrome(); renderLibrary(); }
+      if (cached) refreshView(); else { renderChrome(); routeTo(parseRoute()); }
     } else {
       empty('Open this page from your owner link, or from a share link someone sent you.');
     }
@@ -1303,6 +1303,54 @@ function watchStall() {
   }, 25000);
 }
 
+/* ── tab addresses: each page has its own URL (/vault, /tour, /press, /lore, /vault/<release>); Back and Forward work ── */
+const relSlug = id => String(id || '').replace(/^rel_/, '').replace(/_/g, '-');
+function parseRoute() {
+  const p = decodeURIComponent(location.pathname).replace(/\/+$/, '').toLowerCase().split('/').filter(Boolean);
+  if (p[0] === 'vault') return p[1] ? { v: 'release', slug: p.slice(1).join('/') } : { v: 'library' };
+  if (p[0] === 'tour') return { v: 'tour', tab: p[1] === 'road-to-100' ? 'road' : 'shows' };
+  if (p[0] === 'press') return { v: 'press', tab: p[1] === 'video' ? 'video' : 'articles' };
+  if (p[0] === 'lore') return { v: 'lore' };
+  return { v: 'home' };
+}
+function pathFor() {
+  const v = S.view;
+  if (v === 'home') return '/';
+  if (v === 'library') return '/vault';
+  if (v === 'release' && S.releaseId) return '/vault/' + relSlug(S.releaseId);
+  if (v === 'tour') return S.tourTab === 'road' ? '/tour/road-to-100' : '/tour';
+  if (v === 'press') return S.pressTab === 'video' ? '/press/video' : '/press';
+  if (v === 'lore') return '/lore';
+  return null;   // owner screens (settings, share links, insights) have no address
+}
+function syncUrl() {
+  if (!OWNER && !document.body.classList.contains('club-mode')) return;   // single-release share links keep their own address
+  const p = pathFor(); if (!p) return;
+  const r = S.lib && S.view === 'release' ? rel(S.releaseId) : null;
+  const names = { home: '', library: 'Vault', tour: 'Tour', press: 'Press', lore: 'Lore' };
+  S.siteName = S.siteName || document.title.split(' | ')[0] || 'Nicólas Soul';
+  const t = S.view === 'release' ? (r ? r.title : 'Release') : names[S.view];
+  document.title = t ? t + ' | ' + S.siteName : S.siteName;
+  if (location.pathname !== p) { try { history[S.fromPop || !S.urlInit ? 'replaceState' : 'pushState'](null, '', p + location.search); } catch (e) {} }
+  S.urlInit = true;
+}
+function routeTo(r) {
+  S.fromPop = true;
+  try {
+    if (r.v === 'tour') { S.tourTab = r.tab; renderTour(); }
+    else if (r.v === 'press') { S.pressTab = r.tab; renderPress(); }
+    else if (r.v === 'lore' && (OWNER || CLUB())) renderLore();
+    else if (r.v === 'library' && S.lib) renderLibrary();
+    else if (r.v === 'release' && S.lib) {
+      const x = S.lib.releases.find(q => relSlug(q.release_id) === r.slug);
+      if (x) renderRelease(x.release_id); else renderLibrary();
+    }
+    else if (OWNER && r.v === 'home' && S.lib) renderLibrary();
+    else renderHome();
+  } finally { S.fromPop = false; }
+}
+window.addEventListener('popstate', () => { if (S.lib || ['tour', 'press'].indexOf(parseRoute().v) > -1) routeTo(parseRoute()); });
+
 function renderChrome() {
   const v = S.view;
   const cur = ['home', 'tour', 'press', 'lore'].indexOf(v) > -1 ? v : (['shares', 'vault'].indexOf(v) > -1 ? v : 'library');
@@ -1322,6 +1370,7 @@ function renderChrome() {
     <div class="yrs">${years.map(y => `<button data-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>` : ''}`;
   $('#tabs').classList.remove('four');
   $('#tabs').innerHTML = main.map(m => `<button data-nav="${m[0]}" ${cc(m[0])}>${m[1]}${m[2]}</button>`).join('');
+  syncUrl();
 }
 
 /* ── website pages: Home, Tour, Press (mirror soulnicolas.com; edit the text/links here) ── */
@@ -1347,7 +1396,7 @@ const SITE = {
     ['Threads', 'https://www.threads.com/@soulnicolas'],
     ['Facebook', 'https://www.facebook.com/soulnicolas']
   ],
-  // Press articles, newest first. Each card: link, headline, blurb, publication, and a picture saved in /press/ (public/press/<image>.jpg).
+  // Press articles, newest first. Each card: link, headline, blurb, publication, and a picture saved in public/press-img/<image>.jpg.
   press: [
     { url: 'https://umcworldwide.com/2026/01/14/nicolas-soul-smoky-blues/', image: 'umc', site: 'Underground Music Collective', date: 'Jan 14, 2026',
       title: "WATCH: Nicólas Soul & Foundation Mecca Catch the 'smoky blues'", desc: 'A weekend trip to the Smoky Mountains has resulted in the latest collaboration between UnderDogs.' },
@@ -1458,7 +1507,7 @@ function renderTour() {
     <iframe class="tourframe" title="Tour"></iframe></div>`;
   const frame = $('.tourframe'), btns = [...$$('[data-tourtab]')];
   const pick = k => {
-    S.tourTab = k; frame.title = k === 'shows' ? 'Upcoming and past shows' : 'Road to 100 Shows tracker'; frame.src = pages[k];
+    S.tourTab = k; syncUrl(); frame.title = k === 'shows' ? 'Upcoming and past shows' : 'Road to 100 Shows tracker'; frame.src = pages[k];
     btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tourtab === k)));
   };
   btns.forEach(b => b.addEventListener('click', () => pick(b.dataset.tourtab)));
@@ -1469,7 +1518,7 @@ function renderTour() {
 function renderPress() {
   clearPageBg(); S.view = 'press'; renderChrome();
   const articles = `<div class="pcards">${SITE.press.map(p => `<a class="pcard" href="${esc(p.url)}" target="_blank" rel="noopener">
-      <img src="/press/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()">
+      <img src="/press-img/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()">
       <div class="pbody"><div class="ptitle">${esc(p.title)}</div><p class="pdesc">${esc(p.desc)}</p>
         <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">${esc([p.site, p.author, p.date].filter(Boolean).join(' · '))}</span>${I.chev}</div></div></a>`).join('')}</div>`;
   const videos = `<div class="vidgrid">${SITE.videos.map(v => `<a class="vid" href="https://www.youtube.com/watch?v=${esc(v[1])}" target="_blank" rel="noopener">
@@ -1482,7 +1531,7 @@ function renderPress() {
   </div>`;
   const body = $('#pressBody'), btns = [...$$('[data-presstab]')];
   const pick = k => {
-    S.pressTab = k; body.innerHTML = k === 'video' ? videos : articles;
+    S.pressTab = k; syncUrl(); body.innerHTML = k === 'video' ? videos : articles;
     btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.presstab === k)));
   };
   btns.forEach(b => b.addEventListener('click', () => { pick(b.dataset.presstab); window.scrollTo(0, 0); }));
