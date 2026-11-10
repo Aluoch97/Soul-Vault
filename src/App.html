@@ -361,6 +361,13 @@
          border: 1px solid var(--line); text-decoration: none; font-size: 11px; } .soc:hover { background: rgba(255,255,255,.14); } .soc svg { width: 24px; height: 24px; }
   .sitefoot { margin-top: 26px; }
   .sitefoot a { color: inherit; }
+  /* Press tabs (Articles / Video) reuse the Tour switch; they stay at the top while the list scrolls */
+  .pseg { position: sticky; top: 0; z-index: 3; margin: 0 calc(-1 * var(--padx, 16px)) 6px; padding-left: var(--padx, 16px); padding-right: var(--padx, 16px); }
+  .presspg .pcards { margin-top: 12px; }
+  /* Lore photo wall */
+  .lorephotos { columns: 2; column-gap: 10px; margin: 6px 0 22px; }
+  .lorephotos img { display: block; width: 100%; height: auto; margin: 0 0 10px; border-radius: 8px; break-inside: avoid; background: #111; }
+  @media (min-width: 761px) { .lorephotos { columns: 4; } }
   /* Press article cards: picture on top, headline, blurb, publication (like a link preview) */
   .pcards { display: grid; gap: 18px; margin: 10px 0 26px; max-width: 560px; }
   .pcard { display: block; background: #000; border: 1px solid rgba(255,255,255,.16); color: inherit; text-decoration: none; overflow: hidden; border-radius: 4px; }
@@ -1019,11 +1026,19 @@
 </script>
 <script>window.SV_BOOT = __SV_BOOT__;</script>
 <style id="desk">
-/* Phone layout at every width, like the Certified and NuDirectory apps: on a computer the content is a centered column
-   and the tab bar runs along the bottom of the whole window. */
+/* Phone layout at every width, like the Certified and NuDirectory apps: the tab bar runs along the bottom of the whole window
+   and the pages fill the window (shelves run edge to edge). Home keeps its centered column. */
+:root { --padx: 16px; }
 @media (min-width: 761px) {
-  .wrap { max-width: 820px; margin-left: auto; margin-right: auto; }
-  .mini, .job, .voicebar { left: max(8px, calc((100vw - 820px) / 2)); right: max(8px, calc((100vw - 820px) / 2)); }
+  :root { --padx: clamp(24px, 4vw, 72px); }
+  .wrap { max-width: none; margin-left: 0; margin-right: 0; padding-left: var(--padx); padding-right: var(--padx); }
+  .wrap.homepg { max-width: 760px; margin-left: auto; margin-right: auto; }
+  .ctrack { margin-left: calc(-1 * var(--padx)); margin-right: calc(-1 * var(--padx)); padding-left: var(--padx); padding-right: var(--padx); scroll-padding-left: var(--padx); }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .ctrack .slide { flex: 0 0 clamp(320px, 34vw, 640px); }
+  .ctrack.homeone .slide { flex: none; }
+  .pcards { max-width: none; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .mini, .job, .voicebar { left: max(12px, calc((100vw - 900px) / 2)); right: max(12px, calc((100vw - 900px) / 2)); }
   .sheet { width: min(820px, 100%); margin: 0 auto; }
   .np-body .art { width: min(380px, 40vh); }
   .tabs button { font-size: 12px; }
@@ -1312,6 +1327,7 @@ const SITE = {
      + "Follow his #ROADTO100SHOWS journey as he performs his way to his highest self.",
   booking: 'nurrenaissance@gmail.com',
   support: 'https://www.nrnszn.com/support',
+  photos: ['p01', 'p02', 'p03', 'p04', 'p05', 'p06', 'p07', 'p08', 'p09', 'p10', 'p11'],   // Lore photo wall: public/photos/<name>.jpg
   // Home "Latest": the single and project come from the Vault (newest release already out); these two are YouTube videos [id, title].
   feature: ['JcCS7z57lmc', 'Dorian Robinson - SEARCHIN (feat. Nicólas Soul & Dylan Hammock)'],
   video: ['ygF-rGp0ZYU', 'Nicólas Soul - SAIL AWAY! (feat. Aziza Latrece)'],
@@ -1366,7 +1382,6 @@ function renderHome() {
   $('#main').innerHTML = `<div class="homebg" aria-hidden="true"><video muted loop playsinline autoplay preload="auto" poster="/home-bg-poster.jpg"><source src="/home-bg.mp4" type="video/mp4"></video></div>
   <div class="wrap sitepg homepg">
     <section class="sitehero">
-      <div class="eyebrow">Heal hop · NuRenaissance</div>
       <h1 class="herot">Nicólas <span>Soul</span></h1>
       <p class="herop">${esc(SITE.tagline)}</p>
       <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
@@ -1423,18 +1438,25 @@ function renderTour() {
 
 function renderPress() {
   clearPageBg(); S.view = 'press'; renderChrome();
-  $('#main').innerHTML = `<div class="wrap sitepg">
-    <h1 class="page-h" style="padding-left:0"><b>Press</b></h1>
-    <h2 class="sh"><span><b>Articles</b></span></h2>
-    <div class="pcards">${SITE.press.map(p => `<a class="pcard" href="${esc(p.url)}" target="_blank" rel="noopener">
+  const articles = `<div class="pcards">${SITE.press.map(p => `<a class="pcard" href="${esc(p.url)}" target="_blank" rel="noopener">
       <img src="/press/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()">
       <div class="pbody"><div class="ptitle">${esc(p.title)}</div><p class="pdesc">${esc(p.desc)}</p>
-        <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">${esc([p.site, p.author, p.date].filter(Boolean).join(' · '))}</span>${I.chev}</div></div></a>`).join('')}</div>
-    <h2 class="sh"><span><b>Video</b> interviews</span></h2>
-    <div class="vidgrid">${SITE.videos.map(v => `<a class="vid" href="https://www.youtube.com/watch?v=${esc(v[1])}" target="_blank" rel="noopener">
-      <span class="thumb"><img src="https://i.ytimg.com/vi/${esc(v[1])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></span><span class="vt">${esc(v[0])}</span></a>`).join('')}</div>
+        <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">${esc([p.site, p.author, p.date].filter(Boolean).join(' · '))}</span>${I.chev}</div></div></a>`).join('')}</div>`;
+  const videos = `<div class="vidgrid">${SITE.videos.map(v => `<a class="vid" href="https://www.youtube.com/watch?v=${esc(v[1])}" target="_blank" rel="noopener">
+      <span class="thumb"><img src="https://i.ytimg.com/vi/${esc(v[1])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></span><span class="vt">${esc(v[0])}</span></a>`).join('')}</div>`;
+  if (S.pressTab !== 'articles' && S.pressTab !== 'video') S.pressTab = 'articles';
+  $('#main').innerHTML = `<div class="wrap sitepg presspg">
+    <div class="tourseg pseg" role="tablist" aria-label="Press"><button role="tab" data-presstab="articles">Articles</button><button role="tab" data-presstab="video">Video</button></div>
+    <div id="pressBody"></div>
     <p class="cs sitefoot">Press and booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a></p>
   </div>`;
+  const body = $('#pressBody'), btns = [...$$('[data-presstab]')];
+  const pick = k => {
+    S.pressTab = k; body.innerHTML = k === 'video' ? videos : articles;
+    btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.presstab === k)));
+  };
+  btns.forEach(b => b.addEventListener('click', () => { pick(b.dataset.presstab); window.scrollTo(0, 0); }));
+  pick(S.pressTab);
   window.scrollTo(0, 0);
 }
 
@@ -4744,6 +4766,7 @@ function renderLore() {
   $('#main').innerHTML = `<div class="wrap lore">
     <h1 class="page-h" style="padding-left:0"><b>Lore</b></h1>
     ${OWNER ? '<p class="cs" style="margin-top:0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>' : ''}
+    <section class="lorephotos" aria-label="Photos">${SITE.photos.map(f => `<img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.remove()">`).join('')}</section>
     <div class="lorestats">
       <div class="kpi"><b>${t.releases}</b><span>Releases</span></div><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
       <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.to && t.to !== t.from ? '–' + t.to : ''}</b><span>Years active</span></div></div>
