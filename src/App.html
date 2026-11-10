@@ -22,23 +22,10 @@
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  /* Entering Vault: a vault door unlocking while the app loads */
-  .vload { min-height: 70vh; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; }
-  .vdoor { position: relative; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #3a3a3e, #151517 70%);
-           border: 6px solid #2a2a2d; box-shadow: 0 0 0 3px #0c0c0d, 0 0 40px rgba(210,16,52,.25), inset 0 0 22px #000; animation: vglow 2.4s ease-in-out infinite; }
-  .vwheel { position: absolute; inset: 34px; border-radius: 50%; border: 5px solid #C9A227; animation: vspin 2.2s cubic-bezier(.65,0,.35,1) infinite; }
-  .vwheel i { position: absolute; left: 50%; top: 50%; width: 5px; height: 88px; margin: -44px 0 0 -2.5px; background: #C9A227; border-radius: 3px; }
-  .vwheel i:nth-child(2) { transform: rotate(60deg); } .vwheel i:nth-child(3) { transform: rotate(120deg); }
-  .vb { position: absolute; background: #6f6f75; border-radius: 3px; animation: vbolt 2.2s ease-in-out infinite; }
-  .vb.t, .vb.b { width: 14px; height: 22px; left: 62px; } .vb.t { top: -14px; } .vb.b { bottom: -14px; }
-  .vb.l, .vb.r { width: 22px; height: 14px; top: 62px; } .vb.l { left: -14px; } .vb.r { right: -14px; }
-  .vtext { margin: 0; font: 800 20px/1.2 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: #F6F3EF; }
-  .vdots i { font-style: normal; animation: vdot 1.2s infinite; } .vdots i:nth-child(2) { animation-delay: .2s; } .vdots i:nth-child(3) { animation-delay: .4s; }
-  @keyframes vspin { 0% { transform: rotate(0); } 60%, 100% { transform: rotate(270deg); } }
-  @keyframes vbolt { 0%, 40% { opacity: 1; scale: 1; } 70%, 100% { opacity: .25; scale: .6; } }
-  @keyframes vglow { 50% { box-shadow: 0 0 0 3px #0c0c0d, 0 0 60px rgba(201,162,39,.35), inset 0 0 22px #000; } }
-  @keyframes vdot { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .vdoor, .vwheel, .vb, .vdots i { animation: none; } }
+  /* Loading placeholder: quiet grey blocks (nothing animated to wait through) */
+  .skelpg .skelhead { display: block; width: 160px; height: 28px; margin: 6px 0 16px; border-radius: 8px; background: rgba(255,255,255,.06); }
+  .skelgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .skelgrid i { display: block; aspect-ratio: 4 / 5; border-radius: 18px; background: rgba(255,255,255,.05); }
   html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
   html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
   button, input, select { font: inherit; color: inherit; }
@@ -389,7 +376,8 @@
   .presslist svg { width: 18px; height: 18px; opacity: .6; }
   .vidgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin: 8px 0 18px; }
   .vid { display: grid; gap: 8px; color: inherit; text-decoration: none; }
-  .vid .thumb { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; }
+  .vid .thumb { position: relative; display: block; width: 100%; padding: 0; border: 0; cursor: pointer; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; }
+  .vid .latplayer { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 14px; background: #000; }
   .vid .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .vid .thumb i { position: absolute; right: 10px; bottom: 10px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
                   background: var(--red); color: #fff; } .vid .thumb i svg { width: 16px; height: 16px; }
@@ -915,11 +903,7 @@
 </head>
 <body>
 <aside class="side" id="side"></aside>
-<main id="main"><div class="vload" role="status" aria-live="polite">
-  <div class="vdoor" aria-hidden="true"><span class="vb t"></span><span class="vb r"></span><span class="vb b"></span><span class="vb l"></span>
-    <span class="vwheel"><i></i><i></i><i></i></span></div>
-  <p class="vtext">Entering Vault<span class="vdots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
-  <small id="buildTag" style="opacity:.5">SV build 68</small></div></main>
+<main id="main"></main>
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <div class="mini" id="mini" hidden>
@@ -1287,11 +1271,11 @@ async function init() {
                           else { document.body.classList.add('share-mode'); renderRelease(d.releases[0].release_id); } };
       if (cached && cached.releases && cached.releases.length) { S.lib = normalizeLib(cached); S.share = cached.share; primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; show(cached); }
       else if (BOOT.pub) {
-        document.body.classList.add('club-mode'); const r0 = parseRoute(); if (r0.v === 'tour' || r0.v === 'press') routeTo(r0); else if (r0.v === 'home') {
+        document.body.classList.add('club-mode'); const r0 = parseRoute(); if (r0.v === 'tour' || r0.v === 'press') routeTo(r0); else if (r0.v !== 'home') { S.view = r0.v === 'lore' ? 'lore' : 'library'; renderChrome(true); paintSkeleton(); } else if (r0.v === 'home') {
           paintHomeShell();
           firstCall('getHome', BOOT.token).then(h => { if (!S.lib && h && h.picks) paintHomeLite(h.picks); }).catch(() => {});   // small and quick: the two covers, before the whole library
         }
-      }   // first visit to the public site: show Home now, fill in the covers when the library arrives
+      } else paintSkeleton();   // first visit to the public site: show Home now, fill in the covers when the library arrives (a fan link just shows grey blocks until its data comes)
       let d;
       try { d = await firstCall('getShare', BOOT.token); } catch (e) { if (cached) { S.stale = false; toast("Couldn't refresh. Showing your last copy."); return; } throw e; }
       if (d.error) { libCacheClear(); document.body.classList.add('share-mode'); return empty(d.error); }
@@ -1301,6 +1285,7 @@ async function init() {
       if (S.pendingRel) { const id = S.pendingRel; S.pendingRel = ''; if (rel(id)) renderRelease(id); }   // tapped a cover before the library arrived
     } else if (BOOT.key) {
       const cached = libCacheGet();
+      if (!cached) { S.view = 'library'; renderChrome(true); paintSkeleton(); }
       if (cached) { S.lib = normalizeLib(cached); primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; renderChrome(); routeTo(parseRoute()); }
       let d;
       try { d = await firstCall('getLibrary', BOOT.key); } catch (e) { if (cached) { S.stale = false; toast("Couldn't refresh. Showing your last copy."); return; } throw e; }
@@ -1389,7 +1374,8 @@ function routeTo(r) {
 }
 window.addEventListener('popstate', () => { if (S.lib || ['tour', 'press'].indexOf(parseRoute().v) > -1) routeTo(parseRoute()); });
 
-function renderChrome() {
+function paintSkeleton() { $('#main').innerHTML = '<div class="wrap skelpg" aria-busy="true"><i class="skelhead"></i><div class="skelgrid">' + '<i></i>'.repeat(8) + '</div></div>'; }
+function renderChrome(noUrl) {
   const v = S.view;
   const cur = ['home', 'tour', 'press', 'lore'].indexOf(v) > -1 ? v : (['shares', 'vault'].indexOf(v) > -1 ? v : 'library');
   const years = [...new Set(((S.lib && S.lib.releases) || []).map(r => r.year))].sort((a, b) => b - a);
@@ -1408,7 +1394,7 @@ function renderChrome() {
     <div class="yrs">${years.map(y => `<button data-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>` : ''}`;
   $('#tabs').classList.remove('four');
   $('#tabs').innerHTML = main.map(m => `<button data-nav="${m[0]}" ${cc(m[0])}>${m[1]}${m[2]}</button>`).join('');
-  syncUrl();
+  if (!noUrl) syncUrl();
 }
 
 /* ── website pages: Home, Tour, Press (mirror soulnicolas.com; edit the text/links here) ── */
@@ -1542,22 +1528,26 @@ function renderHome() {
   // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
   // (a still image instead if the person asked for less motion or is saving data).
   $$('[data-home-cover]').forEach(img => setCover(img, img.dataset.homeCover, true));
-  $$('[data-yt]').forEach(b => b.addEventListener('click', () => {
-    const f = document.createElement('iframe');
-    f.className = 'latplayer'; f.title = b.getAttribute('aria-label').replace(/^Play /, '');
-    f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; web-share'; f.allowFullscreen = true;
-    f.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(b.dataset.yt) + '?autoplay=1&rel=0&playsinline=1';
-    b.replaceWith(f);
-  }));
+  wireYt();
   if (oldBg) { const nb = $('.homebg'); if (nb) nb.replaceWith(oldBg); }   // put the already-running video back (same task, so it keeps playing)
   startHomeVideo($('.homebg video'), S.lib ? 1500 : 8000);   // 8 s fallback if the library is slow
   if (!oldBg) window.scrollTo(0, 0);
 }
 
+// Tap a video picture and it turns into YouTube's player right there (the privacy-enhanced one); nothing from YouTube loads before that.
+function wireYt(root) {
+  [...(root || document).querySelectorAll('[data-yt]')].forEach(b => b.addEventListener('click', () => {
+    const f = document.createElement('iframe');
+    f.className = 'latplayer'; f.title = (b.getAttribute('aria-label') || 'Video').replace(/^Play /, '');
+    f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; web-share'; f.allowFullscreen = true;
+    f.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(b.dataset.yt) + '?autoplay=1&rel=0&playsinline=1';
+    b.replaceWith(f);
+  }));
+}
 function renderTour() {
   clearPageBg(); S.view = 'tour'; renderChrome();
   const fit = () => document.documentElement.style.setProperty('--tabh', ($('#tabs') ? $('#tabs').offsetHeight : 70) + 'px');
-  fit();
+  fit(); if (window.ResizeObserver && $('#tabs')) { if (S.tabRO) S.tabRO.disconnect(); S.tabRO = new ResizeObserver(fit); S.tabRO.observe($('#tabs')); }   // keep the bottom edge in step with the tab bar
   const pages = { shows: '/shows.html', road: '/roadto100shows.html' };
   if (!pages[S.tourTab]) S.tourTab = 'shows';
   $('#main').innerHTML = `<div class="wrap tourpg">
@@ -1580,8 +1570,8 @@ function renderPress() {
       <img src="/press-img/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()">
       <div class="pbody"><div class="ptitle">${esc(p.title)}</div><p class="pdesc">${esc(p.desc)}</p>
         <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">${esc([p.site, p.author, p.date].filter(Boolean).join(' · '))}</span>${I.chev}</div></div></a>`).join('')}</div>`;
-  const videos = `<div class="vidgrid">${SITE.videos.map(v => `<a class="vid" href="https://www.youtube.com/watch?v=${esc(v[1])}" target="_blank" rel="noopener">
-      <span class="thumb"><img src="https://i.ytimg.com/vi/${esc(v[1])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></span><span class="vt">${esc(v[0])}</span></a>`).join('')}</div>`;
+  const videos = `<div class="vidgrid">${SITE.videos.map(v => `<div class="vid">
+      <button class="thumb" data-yt="${esc(v[1])}" aria-label="Play ${esc(v[0])}"><img src="https://i.ytimg.com/vi/${esc(v[1])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></button><span class="vt">${esc(v[0])}</span></div>`).join('')}</div>`;
   if (S.pressTab !== 'articles' && S.pressTab !== 'video') S.pressTab = 'articles';
   $('#main').innerHTML = `<div class="wrap sitepg presspg">
     <div class="tourseg pseg" role="tablist" aria-label="Press"><button role="tab" data-presstab="articles">Articles</button><button role="tab" data-presstab="video">Video</button></div>
@@ -1590,7 +1580,7 @@ function renderPress() {
   </div>`;
   const body = $('#pressBody'), btns = [...$$('[data-presstab]')];
   const pick = k => {
-    S.pressTab = k; syncUrl(); body.innerHTML = k === 'video' ? videos : articles;
+    S.pressTab = k; syncUrl(); body.innerHTML = k === 'video' ? videos : articles; if (k === 'video') wireYt(body);
     btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.presstab === k)));
   };
   btns.forEach(b => b.addEventListener('click', () => { pick(b.dataset.presstab); window.scrollTo(0, 0); }));
