@@ -349,8 +349,11 @@
   .vid .thumb i { position: absolute; right: 10px; bottom: 10px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
                   background: var(--red); color: #fff; } .vid .thumb i svg { width: 16px; height: 16px; }
   .vid .vt { font-size: 14px; line-height: 1.35; font-weight: 600; }
-  .wrap.tourpg { position: fixed; left: 0; right: 0; top: 0; bottom: var(--tabh, 70px); max-width: none; margin: 0; padding: 0; }
-  .tourframe { display: block; width: 100%; height: 100%; border: 0; background: #E9DAAF; }
+  .wrap.tourpg { position: fixed; left: 0; right: 0; top: 0; bottom: var(--tabh, 70px); max-width: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .tourseg { flex: none; display: flex; gap: 6px; justify-content: center; padding: 10px 12px 8px; background: #0A0A0B; }
+  .tourseg button { min-height: 38px; padding: 0 18px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--dim); background: rgba(255,255,255,.07); }
+  .tourseg button[aria-selected="true"] { color: #fff; background: var(--red); }
+  .tourframe { display: block; flex: 1; min-height: 0; width: 100%; border: 0; background: #0A0A0B; }
   @media (min-width: 0px) {
     .tabs button { min-width: 0; flex: 1; padding: 4px 2px; }
     .tabs button[aria-current="page"] { color: var(--red-hi); }
@@ -1254,7 +1257,6 @@ function renderChrome() {
   const main = [['home', I.home, 'Home'], ['library', I.vault, 'Vault'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['lore', I.layers, 'Lore']];
   $('#side').innerHTML = `
     <div class="brand">Soul <span>Vault</span><i class="flagband" aria-hidden="true"></i></div>
-    ${club ? `<span class="clubtag side-tag">${I.star}Fan Club</span>` : ''}
     <nav>
       ${main.map(m => `<button class="nav" data-nav="${m[0]}" ${cc(m[0])}>${m[1]}${m[2]}</button>`).join('')}
       ${club ? '' : `<button class="nav" data-nav="vault" ${cc('vault')}>${I.vault}Settings</button>
@@ -1333,7 +1335,19 @@ function renderTour() {
   clearPageBg(); S.view = 'tour'; renderChrome();
   const fit = () => document.documentElement.style.setProperty('--tabh', ($('#tabs') ? $('#tabs').offsetHeight : 70) + 'px');
   fit();
-  $('#main').innerHTML = `<div class="wrap tourpg"><iframe class="tourframe" src="/roadto100shows.html" title="Road to 100 Shows tracker"></iframe></div>`;
+  const pages = { shows: '/shows.html', road: '/roadto100shows.html' };
+  if (!pages[S.tourTab]) S.tourTab = 'shows';
+  $('#main').innerHTML = `<div class="wrap tourpg">
+    <div class="tourseg" role="tablist" aria-label="Tour">
+      <button role="tab" data-tourtab="shows">Shows</button><button role="tab" data-tourtab="road">Road to 100</button></div>
+    <iframe class="tourframe" title="Tour"></iframe></div>`;
+  const frame = $('.tourframe'), btns = [...$$('[data-tourtab]')];
+  const pick = k => {
+    S.tourTab = k; frame.title = k === 'shows' ? 'Upcoming and past shows' : 'Road to 100 Shows tracker'; frame.src = pages[k];
+    btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tourtab === k)));
+  };
+  btns.forEach(b => b.addEventListener('click', () => pick(b.dataset.tourtab)));
+  pick(S.tourTab);
   window.scrollTo(0, 0);
 }
 
@@ -1364,7 +1378,7 @@ function renderLibrary(keepScroll) {
           ${OWNER ? `<button class="round" data-newrel aria-label="New release">${I.plus}</button>
                      <button class="round" data-nav="shares" aria-label="Share links">${I.link}</button>
                      <button class="avatar" data-nav="vault" aria-label="Settings">NS</button>`
-                  : `<button class="clubtag" data-card aria-label="Open your member card">${I.star}${S.share && S.share.member_no ? 'Member #' + pad3(S.share.member_no) : 'Fan Club'}</button>`}
+                  : ''}
         </div>
       </header>
       <label class="search big">${I.search}<input id="q" type="search" placeholder="Search songs and releases" value="${esc(S.q)}" aria-label="Search songs and releases"></label>
@@ -2825,22 +2839,6 @@ const bState = () => Object.assign({ e: {}, h: {}, w: {} }, ls.get(bKey(), {}));
 function award() {}
 function markHeard() {}
 function visitWorld() {}
-function openMemberCard() {
-  const sh = S.share || {}, st = bState();
-  const since = sh.created ? new Date(sh.created).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : '';
-  $('#modal').innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
-    <div class="mcard">
-      <div class="mtop"><span class="brand">Soul <span>Vault</span></span><span class="flagband" aria-hidden="true"></span></div>
-      <div class="mname" id="mTitle">${esc(sh.fan_name || 'Fan Club member')}</div>
-      <div class="mno">${sh.member_no ? 'Member #' + pad3(sh.member_no) : 'Fan Club'}</div>
-      ${since ? `<div class="msince">Since ${esc(since)}</div>` : ''}
-    </div>
-    <p class="cs">Your member card is saved on this device. <a class="plink" href="https://www.soulnicolas.com/privacy-policy" target="_blank" rel="noopener">Privacy policy</a></p>
-    ${S.lib.newsletter ? `<a class="pill main tribebtn" href="${esc(S.lib.newsletter)}" target="_blank" rel="noopener">${I.mail}Join the Soul Tribe newsletter</a>` : ''}
-    <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
-  $('#modal').hidden = false;
-  $('#modal').querySelector('[data-close]').focus();
-}
 
 
 /* ═════════ New release (owner only) ═════════ */
@@ -6394,7 +6392,6 @@ document.addEventListener('click', e => {
   else if (d.nrDel != null) { S.nr.files.splice(+d.nrDel, 1); nrRender(); }
   else if ('nrGo' in d) doNewRelease(el);
   else if (d.openRel) { S.nr = null; closeModal(); renderRelease(d.openRel); }
-  else if ('card' in d) openMemberCard();
   else if ('letterEdit' in d) openLetter();
   else if ('letterSave' in d) saveLetterEdits(el, false);
   else if ('letterClear' in d) saveLetterEdits(el, true);
