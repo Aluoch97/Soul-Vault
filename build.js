@@ -11,7 +11,7 @@ const lameOld = ": '';\n  return lameP";
 if (!code.includes(lameOld)) throw new Error('loadLame() changed; update the patch in build.js');
 code = code.replace(lameOld, ": '/lame.js';\n  return lameP");
 // Boot: owner opens /?k=<owner key>; a fan link is /?s=<share token>; everyone else gets the public token.
-const boot = `<script>(function(){var q=new URLSearchParams(location.search),c=x=>String(x||'').replace(/[^A-Za-z0-9]/g,'').slice(0,64),ls=function(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}};
+const boot = `<script>(function(){if(/^www\\./.test(location.hostname)){location.replace(location.href.replace('//www.','//'));return}var q=new URLSearchParams(location.search),c=x=>String(x||'').replace(/[^A-Za-z0-9]/g,'').slice(0,64),ls=function(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}};
 var k=c(q.get('k'))||c(ls('sv_owner_key')),s=c(q.get('s'));if(q.get('k')){ls('sv_owner_key',k);history.replaceState(null,'',location.pathname)}
 var pub=!k&&!s;if(pub)s=${JSON.stringify(cfg.publicToken.replace(/[^A-Za-z0-9]/g, ''))};
 window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.api)},pub:pub};})();</script>`;
@@ -72,7 +72,7 @@ const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault
   ['/causeitfeelsgood', '/vault/2024-cause-it-feels-good-ep'], ['/soulsearching', '/vault/2022-soulsearching'], ['/troubleinparadise', '/vault/2018-trouble-in-paradise'],
   ['/survivingthenuworld', '/vault/2020-bluu-redd'], ['/jambojacquetesphaye', '/vault/2022-jambo-jacque-tesphaye'], ['/alltc', '/vault/2020-a-love-letter-to-cali-ep'],
   ['/about', '/lore'], ['/bio', '/lore'], ['/roadto100', '/tour/road-to-100']];
-fs.writeFileSync('dist/_redirects', 'https://www.' + String(cfg.domain) + '/* https://' + String(cfg.domain) + '/:splat 301\n' + wix.map(r => r[0] + ' ' + r[1] + ' 301').join('\n') + '\n');
+fs.writeFileSync('dist/_redirects', wix.map(r => r[0] + ' ' + r[1] + ' 301').join('\n') + '\n');
 const urls = ['/'].concat(pages.map(p => p[1]).filter(p => p !== '/press/video'), releases.map(r => '/vault/' + r[1]));
 fs.writeFileSync('dist/sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls.map(u => '  <url><loc>' + siteUrl + u + '</loc></url>').join('\n') + '\n</urlset>\n');
 fs.writeFileSync('dist/robots.txt', 'User-agent: *\nAllow: /\n\nSitemap: ' + siteUrl + '/sitemap.xml\n');
