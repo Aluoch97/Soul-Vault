@@ -331,6 +331,30 @@
   .homepg .tribe { flex-direction: column; align-items: stretch; text-align: center; }
   .homepg .tribe .pill { justify-content: center; min-height: 48px; }
   .homepg .ctrack .cap { text-align: left; }
+  /* moving background: the Home page only (the video sits behind everything, with a dark veil so text stays readable) */
+  .homebg { position: fixed; inset: 0; z-index: 0; background: #0A0A0B url(/home-bg-poster.jpg) center / cover no-repeat; overflow: hidden; pointer-events: none; }
+  .homebg video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .9; }
+  .homebg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,11,.35), rgba(10,10,11,.72) 55%, rgba(10,10,11,.88)); }
+  .homepg { position: relative; z-index: 1; }
+  .homepg .herot, .homepg .herop, .homepg .eyebrow { text-shadow: 0 2px 18px rgba(0,0,0,.55); }
+  /* Support button */
+  .support { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: min(420px, 100%); margin: 20px auto 0; padding: 0 12px 0 26px; min-height: 58px;
+             border-radius: 999px; background: #3f8f2e; color: #fff; text-decoration: none; font-weight: 700; font-size: 13px; letter-spacing: .22em; text-transform: uppercase;
+             box-shadow: 0 10px 28px -10px rgba(0,0,0,.7); }
+  .support:hover { background: #48a336; }
+  .support i { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #3f8f2e; font: 800 22px/1 var(--serif, Georgia, serif); font-style: normal; }
+  /* Latest: single, project, feature, video (label under each, like the website) */
+  .latest { margin: 34px 0 10px; }
+  .lathead { margin: 0 0 6px; font: 800 clamp(38px, 11vw, 60px)/1 var(--sans, inherit); letter-spacing: .2em; text-transform: uppercase; text-indent: .2em; text-shadow: 0 3px 20px rgba(0,0,0,.6); }
+  .lat { margin: 18px 0 30px; display: grid; justify-items: center; gap: 10px; }
+  .latcover, .latvid, .latplayer { width: min(100%, 420px); aspect-ratio: 1; border-radius: 6px; overflow: hidden; position: relative; background: #000; box-shadow: 0 16px 40px -14px rgba(0,0,0,.8); border: 0; padding: 0; display: block; cursor: pointer; }
+  .latvid, .latplayer { aspect-ratio: 16 / 9; width: min(100%, 560px); }
+  .latcover img, .latvid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .latvid i { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; display: grid; place-items: center; background: var(--red, #D21034); color: #fff; font-style: normal; }
+  .latvid i svg { width: 26px; height: 26px; }
+  .lattitle { font-size: 14px; line-height: 1.35; color: rgba(246,243,239,.9); max-width: 560px; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
+  .latlabel { font: 800 clamp(24px, 7vw, 34px)/1 var(--sans, inherit); letter-spacing: .22em; text-indent: .22em; text-transform: uppercase; text-shadow: 0 3px 18px rgba(0,0,0,.65); }
+  @media (prefers-reduced-motion: reduce) { .homebg video { display: none; } }
   .sitepg p a { color: var(--green-hi); }
   .linkgrid { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 18px; }
   .soc { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: var(--ink, #f6f3ef); background: rgba(255,255,255,.07);
@@ -1276,6 +1300,10 @@ const SITE = {
      + "He was born in Homa Bay, Kenya and raised in Tennessee from age six. Writing and recording since 2012, he's built a sound that blends soulful vocals with introspective, systems-minded songwriting, drawing from Eminem's lyricism, Lauryn Hill's soul, and the genre-blurring instincts of Kanye West and Childish Gambino.\n\n"
      + "Follow his #ROADTO100SHOWS journey as he performs his way to his highest self.",
   booking: 'nurrenaissance@gmail.com',
+  support: 'https://www.nrnszn.com/support',
+  // Home "Latest": the single and project come from the Vault (newest release already out); these two are YouTube videos [id, title].
+  feature: ['JcCS7z57lmc', 'Dorian Robinson - SEARCHIN (feat. Nicólas Soul & Dylan Hammock)'],
+  video: ['ygF-rGp0ZYU', 'Nicólas Soul - SAIL AWAY! (feat. Aziza Latrece)'],
   links: [
     ['Spotify', 'https://open.spotify.com/artist/0trticneQHmkSeVLyPSIuH'],
     ['Apple Music', 'https://music.apple.com/us/artist/nic%C3%B3las-soul/1224416995'],
@@ -1305,22 +1333,28 @@ const JOIN_URL = () => (BOOT.api ? '/join' : (S.lib && S.lib.newsletter) || '');
 
 function renderHome() {
   clearPageBg(); S.view = 'home'; renderChrome();
-  const rs = shelfOrder(S.lib.releases.filter(r => OWNER || !isUnrel(r)));
-  const latest = rs[0], join = JOIN_URL();
-  $('#main').innerHTML = `<div class="wrap sitepg homepg">
+  // Newest single and newest project (EP, album, mixtape...) that are already out: a future release date does not count yet.
+  const today = new Date().toISOString().slice(0, 10);
+  const out = shelfOrder(S.lib.releases.filter(r => (OWNER || !isUnrel(r)) && relDateKey(r) <= today));
+  const single = out.find(r => typeOf(r) === 'Single'), project = out.find(r => typeOf(r) !== 'Single');
+  const join = JOIN_URL();
+  const cover = (r, label) => r ? `<figure class="lat"><button class="latcover" data-rel="${esc(r.release_id)}" aria-label="Open ${esc(r.title)}">
+      <img data-home-cover="${esc(r.cover_file_id)}" alt="${esc(r.title)} cover"></button><figcaption class="latlabel">${label}</figcaption></figure>` : '';
+  const yt = (v, label) => `<figure class="lat"><button class="latvid" data-yt="${esc(v[0])}" aria-label="Play ${esc(v[1])}">
+      <img src="https://i.ytimg.com/vi/${esc(v[0])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></button>
+      <div class="lattitle">${esc(v[1])}</div><figcaption class="latlabel">${label}</figcaption></figure>`;
+  $('#main').innerHTML = `<div class="homebg" aria-hidden="true"><video muted loop playsinline autoplay preload="auto" poster="/home-bg-poster.jpg"><source src="/home-bg.mp4" type="video/mp4"></video></div>
+  <div class="wrap sitepg homepg">
     <section class="sitehero">
       <div class="eyebrow">Heal hop · NuRenaissance</div>
       <h1 class="herot">Nicólas <span>Soul</span></h1>
       <p class="herop">${esc(SITE.tagline)}</p>
+      <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
     </section>
-    ${latest ? `<h2 class="sh"><span><b>Latest</b> release</span></h2>
-      <div class="ctrack homeone" id="ctrack"><article class="slide" data-year="${esc(latest.year)}">
-        <img data-shelf-cover="${esc(latest.cover_file_id)}" alt="">
-        <span class="tag"><i></i>${esc(typeOf(latest))}</span>
-        <span class="cap"><span class="yr">${esc(latest.year)}</span><span class="ttl">${esc(latest.title)}</span>${seriesTag(latest)}</span>
-        <button class="card slidelink" data-rel="${esc(latest.release_id)}" aria-label="Open ${esc(latest.title)}"></button>
-        <button class="go" data-play-rel="${esc(latest.release_id)}" aria-label="Play ${esc(latest.title)}">${I.play}</button>
-      </article></div>` : ''}
+    <section class="latest" aria-label="Latest">
+      <h2 class="lathead">Latest</h2>
+      ${cover(single, 'Single')}${cover(project, 'Project')}${yt(SITE.feature, 'Feature')}${yt(SITE.video, 'Video')}
+    </section>
     ${join ? `<section class="tribe"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
       <a class="pill main" href="${esc(join)}">${I.mail}Join the Soul Tribe</a></section>` : ''}
@@ -1328,7 +1362,23 @@ function renderHome() {
     <div class="linkgrid">${SITE.links.map(l => `<a class="soc" href="${esc(l[1])}" target="_blank" rel="noopener" aria-label="${esc(l[0])}" title="${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : esc(l[0])}</a>`).join('')}</div>
     <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · © ${new Date().getFullYear()} Nicólas Soul</p>
   </div>`;
-  wireShelf(); window.scrollTo(0, 0);
+  // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
+  // (a still image instead if the person asked for less motion or is saving data).
+  $$('[data-home-cover]').forEach(img => setCover(img, img.dataset.homeCover, true));
+  $$('[data-yt]').forEach(b => b.addEventListener('click', () => {
+    const f = document.createElement('iframe');
+    f.className = 'latplayer'; f.title = b.getAttribute('aria-label').replace(/^Play /, '');
+    f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; web-share'; f.allowFullscreen = true;
+    f.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(b.dataset.yt) + '?autoplay=1&rel=0&playsinline=1';
+    b.replaceWith(f);
+  }));
+  const bg = $('.homebg video');
+  if (bg) {
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches || (navigator.connection && navigator.connection.saveData);
+    if (still) { bg.pause(); bg.removeAttribute('autoplay'); bg.parentNode.classList.add('still'); bg.remove(); }
+    else { bg.muted = true; const p = bg.play(); if (p && p.catch) p.catch(() => {}); }
+  }
+  window.scrollTo(0, 0);
 }
 
 function renderTour() {
