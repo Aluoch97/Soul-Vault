@@ -17,6 +17,9 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
   (`bigPut_/bigGet_`, gzip + base64 in pieces under 100 KB; `shareBody_` builds it, `getShare` adds the per-link `share` block). Every place that clears link caches goes through `scopeKeys_()`,
   which now also clears the response cache; direct edits typed into the Sheet show up within 60 s. Lyrics on demand is still possible later but is a small win.
   Build 67: `getHome(token)` (Vault.gs) returns only the newest single and project (same rule as `homePicks`) with their small cover pictures, from the Releases sheet only, cached 60 s (`home1_all`, cleared by `scopeKeys_()`).
+  Baked Home covers (after PageSpeed 85 / LCP 4.3 s): `node tools/updatereleases.js` also saves the newest single and project covers as files in `public/home-covers/` (hash in the name, cached a year) and lists them in `home.json`.
+  `build.js` puts them into `SV_BOOT.home` and preloads the single's cover; the app draws them on the first public visit before any call to Google (`S.homeLite`), and `getHome` only swaps them if a newer release exists.
+  After you add, seal or unseal a release: run the tool, commit `home.json`, `releases.json` and `public/home-covers/`, deploy.
   Build 68: PageSpeed (live, Nov 10, after build 67) still showed LCP 7.3 s because the Home cover is ~380 px wide and Chrome counts a small thumbnail as a small image, so `getHome` now also sends a sharp 420 px cover
   (`img`, from `driveThumb_`, kept 6 h as `hcov_<id>`; the `getHome` answer itself is cached 60 s with `bigPut_`/`bigGet_`).
   On a first public visit the app calls it alongside `getShare` and shows the two covers at once (`paintHomeLite`); a tap before the library arrives is remembered (`S.pendingRel`) and opens when it does. Measure with Lighthouse (mobile) against a local copy of dist/.

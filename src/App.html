@@ -1279,6 +1279,7 @@ async function init() {
   setToggle(false);
   watchStall();
   setRobots(parseRoute().unknown);
+  if (BOOT.pub && BOOT.home && (BOOT.home.single || BOOT.home.project)) { S.homeLite = BOOT.home; primeHomeCover(BOOT.home.single); primeHomeCover(BOOT.home.project); }   // covers saved with the site: Home can draw them before anything is fetched
   try {
     if (BOOT.token) {
       const cached = libCacheGet();
@@ -1468,8 +1469,8 @@ function homePicks() {
 function homeCover(r, label, slot) {
   if (!S.lib) {   // first visit: getHome may already have sent the two covers (small pictures); the library follows
     const l = S.homeLite && S.homeLite[slot];
-    if (l && (l.img || l.thumb)) return `<figure class="lat" data-slot="${slot}"><button class="latcover" data-rel="${esc(l.release_id)}" aria-label="Open ${esc(l.title)}">
-      <img src="${esc(l.img || l.thumb)}" alt="${esc(l.title)} cover"></button><figcaption class="latlabel">${label}</figcaption></figure>`;
+    if (l && (l.src || l.img || l.thumb)) return `<figure class="lat" data-slot="${slot}"><button class="latcover" data-rel="${esc(l.release_id)}" aria-label="Open ${esc(l.title)}">
+      <img src="${esc(l.src || l.img || l.thumb)}" alt="${esc(l.title)} cover"></button><figcaption class="latlabel">${label}</figcaption></figure>`;
   }
   if (!S.lib) return `<figure class="lat" data-slot="${slot}"><div class="latcover skel" aria-hidden="true"></div><figcaption class="latlabel">${label}</figcaption></figure>`;
   return r ? `<figure class="lat" data-slot="${slot}"><button class="latcover" data-rel="${esc(r.release_id)}" aria-label="Open ${esc(r.title)}">
@@ -1477,9 +1478,18 @@ function homeCover(r, label, slot) {
 }
 // getHome answered before the library: show the two covers now (the library swaps in the full version later).
 function paintHomeLite(p) {
-  S.homeLite = p || {};
-  Object.values(S.homeLite).forEach(l => { if (l && l.img && l.cover_file_id && !S.covers[l.cover_file_id]) { S.covers[l.cover_file_id] = l.img; S.coverP[l.cover_file_id] = Promise.resolve(l.img); } });   // the sharp cover is also what the library's Home swap starts from
-  ['single', 'project'].forEach(slot => { const el = $('.homepg [data-slot="' + slot + '"]'); if (el && S.view === 'home') el.outerHTML = homeCover(null, slot === 'single' ? 'Single' : 'Project', slot); });
+  const prev = S.homeLite || {}; S.homeLite = Object.assign({}, p);
+  ['single', 'project'].forEach(slot => {
+    const l = S.homeLite[slot]; if (!l) return;
+    if (prev[slot] && prev[slot].release_id === l.release_id) { S.homeLite[slot] = prev[slot]; return; }   // the same release is already on screen: leave it alone
+    primeHomeCover(l);
+    const el = $('.homepg [data-slot="' + slot + '"]'); if (el && S.view === 'home' && !S.lib) el.outerHTML = homeCover(null, slot === 'single' ? 'Single' : 'Project', slot);
+  });
+}
+// The sharp cover is also what the library's Home swap starts from (so the picture never drops to a tiny thumbnail).
+function primeHomeCover(l) {
+  const u = l && (l.src || l.img);
+  if (u && l.cover_file_id && !S.covers[l.cover_file_id]) { S.covers[l.cover_file_id] = u; S.coverP[l.cover_file_id] = Promise.resolve(u); }
 }
 // The library arrived after Home was already on screen: swap in the real covers and leave everything else (video, scroll, a playing video) alone.
 function fillHomeLatest() {
