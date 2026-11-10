@@ -1,5 +1,5 @@
 {
-  "api": "PASTE the Apps Script web app URL here (Deploy > Manage deployments); it ends in /exec",
+  "api": "https://script.google.com/macros/s/AKfycbxSXeD5uM1eP7eYR1LVzhxRfa0nx1f_DbsGHdlJeL2YfjK_8JPuurNhGAJ1W5UwwNaW/exec",
   "publicToken": "PASTE the public share token here (see CLAUDE.md, Public access)",
   "siteName": "Nicólas Soul",
   "domain": "soulnicolas.com"
