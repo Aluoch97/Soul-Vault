@@ -307,6 +307,49 @@
   .sheet .end { display: flex; justify-content: flex-end; gap: 10px; }
   .err { color: var(--brass); margin: 0; font-size: 13px; }
 
+
+  /* ── website pages (Home, Tour, Press) ── */
+  .sitepg { padding-top: 22px; padding-bottom: 40px; }
+  .sitehero { padding: 18px 0 8px; max-width: 760px; text-align: left; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--green-hi); }
+  .herot { font: 800 clamp(44px, 9vw, 84px)/.95 var(--serif); letter-spacing: -.02em; margin: 8px 0 12px; }
+  .herot span { color: var(--red-hi); }
+  .herop { font-size: clamp(16px, 2.2vw, 19px); line-height: 1.5; color: rgba(246,243,239,.85); margin: 0 0 18px; max-width: 56ch; }
+  .herob { display: flex; flex-wrap: wrap; gap: 10px; }
+  .homeone { display: block; overflow: visible; }
+  .homeone .slide { width: min(640px, 100%); }
+  .sitecard { display: flex; gap: 16px; align-items: center; justify-content: space-between; margin: 26px 0 8px; padding: 18px; border-radius: 20px;
+              background: linear-gradient(135deg, rgba(210,16,52,.16), rgba(0,138,31,.12)); border: 1px solid var(--line); }
+  .sitecard .tt2 { font: 400 20px var(--serif); } .sitecard .tt2 b { font-weight: 800; }
+  .sitecard p { margin: 4px 0 0; max-width: 52ch; }
+  .sitepg .pill { text-decoration: none; }
+  .sitepg p a { color: var(--green-hi); }
+  .linkgrid { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 18px; }
+  .sitefoot { margin-top: 26px; }
+  .sitefoot a { color: inherit; }
+  .presslist { list-style: none; margin: 8px 0 18px; padding: 0; display: grid; gap: 8px; max-width: 640px; }
+  .presslist a { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.05);
+                 border: 1px solid var(--line); color: inherit; text-decoration: none; min-height: 48px; }
+  .presslist a span:first-child { font-weight: 700; flex: 1; }
+  .presslist svg { width: 18px; height: 18px; opacity: .6; }
+  .vidgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin: 8px 0 18px; }
+  .vid { display: grid; gap: 8px; color: inherit; text-decoration: none; }
+  .vid .thumb { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; }
+  .vid .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vid .thumb i { position: absolute; right: 10px; bottom: 10px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+                  background: var(--red); color: #fff; } .vid .thumb i svg { width: 16px; height: 16px; }
+  .vid .vt { font-size: 14px; line-height: 1.35; font-weight: 600; }
+  .tourpg { max-width: 760px; }
+  .tourframe { width: 100%; height: calc(100vh - 190px); height: calc(100dvh - 190px); min-height: 520px; border: 1px solid var(--line); border-radius: 16px; background: #E9DAAF; display: block; }
+  @media (max-width: 760px) {
+    .tabs button { min-width: 0; flex: 1; padding: 4px 2px; }
+    .tabs button[aria-current="page"] { color: var(--red-hi); }
+    .sitecard { flex-direction: column; align-items: stretch; }
+    .sitecard .pill { justify-content: center; min-height: 48px; }
+    .tourframe { height: calc(100dvh - 250px); min-height: 420px; }
+    .herob .pill { flex: 1; justify-content: center; min-height: 48px; }
+  }
+
   /* ── Mobile ── */
   .tabs { display: none; }
   @media (max-width: 760px) {
@@ -1145,7 +1188,7 @@ async function init() {
   try {
     if (BOOT.token) {
       const cached = libCacheGet();
-      const show = d => { if (CLUB()) { document.body.classList.add('club-mode'); renderChrome(); renderLibrary(); }
+      const show = d => { if (CLUB()) { document.body.classList.add('club-mode'); renderChrome(); renderHome(); }
                           else { document.body.classList.add('share-mode'); renderRelease(d.releases[0].release_id); } };
       if (cached && cached.releases && cached.releases.length) { S.lib = normalizeLib(cached); S.share = cached.share; primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; show(cached); }
       let d;
@@ -1182,32 +1225,122 @@ function watchStall() {
 }
 
 function renderChrome() {
-  const cur = S.view === 'lore' ? (OWNER ? 'vault' : 'lore') : (['shares', 'vault', 'worlds'].indexOf(S.view) > -1 ? S.view : 'library');
+  const v = S.view;
+  const cur = ['home', 'tour', 'press', 'lore'].indexOf(v) > -1 ? v : (['shares', 'vault'].indexOf(v) > -1 ? v : 'library');
   const years = [...new Set(S.lib.releases.map(r => r.year))].sort((a, b) => b - a);
   const cc = n => n === cur ? 'aria-current="page"' : '';
   const club = !OWNER;
-  $('#tabs').classList.toggle('four', club);
+  const main = [['home', I.home, 'Home'], ['library', I.vault, 'Vault'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['lore', I.layers, 'Lore']];
   $('#side').innerHTML = `
     <div class="brand">Soul <span>Vault</span><i class="flagband" aria-hidden="true"></i></div>
     ${club ? `<span class="clubtag side-tag">${I.star}Fan Club</span>` : ''}
     <nav>
-      <button class="nav" data-nav="library" ${cc('library')}>${I.home}Home</button>
-      ${club ? `<button class="nav" data-nav="lore" ${cc('lore')}>${I.layers}Lore</button>` : `<button class="nav" data-nav="vault" ${cc('vault')}>${I.vault}Settings</button>
+      ${main.map(m => `<button class="nav" data-nav="${m[0]}" ${cc(m[0])}>${m[1]}${m[2]}</button>`).join('')}
+      ${club ? '' : `<button class="nav" data-nav="vault" ${cc('vault')}>${I.vault}Settings</button>
       <button class="nav" data-nav="shares" ${cc('shares')}>${I.link}Share links</button>
       <button class="nav" data-newrel>${I.plus}New release</button>`}
     </nav>
-    <h3>Years</h3>
-    <div class="yrs">${years.map(y => `<button data-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>`;
-  $('#tabs').innerHTML = club ? `
-    <button class="homebtn" data-nav="library" ${cc('library')} aria-label="Home">${I.home}<span>Home</span></button>
-    <button data-nav="playing">${I.wave}Playing</button>
-    <button data-nav="search">${I.search}Search</button>
-    <button data-nav="lore" ${cc('lore')}>${I.layers}Lore</button>` : `
-    <button data-nav="shares" ${cc('shares')}>${I.link}Links</button>
-    <button data-nav="vault" ${cc('vault')}>${I.vault}Settings</button>
-    <button class="homebtn" data-nav="library" ${cc('library')} aria-label="Home">${I.home}<span>Home</span></button>
-    <button data-nav="search">${I.search}Search</button>
-    <button data-nav="playing">${I.wave}Playing</button>`;
+    ${cur === 'library' ? `<h3>Years</h3>
+    <div class="yrs">${years.map(y => `<button data-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>` : ''}`;
+  $('#tabs').classList.remove('four');
+  $('#tabs').innerHTML = main.map(m => `<button data-nav="${m[0]}" ${cc(m[0])}>${m[1]}${m[2]}</button>`).join('');
+}
+
+/* ── website pages: Home, Tour, Press (mirror soulnicolas.com; edit the text/links here) ── */
+const SITE = {
+  tagline: 'Heal hop artist. Hip-hop and R&B rooted in healing, self-work, and reinvention. Founder of NuRenaissance.',
+  bio: "Nicólas Soul is a heal hop artist, hip-hop and R&B rooted in healing, self-work, and reinvention, and the founder of NuRenaissance.\n\n"
+     + "He was born in Homa Bay, Kenya and raised in Tennessee from age six. Writing and recording since 2012, he's built a sound that blends soulful vocals with introspective, systems-minded songwriting, drawing from Eminem's lyricism, Lauryn Hill's soul, and the genre-blurring instincts of Kanye West and Childish Gambino.\n\n"
+     + "Follow his #ROADTO100SHOWS journey as he performs his way to his highest self.",
+  booking: 'nurrenaissance@gmail.com',
+  links: [
+    ['Spotify', 'https://open.spotify.com/artist/0trticneQHmkSeVLyPSIuH'],
+    ['Apple Music', 'https://music.apple.com/us/artist/nic%C3%B3las-soul/1224416995'],
+    ['YouTube', 'https://www.youtube.com/@HealHopMovement/featured'],
+    ['Bandcamp', 'https://nrnszn.bandcamp.com/music'],
+    ['SoundCloud', 'https://soundcloud.com/nrnszn'],
+    ['Instagram', 'https://www.instagram.com/soulnicolas'],
+    ['TikTok', 'https://www.tiktok.com/@soulnicolas'],
+    ['Threads', 'https://www.threads.com/@soulnicolas'],
+    ['Facebook', 'https://www.facebook.com/soulnicolas']
+  ],
+  press: [
+    ['Bold Journey', 'Interview', 'https://boldjourney.com/meet-nicolas-soul/'],
+    ['Canvas Rebel', 'Interview', 'https://canvasrebel.com/meet-nicolas-soul/'],
+    ['Nashville Voyager', '2024', 'https://nashvillevoyager.com/interview/rising-stars-meet-nicolas-soul-of-nashville'],
+    ['Nashville Voyager', '2026', 'https://nashvillevoyager.com/interview/nicolas-soul-on-life-lessons-legacy-highlight']
+  ],
+  videos: [
+    ["Da' Healerz Circle Ep. 5 w/ Special Guest Nicólas Soul", 'fJkff8Er46Q'],
+    ['WXNA 101.5 Interview: Spring 2025 Showcase', 'pI-8wc_kuhs'],
+    ['Nicólas Soul & Yonna Jones talk new album, how they met & upcoming show (WXNA 101.5)', 'pYvXOm71zRo'],
+    ['Have You Met...? ft. Jazzy the Uncontrolled Goddess, Kelsey Muse, and Nicolas Soul', 'rX8hJj4omXU']
+  ]
+};
+const JOIN_URL = () => (BOOT.api ? '/join' : (S.lib && S.lib.newsletter) || '');
+
+function renderHome() {
+  clearPageBg(); S.view = 'home'; renderChrome();
+  const rs = shelfOrder(S.lib.releases.filter(r => OWNER || !isUnrel(r)));
+  const latest = rs[0], join = JOIN_URL();
+  $('#main').innerHTML = `<div class="wrap sitepg">
+    <section class="sitehero">
+      <div class="eyebrow">Heal hop · NuRenaissance</div>
+      <h1 class="herot">Nicólas <span>Soul</span></h1>
+      <p class="herop">${esc(SITE.tagline)}</p>
+      <div class="herob">
+        ${latest ? `<button class="pill main" data-play-rel="${esc(latest.release_id)}">${I.play}Play the latest</button>` : ''}
+        <button class="pill soft" data-nav="library">${I.vault}Enter the Vault</button>
+      </div>
+    </section>
+    ${latest ? `<h2 class="sh"><span><b>Latest</b> release</span></h2>
+      <div class="ctrack homeone" id="ctrack"><article class="slide" data-year="${esc(latest.year)}">
+        <img data-shelf-cover="${esc(latest.cover_file_id)}" alt="">
+        <span class="tag"><i></i>${esc(typeOf(latest))}</span>
+        <span class="cap"><span class="yr">${esc(latest.year)}</span><span class="ttl">${esc(latest.title)}</span>${seriesTag(latest)}</span>
+        <button class="card slidelink" data-rel="${esc(latest.release_id)}" aria-label="Open ${esc(latest.title)}"></button>
+        <button class="go" data-play-rel="${esc(latest.release_id)}" aria-label="Play ${esc(latest.title)}">${I.play}</button>
+      </article></div>` : ''}
+    <section class="sitecard road">
+      <div><div class="tt2">#<b>ROADTO100SHOWS</b></div>
+        <p class="cs">One artist, fifty states, one hundred shows. The map fills in as it actually happens.</p></div>
+      <button class="pill main" data-nav="tour">${I.pin}See the tour</button>
+    </section>
+    <h2 class="sh"><span><b>About</b> Nicólas</span></h2>
+    <div class="story open">${paras(SITE.bio)}</div>
+    <p><button class="pill soft" data-nav="lore">${I.layers}More in Lore</button></p>
+    ${join ? `<section class="tribe"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
+      <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
+      <a class="pill main" href="${esc(join)}">${I.mail}Join the Soul Tribe</a></section>` : ''}
+    <h2 class="sh"><span><b>Listen</b> and follow</span></h2>
+    <div class="linkgrid">${SITE.links.map(l => `<a class="pill soft" href="${esc(l[1])}" target="_blank" rel="noopener">${esc(l[0])}</a>`).join('')}</div>
+    <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · © ${new Date().getFullYear()} Nicólas Soul</p>
+  </div>`;
+  wireShelf(); window.scrollTo(0, 0);
+}
+
+function renderTour() {
+  clearPageBg(); S.view = 'tour'; renderChrome();
+  $('#main').innerHTML = `<div class="wrap sitepg tourpg">
+    <h1 class="page-h" style="padding-left:0"><b>Tour</b></h1>
+    <p class="cs" style="margin-top:0">#ROADTO100SHOWS: tap a state to read the log. <a href="/roadto100shows" target="_blank" rel="noopener">Open full page</a></p>
+    <iframe class="tourframe" src="/roadto100shows.html" title="Road to 100 Shows tracker" loading="lazy"></iframe>
+  </div>`;
+  window.scrollTo(0, 0);
+}
+
+function renderPress() {
+  clearPageBg(); S.view = 'press'; renderChrome();
+  $('#main').innerHTML = `<div class="wrap sitepg">
+    <h1 class="page-h" style="padding-left:0"><b>Press</b></h1>
+    <h2 class="sh"><span><b>Articles</b></span></h2>
+    <ul class="presslist">${SITE.press.map(p => `<li><a href="${esc(p[2])}" target="_blank" rel="noopener"><span>${esc(p[0])}</span><span class="cs">${esc(p[1])}</span>${I.chev}</a></li>`).join('')}</ul>
+    <h2 class="sh"><span><b>Video</b> interviews</span></h2>
+    <div class="vidgrid">${SITE.videos.map(v => `<a class="vid" href="https://www.youtube.com/watch?v=${esc(v[1])}" target="_blank" rel="noopener">
+      <span class="thumb"><img src="https://i.ytimg.com/vi/${esc(v[1])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></span><span class="vt">${esc(v[0])}</span></a>`).join('')}</div>
+    <p class="cs sitefoot">Press and booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a></p>
+  </div>`;
+  window.scrollTo(0, 0);
 }
 
 /* ── library ── */
@@ -1476,7 +1609,7 @@ function renderRelease(id) {
   const ts = tracksOf(id, editing);
   $('#main').innerHTML = `
     <header class="relhead" id="relhead"><div class="wrap">
-      ${OWNER || CLUB() ? `<button class="back" data-nav="library-back">${I.back}Home</button>` : ''}
+      ${OWNER || CLUB() ? `<button class="back" data-nav="library-back">${I.back}Vault</button>` : ''}
       <div class="hero">
         <div class="artwrap">
           <img class="art" id="heroArt" alt="Cover of ${esc(r.title)}">
@@ -2551,7 +2684,7 @@ function dropsRow() {
         <span class="cs">${esc(whenLabel(r.unlock_at))}</span></span></button>`).join('')}</div>`;
 }
 function tribeCard() {
-  const u = S.lib.newsletter; if (!u) return '';
+  const u = JOIN_URL(); if (!u) return '';
   return `<section class="tribe"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
     <p class="cs">The newsletter: drop alerts, show dates and first word on new music, twice a month.</p></div>
     <a class="pill main" href="${esc(u)}" target="_blank" rel="noopener">${I.mail}Join the Soul Tribe</a></section>`;
@@ -2562,7 +2695,7 @@ function sealedView(r) {
   clearPageBg();
   $('#main').innerHTML = `
     <header class="relhead sealed" id="relhead"><div class="wrap">
-      <button class="back" data-nav="library-back">${I.back}Home</button>
+      <button class="back" data-nav="library-back">${I.back}Vault</button>
       <div class="hero">
         <div class="artwrap sealart"><img class="art" id="heroArt" alt=""><span class="lock" aria-hidden="true">${I.lock}</span></div>
         <div>
@@ -4475,6 +4608,8 @@ function libCacheClear() { try { localStorage.removeItem(libCacheKey()); } catch
 function refreshView() {
   const y = window.scrollY;
   if (S.view === 'library') renderLibrary(true);
+  else if (S.view === 'home') renderHome();
+  else if (S.view === 'tour' || S.view === 'press') { /* static pages: nothing to refresh */ }
   else if (S.view === 'release' && !S.editing && rel(S.releaseId)) renderRelease(S.releaseId);
   else if (S.view === 'vault') renderVault();
   else if (S.view === 'lore') renderLore();
@@ -4528,15 +4663,14 @@ function renderLore() {
   clearPageBg(); S.view = 'lore'; renderChrome();
   const L = buildLore(), t = L.totals;
   $('#main').innerHTML = `<div class="wrap lore">
-    <button class="back" data-nav="${OWNER ? 'vault' : 'library'}">${I.back}${OWNER ? 'Settings' : 'Home'}</button>
     <h1 class="page-h" style="padding-left:0"><b>Lore</b></h1>
-    <p class="cs" style="margin-top:0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>
+    ${OWNER ? '<p class="cs" style="margin-top:0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>' : ''}
     <div class="lorestats">
       <div class="kpi"><b>${t.releases}</b><span>Releases</span></div><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
       <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.to && t.to !== t.from ? '–' + t.to : ''}</b><span>Years active</span></div></div>
     ${OWNER ? `<section class="lorebio"><h2 class="sh"><span><b>Bio:</b> Nicólas Soul</span></h2>
       <textarea class="field" id="loreBio" maxlength="8000" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
-      <div class="end"><button class="pill soft" data-lore-copy>Copy all lore as text</button><button class="pill main" data-lore-bio>Save bio</button></div><p class="cs" style="margin:6px 0 0">Fans on the fan club link can read this bio and the whole Lore page.</p></section>` : (S.lib.artist_bio ? `<section class="lorebio"><h2 class="sh"><span><b>About</b> Nicólas Soul</span></h2><p class="biotxt">${esc(S.lib.artist_bio)}</p></section>` : '')}
+      <div class="end"><button class="pill soft" data-lore-copy>Copy all lore as text</button><button class="pill main" data-lore-bio>Save bio</button></div><p class="cs" style="margin:6px 0 0">Fans on the fan club link can read this bio and the whole Lore page.</p></section>` : `<section class="lorebio"><h2 class="sh"><span><b>About</b> Nicólas Soul</span></h2><p class="biotxt">${esc((S.lib.artist_bio || '').trim() || SITE.bio)}</p></section>`}
     ${t.names.length > 1 ? `<h2 class="sh"><span><b>Names</b> over the years</span></h2><p>${t.names.map(esc).join(' → ')}</p>` : ''}
     <h2 class="sh"><span><b>Eras</b></span></h2>
     <div class="ins-wrap"><table class="instable"><thead><tr><th>Release</th><th>Made / recorded</th><th>Producers</th><th class="n">Videos</th><th class="n">Photos</th></tr></thead><tbody>
@@ -4715,7 +4849,7 @@ function renderPlaylist(id) {
   const ts = plTracks(p), ed = OWNER && S.plEditing;
   if (ed && !S.pldraft) S.pldraft = { title: p.title, description: p.description, fans: p.fans, tracks: ts.map(t => t.track_id) };
   $('#main').innerHTML = `<div class="wrap">
-    <button class="back" data-nav="library">${I.back}Home</button>
+    <button class="back" data-nav="library">${I.back}Vault</button>
     <header class="plhead">${mosaic(ts)}<div><div class="kick">Playlist${OWNER ? ' · ' + (p.fans ? 'shared with the fan club' : 'private') : ''}</div>
       <h1>${esc(p.title)}</h1>${p.description ? `<p class="cs" style="margin:0 0 4px;white-space:pre-line">${esc(p.description)}</p>` : ''}
       <div class="cs">${songs(ts.length)}${fmtRuntime(runtimeOf(ts)) ? ' · ' + fmtRuntime(runtimeOf(ts)) : ''}</div>
@@ -6312,6 +6446,9 @@ document.addEventListener('click', e => {
     if (d.nav === 'shares') renderShares();
     else if (d.nav === 'vault') renderVault();
     else if (d.nav === 'insights' && OWNER) renderInsights();
+    else if (d.nav === 'home') renderHome();
+    else if (d.nav === 'tour') renderTour();
+    else if (d.nav === 'press') renderPress();
     else if (d.nav === 'lore' && (OWNER || CLUB())) renderLore();
     else if (d.nav === 'worlds') { S.filter = 'All'; S.q = ''; renderLibrary(); const a = $('#all-releases'); if (a) a.scrollIntoView(); }
     else if (d.nav === 'recent') { if (S.view !== 'library') renderLibrary(); const t = $('#recent'); if (t) t.scrollIntoView(); else toast('Play something first'); }

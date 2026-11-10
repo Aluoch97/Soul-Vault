@@ -13,6 +13,13 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
 - Audio streams straight from Google Drive with an API key (Settings tab: `drive_api_key`); covers via `getCover`.
 - The app already has a fetch transport (`runFetch`, `BOOT.api`), so the Apps Script page itself is no longer the host.
 
+## Navigation (matches soulnicolas.com)
+Home, Vault, Tour, Press, Lore: same five on the sidebar (desktop) and bottom tab bar (phone). Inside `src/App.html`:
+`renderHome`, `renderLibrary` (this is the Vault; internal nav id `library`), `renderTour` (iframe of `/roadto100shows.html`),
+`renderPress`, `renderLore`. Press links, social links, booking email and the fallback bio live in the `SITE` constant next to them.
+The internal nav id `vault` still means the owner's Settings screen. Strangers and fan links open on Home; the owner opens on the Vault.
+Static pages in `public/`: `roadto100shows.html` (tour tracker, reads a Google Sheet), `join.html` (fan sign-up, posts to the soulMATES Apps Script).
+
 ## Access model (important)
 - Owner: open `https://soulnicolas.com/?k=<owner key>` once; key is saved in that device's localStorage and removed from the URL.
 - Fans with a link: `/?s=<share token>` (unchanged).
