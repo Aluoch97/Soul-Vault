@@ -63,5 +63,5 @@ const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault
   ['/causeitfeelsgood', '/vault/2024-cause-it-feels-good-ep'], ['/soulsearching', '/vault/2022-soulsearching'], ['/troubleinparadise', '/vault/2018-trouble-in-paradise'],
   ['/survivingthenuworld', '/vault/2020-bluu-redd'], ['/jambojacquetesphaye', '/vault/2022-jambo-jacque-tesphaye'], ['/alltc', '/vault/2020-a-love-letter-to-cali-ep'],
   ['/about', '/lore'], ['/bio', '/lore'], ['/roadto100', '/tour/road-to-100']];
-fs.writeFileSync('dist/_redirects', wix.map(r => r[0] + ' ' + r[1] + ' 301').join('\n') + '\n');
+fs.writeFileSync('dist/_redirects', 'https://www.' + String(cfg.domain) + '/* https://' + String(cfg.domain) + '/:splat 301\n' + wix.map(r => r[0] + ' ' + r[1] + ' 301').join('\n') + '\n');
 console.log('built dist/ (build ' + build + ', ' + Math.round(code.length / 1024) + ' KB app.js' + (minified ? ', minified' : ', NOT minified') + ')');
