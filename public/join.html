@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base target="_top">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Loaded async so the font request never blocks first paint. Only the
+       weights actually used in the CSS below are requested. -->
+  <link rel="preload" as="style"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap"
+    onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap">
+  </noscript>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #ffffff;
+      --line: #333333;
+      --line-soft: rgba(255,255,255,0.18);
+      --ink: #f5f4f0;
+      --ink-muted: #9a9a9a;
+      --red: #bb0000;
+      --red-bright: #e8392e;
+      --green: #008a1f;
+
+      --font-display: 'Fraunces', serif;
+      --font-body: 'Inter', -apple-system, sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 18px 14px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 460px;
+      padding: 26px 24px 22px;
+    }
+
+    /* Small geometric trim, inspired by the zigzag and diamond motifs
+       common in Nyanza-region weaving and pottery etching. Not a claim
+       to any specific clan mark, just a visual echo of that broader
+       tradition, used as a quiet frame rather than a loud pattern fill. */
+    .heritage-trim {
+      height: 8px;
+      margin: -26px -24px 18px;
+      background-image:
+        linear-gradient(135deg, var(--red-bright) 25%, transparent 25%),
+        linear-gradient(225deg, var(--red-bright) 25%, transparent 25%),
+        linear-gradient(315deg, var(--green) 25%, transparent 25%),
+        linear-gradient(45deg, var(--green) 25%, transparent 25%);
+      background-position: 0 0, 4px 0, 4px 0, 0 0;
+      background-size: 8px 8px;
+      background-repeat: repeat-x;
+      opacity: 0.85;
+    }
+
+    .heritage-trim-bottom {
+      margin: 18px -24px -22px;
+    }
+
+    /* ---------- Header ---------- */
+
+    .progress {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 16px;
+    }
+
+    .progress-seg {
+      height: 2px;
+      flex: 1;
+      background: var(--line-soft);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-seg span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: var(--red-bright);
+      transition: width 0.3s ease;
+    }
+
+    .progress-seg.is-done span,
+    .progress-seg.is-active span {
+      width: 100%;
+    }
+
+    .step-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--red-bright);
+      margin: 0 0 8px;
+    }
+
+    .panel-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 25px;
+      line-height: 1.15;
+      margin: 0 0 8px;
+    }
+
+    .panel-title em {
+      font-style: italic;
+      color: var(--green);
+    }
+
+    .panel-head:focus,
+    .outro h2:focus {
+      outline: 2px solid var(--red-bright);
+      outline-offset: 6px;
+    }
+
+    .panel-sub {
+      color: var(--ink-muted);
+      font-size: 15px;
+      line-height: 1.5;
+      margin: 0 0 18px;
+      max-width: 50ch;
+    }
+
+    /* ---------- Form ---------- */
+
+    .step {
+      display: none;
+      animation: rise 0.35s ease;
+    }
+
+    .step.is-active {
+      display: block;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: 16px;
+      color: var(--ink);
+      margin-bottom: 5px;
+    }
+
+    label .optional {
+      color: var(--ink-muted);
+      font-size: 13px;
+      font-family: var(--font-body);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    select {
+      width: 100%;
+      background: var(--surface);
+      border: none;
+      color: #14111b;
+      font-family: var(--font-body);
+      font-size: 16px;
+      padding: 12px 14px;
+      border-radius: 2px;
+      outline: none;
+      box-shadow: 0 0 0 2px transparent;
+      transition: box-shadow 0.2s ease;
+      appearance: none;
+    }
+
+    select {
+      background-image: linear-gradient(45deg, transparent 50%, #14111b 50%),
+                         linear-gradient(135deg, #14111b 50%, transparent 50%);
+      background-position: calc(100% - 18px) center, calc(100% - 13px) center;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+    }
+
+    input::placeholder {
+      color: #6b6672;
+    }
+
+    input:focus,
+    select:focus {
+      box-shadow: 0 0 0 2px var(--red-bright);
+    }
+
+    .field-error {
+      font-size: 13px;
+      color: #ff5c3d;
+      margin-top: 6px;
+      display: none;
+    }
+
+    .field.has-error input,
+    .field.has-error select {
+      box-shadow: 0 0 0 2px #ff5c3d;
+    }
+
+    .field.has-error .field-error {
+      display: block;
+    }
+
+    .check-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 2px 0;
+      margin-bottom: 10px;
+    }
+
+    .check-row input[type="checkbox"] {
+      margin-top: 3px;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--red-bright);
+      flex-shrink: 0;
+    }
+
+    .check-text {
+      font-size: 15px;
+      line-height: 1.4;
+      color: var(--ink);
+    }
+
+    .check-text .fine {
+      display: block;
+      color: var(--ink-muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .privacy-note {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin: 0;
+    }
+
+    .privacy-note a {
+      color: var(--ink-muted);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .privacy-note a:hover {
+      color: var(--ink);
+    }
+
+    /* ---------- Nav ---------- */
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--ink);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 12px 20px;
+      font-size: 16px;
+    }
+
+    .btn-primary:hover {
+      background: var(--ink);
+      color: #14111b;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-ghost {
+      background: none;
+      border: none;
+      color: var(--ink-muted);
+      font-size: 15px;
+      padding: 8px;
+    }
+
+    .btn-ghost:hover {
+      color: var(--ink);
+    }
+
+    .btn-text {
+      background: none;
+      border: none;
+      color: var(--ink-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+      padding: 0;
+      white-space: nowrap;
+    }
+
+    .btn-text:hover {
+      color: var(--ink);
+    }
+
+    .nav-skip {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    /* ---------- Outro / status ---------- */
+
+    .step[data-step="3"] {
+      position: relative;
+    }
+
+    /* Ambient glow behind the finish screen only, in your two brand
+       colors, pulsing gently rather than static */
+    .step[data-step="3"]::before {
+      content: '';
+      position: absolute;
+      inset: -30px -20px;
+      background: radial-gradient(circle at 50% 15%, rgba(232, 57, 46, 0.22), rgba(0, 138, 31, 0.14) 45%, transparent 72%);
+      z-index: -1;
+      opacity: 0;
+      animation: glow-pulse 2.6s ease-in-out 0.2s infinite;
+      pointer-events: none;
+    }
+
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.45; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.05); }
+    }
+
+    .outro {
+      text-align: center;
+      padding-top: 4px;
+    }
+
+    .outro-mark {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .wing-svg {
+      width: 150px;
+      height: 68px;
+      overflow: visible;
+    }
+
+    .wing {
+      fill: none;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-dasharray: 220;
+      stroke-dashoffset: 220;
+      animation: draw-wing 0.9s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+    }
+
+    .wing-left {
+      stroke: var(--red-bright);
+      filter: drop-shadow(0 0 6px rgba(232, 57, 46, 0.4));
+    }
+
+    .wing-right {
+      stroke: var(--green);
+      filter: drop-shadow(0 0 6px rgba(0, 138, 31, 0.4));
+      animation-delay: 0.12s;
+    }
+
+    .wing-core {
+      fill: var(--ink);
+      opacity: 0;
+      animation: core-pop 0.4s ease forwards;
+      animation-delay: 0.85s;
+    }
+
+    @keyframes draw-wing {
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes core-pop {
+      from { opacity: 0; transform: scale(0); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .outro h2 {
+      font-family: var(--font-display);
+      font-size: 30px;
+      font-weight: 600;
+      margin: 0 0 10px;
+      line-height: 1.2;
+      background: linear-gradient(100deg, var(--ink) 30%, var(--red-bright) 45%, var(--green) 55%, var(--ink) 70%);
+      background-size: 250% 100%;
+      background-position: 200% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      opacity: 0;
+      transform: translateY(10px) scale(0.96);
+      animation:
+        outro-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s forwards,
+        shimmer 1.4s ease-in-out 1s 1 forwards;
+    }
+
+    .outro p {
+      color: var(--ink-muted);
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 44ch;
+      margin: 0 auto;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: outro-rise 0.5s ease 0.75s forwards;
+    }
+
+    .nyatiti-icon {
+      display: block;
+      width: 56px;
+      height: 56px;
+      margin: 22px auto 12px;
+    }
+
+    .nyatiti-icon path {
+      fill: none;
+      stroke-linecap: round;
+      stroke-dasharray: 140;
+      stroke-dashoffset: 140;
+      opacity: 0;
+      animation: draw-water 0.9s ease forwards;
+    }
+
+    .nyatiti-icon .nyatiti-body {
+      stroke: var(--green);
+      stroke-width: 2;
+      animation-delay: 1.3s;
+    }
+
+    .nyatiti-icon .nyatiti-neck {
+      stroke: var(--red-bright);
+      stroke-width: 2;
+      animation-delay: 1.5s;
+    }
+
+    .nyatiti-icon .nyatiti-string {
+      stroke: var(--ink-muted);
+      stroke-width: 1;
+      stroke-dasharray: 60;
+      stroke-dashoffset: 60;
+      animation-delay: 1.7s;
+    }
+
+    @keyframes draw-water {
+      0% { opacity: 0.85; }
+      100% { opacity: 0.85; stroke-dashoffset: 0; }
+    }
+
+    .heritage-line {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin: 0;
+      opacity: 0;
+      animation: outro-rise 0.6s ease 1.6s forwards;
+    }
+
+    @keyframes outro-rise {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes shimmer {
+      to { background-position: -50% 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .step[data-step="3"]::before,
+      .wing,
+      .wing-core,
+      .outro h2,
+      .outro p,
+      .nyatiti-icon path,
+      .heritage-line {
+        animation: none !important;
+      }
+      .wing { stroke-dashoffset: 0 !important; }
+      .wing-core { opacity: 1 !important; transform: none !important; }
+      .outro h2 {
+        background: none !important;
+        -webkit-background-clip: initial !important;
+        background-clip: initial !important;
+        color: var(--ink) !important;
+        opacity: 1 !important;
+        transform: none !important;
+      }
+      .outro p { opacity: 1 !important; transform: none !important; }
+      .nyatiti-icon path { opacity: 0.85 !important; stroke-dashoffset: 0 !important; }
+      .heritage-line { opacity: 1 !important; }
+    }
+
+    .status-banner {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #ff5c3d;
+      background: rgba(255, 92, 61, 0.1);
+      border: 1px solid rgba(255, 92, 61, 0.35);
+      border-radius: 3px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .status-banner.is-visible {
+      display: block;
+    }
+
+    .loading-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      margin-right: 6px;
+      animation: pulse 1s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+
+    /* ---------- Mobile ---------- */
+
+    @media (max-width: 480px) {
+      body { padding: 0; }
+      .card { padding: 22px 18px 20px; max-width: none; }
+      .heritage-trim { margin: -22px -18px 16px; }
+      .heritage-trim-bottom { margin: 16px -18px -20px; }
+      .panel-title { font-size: 22px; }
+      .field-row { grid-template-columns: 1fr; gap: 0; }
+      .nav { flex-direction: column-reverse; align-items: stretch; }
+      .btn-ghost { align-self: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="heritage-trim" aria-hidden="true"></div>
+    <div class="progress" id="progress" aria-hidden="true">
+      <div class="progress-seg" data-seg="0"><span></span></div>
+      <div class="progress-seg" data-seg="1"><span></span></div>
+      <div class="progress-seg" data-seg="2"><span></span></div>
+    </div>
+
+    <div class="panel-head" id="panelHead" tabindex="-1" aria-live="polite">
+      <p class="step-label">Step 1 of 3</p>
+      <h1 class="panel-title">Join The Soul <em>Tribe</em></h1>
+      <p class="panel-sub">Get new music before anyone else, show announcements, and behind the scenes content.</p>
+    </div>
+
+    <div class="status-banner" id="statusBanner" role="alert" aria-live="assertive"></div>
+
+    <form id="fanForm" autocomplete="on">
+
+      <!-- Honeypot, hidden from real people. Deliberately NOT named
+           anything autofill recognizes (like "website" or "url"), since
+           browsers and password managers ignore autocomplete="off" for
+           common field names and will silently fill them anyway. -->
+      <div style="position:absolute; left:-9999px;" aria-hidden="true">
+        <label for="extraField">Leave blank</label>
+        <input type="text" name="extraField" id="extraField" tabindex="-1" autocomplete="off">
+      </div>
+
+      <!-- STEP 1: identity + consent -->
+      <div class="step is-active" data-step="0">
+        <div class="field-row">
+          <div class="field" id="field-firstName">
+            <label for="firstName">First name</label>
+            <input type="text" id="firstName" placeholder="Nicólas" required aria-describedby="err-firstName">
+            <div class="field-error" id="err-firstName" aria-live="polite">Need a first name to add you to the list.</div>
+          </div>
+          <div class="field" id="field-lastName">
+            <label for="lastName">Last name <span class="optional">(optional)</span></label>
+            <input type="text" id="lastName" placeholder="Soul">
+          </div>
+        </div>
+        <div class="field" id="field-email">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@email.com" required aria-describedby="err-email">
+          <div class="field-error" id="err-email" aria-live="polite">That email doesn't look right.</div>
+        </div>
+        <label class="check-row" for="emailConsent">
+          <input type="checkbox" id="emailConsent">
+          <span class="check-text">
+            Yes, keep me updated!
+            <span class="fine">You can unsubscribe from any email, any time.</span>
+          </span>
+        </label>
+        <div class="field-error" id="error-emailConsent" aria-live="polite" style="display:none; margin-top:-8px; margin-bottom:14px;">Check this box so I know it's okay to email you.</div>
+        <p class="privacy-note">By joining, you agree to the <a href="https://www.soulnicolas.com/privacy-policy" target="_blank" rel="noopener">privacy policy</a>.</p>
+      </div>
+
+      <!-- STEP 2: optional, about you -->
+      <div class="step" data-step="1">
+        <div class="field-row">
+          <div class="field" id="field-city">
+            <label for="city">City <span class="optional">(optional)</span></label>
+            <input type="text" id="city" placeholder="Nashville, TN">
+          </div>
+          <div class="field" id="field-birthYear">
+            <label for="birthYear">Birth year <span class="optional">(optional)</span></label>
+            <input type="number" id="birthYear" placeholder="1997" inputmode="numeric" aria-describedby="err-birthYear">
+            <div class="field-error" id="err-birthYear" aria-live="polite">Enter a 4 digit year.</div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="social">Instagram or TikTok <span class="optional">(optional)</span></label>
+          <input type="text" id="social" placeholder="@yourhandle">
+        </div>
+      </div>
+
+      <!-- STEP 3: optional, how we met -->
+      <div class="step" data-step="2">
+        <div class="field">
+          <label for="howHeard">How'd you find me <span class="optional">(optional)</span></label>
+          <select id="howHeard">
+            <option value="">Choose one</option>
+            <option>Instagram</option>
+            <option>TikTok</option>
+            <option>Spotify or Apple Music</option>
+            <option>YouTube</option>
+            <option>A live show</option>
+            <option>A friend</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="favoriteRelease">Favorite release <span class="optional">(optional)</span></label>
+          <select id="favoriteRelease">
+            <option value="">Haven't picked one</option>
+            <option>soulLESS</option>
+            <option>soulSEARCHING</option>
+            <option>...cause it feels good.</option>
+            <option>SHADOW WORK B Sides</option>
+            <option>RISE OF THE LOST</option>
+            <option>Renaissance Certified (live sessions)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- OUTRO -->
+      <div class="step" data-step="3">
+        <div class="outro" id="outroContent">
+          <div class="outro-mark" aria-hidden="true">
+            <svg viewBox="0 0 200 90" class="wing-svg">
+              <path class="wing wing-left" d="M8,66 C42,30 72,14 98,18" />
+              <path class="wing wing-right" d="M192,66 C158,30 128,14 102,18" />
+              <circle class="wing-core" cx="100" cy="17" r="4"/>
+            </svg>
+          </div>
+          <h2 tabindex="-1">You're in the Tribe now.</h2>
+          <p>That's it, you're in. New music, shows, and the occasional behind the scenes will come straight to you first.</p>
+          <svg viewBox="0 0 100 100" class="nyatiti-icon" aria-hidden="true">
+            <path class="nyatiti-body" d="M22,68 C16,54 26,42 40,45 C54,42 64,54 58,68 C64,80 54,90 40,87 C26,90 16,80 22,68 Z" />
+            <path class="nyatiti-neck" d="M46,48 C56,36 66,22 82,8" />
+            <path class="nyatiti-string" d="M30,58 L78,14" />
+            <path class="nyatiti-string" d="M34,64 L80,20" />
+            <path class="nyatiti-string" d="M38,70 L82,26" />
+          </svg>
+          <p class="heritage-line">An Ja Karachuonyo Kokoth</p>
+        </div>
+      </div>
+
+    </form>
+
+    <div class="nav" id="navRow">
+      <button type="button" class="btn-ghost" id="backBtn">Back</button>
+      <button type="button" class="btn-primary" id="nextBtn">Next</button>
+    </div>
+    <div class="nav-skip" id="skipRow">
+      <button type="button" class="btn-text" id="skipBtn">Skip this part</button>
+    </div>
+    <div class="heritage-trim heritage-trim-bottom" aria-hidden="true"></div>
+  </div>
+
+  <script>
+    (function () {
+      const TOTAL_STEPS = 3; // steps 0-2 are the form, 3 is the outro
+      const OPTIONAL_STEPS = [1, 2]; // steps that can be skipped outright
+      // Change this if you ever copy this widget onto a different page or
+      // link (a merch table iPad, a QR code on a flyer, etc.) so signups
+      // can be told apart by where they actually came from.
+      const SIGNUP_SOURCE = 'https://soulnicolas.com/join';
+      // Same script.google.com URL as the deployed backend. Hardcoded
+      // here because this HTML now lives directly in Wix, not on
+      // Apps Script, so there's no automatic way to know it otherwise.
+      const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbx22pIcJuFLQyN9VIvp4LDy9gcmXnaxxfsIc47JPKgI7D7Bq-SufKQWRk3nzX4TOqw6/exec';
+      let current = 0;
+
+      const form = document.getElementById('fanForm');
+      const steps = Array.from(form.querySelectorAll('.step'));
+      const segments = Array.from(document.querySelectorAll('.progress-seg'));
+      const nextBtn = document.getElementById('nextBtn');
+      const backBtn = document.getElementById('backBtn');
+      const skipBtn = document.getElementById('skipBtn');
+      const skipRow = document.getElementById('skipRow');
+      const navRow = document.getElementById('navRow');
+      const progress = document.getElementById('progress');
+      const panelHead = document.getElementById('panelHead');
+      const statusBanner = document.getElementById('statusBanner');
+
+      const birthYearInput = document.getElementById('birthYear');
+
+      // Cached once instead of re-queried on every validate/submit call
+      const firstNameInput = document.getElementById('firstName');
+      const lastNameInput = document.getElementById('lastName');
+      const emailInput = document.getElementById('email');
+      const emailConsentInput = document.getElementById('emailConsent');
+      const cityInput = document.getElementById('city');
+      const socialInput = document.getElementById('social');
+      const howHeardInput = document.getElementById('howHeard');
+      const favoriteReleaseInput = document.getElementById('favoriteRelease');
+      const websiteInput = document.getElementById('extraField');
+      const emailConsentError = document.getElementById('error-emailConsent');
+      const outroHeading = document.querySelector('#outroContent h2');
+
+      const headCopy = [
+        { label: 'Step 1 of 3', title: 'Join The Soul <em>Tribe</em>', sub: "Get new music before anyone else, show announcements, and behind the scenes content." },
+        { label: 'Step 2 of 3', title: 'A little <em>about you</em>', sub: "Optional, skip it if you're in a hurry." },
+        { label: 'Step 3 of 3', title: 'How we <em>met</em>', sub: "Last one, also optional." }
+      ];
+
+      function showStep(index, isInitial) {
+        steps.forEach(function (el) {
+          el.classList.toggle('is-active', Number(el.dataset.step) === index);
+        });
+
+        segments.forEach(function (el) {
+          const s = Number(el.dataset.seg);
+          el.classList.toggle('is-done', s < index);
+          el.classList.toggle('is-active', s === index);
+        });
+
+        if (index < headCopy.length) {
+          progress.style.display = 'flex';
+          panelHead.style.display = '';
+          panelHead.querySelector('.step-label').textContent = headCopy[index].label;
+          panelHead.querySelector('.panel-title').innerHTML = headCopy[index].title;
+          panelHead.querySelector('.panel-sub').textContent = headCopy[index].sub;
+        }
+
+        if (index === TOTAL_STEPS) {
+          progress.style.display = 'none';
+          panelHead.style.display = 'none';
+          navRow.style.display = 'none';
+          skipRow.style.display = 'none';
+        } else {
+          navRow.style.display = 'flex';
+          backBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
+          skipRow.style.display = OPTIONAL_STEPS.indexOf(index) !== -1 ? 'block' : 'none';
+          nextBtn.textContent = index === TOTAL_STEPS - 1 ? 'Join the list' : 'Next';
+        }
+
+        hideStatus();
+
+        // Move focus (and screen reader attention) to the new step's
+        // heading whenever the step changes from user action, not on
+        // the very first render, so we don't steal focus on page load.
+        if (!isInitial) {
+          const target = index === TOTAL_STEPS ? outroHeading : panelHead;
+          target.focus();
+        }
+      }
+
+      function setFieldError(fieldId, hasError) {
+        const el = document.getElementById('field-' + fieldId);
+        if (el) el.classList.toggle('has-error', hasError);
+        const input = document.getElementById(fieldId);
+        if (input) input.setAttribute('aria-invalid', hasError ? 'true' : 'false');
+      }
+
+      function isValidEmailFormat(value) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      }
+
+      function isValidYear(value) {
+        if (!value) return true;
+        const year = Number(value);
+        const now = new Date().getFullYear();
+        return /^\d{4}$/.test(value) && year >= 1920 && year <= now;
+      }
+
+      function validateStep(index) {
+        if (index === 0) {
+          const firstName = firstNameInput.value.trim();
+          const email = emailInput.value.trim();
+          const firstNameOk = firstName.length > 0;
+          const emailOk = isValidEmailFormat(email);
+          const consentOk = emailConsentInput.checked;
+          setFieldError('firstName', !firstNameOk);
+          setFieldError('email', !emailOk);
+          emailConsentError.style.display = consentOk ? 'none' : 'block';
+          return firstNameOk && emailOk && consentOk;
+        }
+
+        if (index === 1) {
+          const yearOk = isValidYear(birthYearInput.value.trim());
+          setFieldError('birthYear', !yearOk);
+          return yearOk;
+        }
+
+        return true;
+      }
+
+      function collectPayload() {
+        const birthYearRaw = birthYearInput.value.trim();
+        return {
+          firstName: firstNameInput.value.trim(),
+          lastName: lastNameInput.value.trim(),
+          email: emailInput.value.trim(),
+          emailConsent: emailConsentInput.checked,
+          city: cityInput.value.trim(),
+          // Sanitized here (not just on the Next-button path) so a bad
+          // value typed in can never reach the sheet via the Skip button,
+          // which bypasses per-field validation on purpose.
+          birthYear: isValidYear(birthYearRaw) ? birthYearRaw : '',
+          social: socialInput.value.trim(),
+          howHeard: howHeardInput.value,
+          favoriteRelease: favoriteReleaseInput.value,
+          website: websiteInput.value,
+          source: SIGNUP_SOURCE
+        };
+      }
+
+      function showStatus(message) {
+        statusBanner.textContent = message;
+        statusBanner.classList.add('is-visible');
+      }
+
+      function hideStatus() {
+        statusBanner.classList.remove('is-visible');
+      }
+
+      function setSubmitting(isSubmitting) {
+        nextBtn.disabled = isSubmitting;
+        skipBtn.style.visibility = isSubmitting ? 'hidden' : 'visible';
+        nextBtn.innerHTML = isSubmitting
+          ? '<span class="loading-dot"></span>Adding you...'
+          : 'Join the list';
+      }
+
+      function handleSubmitResult(res) {
+        setSubmitting(false);
+        if (res && res.ok) {
+          current = TOTAL_STEPS;
+          showStep(current);
+        } else if (res && res.duplicate) {
+          showStatus("Looks like you're already in the Tribe with that email.");
+        } else {
+          showStatus((res && res.error) || 'Something went wrong. Try again.');
+        }
+      }
+
+      function submit(skippingOptional) {
+        if (!skippingOptional && !validateStep(current)) return;
+
+        setSubmitting(true);
+        const payload = collectPayload();
+
+        // JSONP: a <script> tag isn't subject to the same cross-origin
+        // restriction a fetch() would be, which matters since this page
+        // now lives directly in Wix rather than being served from
+        // script.google.com itself. The tradeoff, and it's a real one,
+        // is that the submitted fields travel as URL query parameters
+        // rather than a hidden request body.
+        const callbackName = 'fanSignupCallback_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        let settled = false;
+
+        const cleanup = function () {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          clearTimeout(timeoutId);
+        };
+
+        window[callbackName] = function (res) {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          handleSubmitResult(res);
+        };
+
+        const timeoutId = setTimeout(function () {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          setSubmitting(false);
+          showStatus('Connection hiccup. Try again in a moment.');
+        }, 15000);
+
+        const params = new URLSearchParams();
+        params.set('action', 'submit');
+        params.set('callback', callbackName);
+        Object.keys(payload).forEach(function (key) {
+          params.set(key, payload[key] === undefined || payload[key] === null ? '' : payload[key]);
+        });
+
+        const script = document.createElement('script');
+        script.src = SUBMIT_URL + '?' + params.toString();
+        script.onerror = function () {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          setSubmitting(false);
+          showStatus('Connection hiccup. Try again in a moment.');
+        };
+        document.body.appendChild(script);
+      }
+
+      nextBtn.addEventListener('click', function () {
+        if (!validateStep(current)) return;
+
+        if (current === TOTAL_STEPS - 1) {
+          submit(false);
+          return;
+        }
+
+        current += 1;
+        showStep(current);
+      });
+
+      skipBtn.addEventListener('click', function () {
+        submit(true);
+      });
+
+      backBtn.addEventListener('click', function () {
+        if (current === 0) return;
+        current -= 1;
+        showStep(current);
+      });
+
+      form.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.tagName !== 'SELECT') {
+          e.preventDefault();
+          nextBtn.click();
+        }
+      });
+
+      showStep(0, true);
+    })();
+  </script>
+</body>
+</html>

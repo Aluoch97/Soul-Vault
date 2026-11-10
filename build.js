@@ -19,6 +19,10 @@ let page = raw.slice(0, a).replace('window.SV_BOOT = __SV_BOOT__;', '') + `<scri
 page = page.replace(/<script>window\.SV_BOOT = __SV_BOOT__;<\/script>/, '');
 // boot must run before app.js: put it right before the app script tag
 page = page.replace('<script src="/app.js', boot + '<script src="/app.js').replace('<title>Soul Vault</title>', `<title>${cfg.siteName}</title>`);
+// Apps Script injected the viewport tag itself (Vault.gs addMetaTag); on the website it must be in the page,
+// or phones render the desktop layout at 980px and the whole phone UI (tab bar, mini player) never appears.
+if (!page.includes('<meta charset="utf-8">')) throw new Error('index.html: <meta charset> not found, cannot add viewport tag');
+page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<meta name="theme-color" content="#151318">');
 fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recursive: true });
 fs.writeFileSync('dist/index.html', page); fs.writeFileSync('dist/app.js', code);
 const lame = fs.readFileSync('apps-script/Lame.html', 'utf8').replace(/^\s*<script[^>]*>/, '').replace(/<\/script>\s*$/, '');
