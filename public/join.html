@@ -909,53 +909,23 @@
         setSubmitting(true);
         const payload = collectPayload();
 
-        // JSONP: a <script> tag isn't subject to the same cross-origin
-        // restriction a fetch() would be, which matters since this page
-        // now lives directly in Wix rather than being served from
-        // script.google.com itself. The tradeoff, and it's a real one,
-        // is that the submitted fields travel as URL query parameters
-        // rather than a hidden request body.
-        const callbackName = 'fanSignupCallback_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-        let settled = false;
-
-        const cleanup = function () {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          clearTimeout(timeoutId);
-        };
-
-        window[callbackName] = function (res) {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          handleSubmitResult(res);
-        };
-
-        const timeoutId = setTimeout(function () {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          setSubmitting(false);
-          showStatus('Connection hiccup. Try again in a moment.');
-        }, 15000);
-
-        const params = new URLSearchParams();
-        params.set('action', 'submit');
-        params.set('callback', callbackName);
-        Object.keys(payload).forEach(function (key) {
-          params.set(key, payload[key] === undefined || payload[key] === null ? '' : payload[key]);
-        });
-
-        const script = document.createElement('script');
-        script.src = SUBMIT_URL + '?' + params.toString();
-        script.onerror = function () {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          setSubmitting(false);
-          showStatus('Connection hiccup. Try again in a moment.');
-        };
-        document.body.appendChild(script);
+        // A normal POST: the details travel in the request body, not in the web address
+        // (addresses get logged; bodies don't). Same method the Vault app uses.
+        const ctl = new AbortController();
+        const timer = setTimeout(function () { ctl.abort(); }, 15000);
+        fetch(SUBMIT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'submit', data: payload }),
+          credentials: 'omit',
+          redirect: 'follow',
+          signal: ctl.signal
+        })
+          .then(function (r) { return r.json(); })
+          .then(handleSubmitResult, function () {
+            setSubmitting(false);
+            showStatus('Connection hiccup. Try again in a moment.');
+          })
+          .then(function () { clearTimeout(timer); });
       }
 
       nextBtn.addEventListener('click', function () {
