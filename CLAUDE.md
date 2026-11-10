@@ -1,7 +1,7 @@
 # soulnicolas.com — Soul Vault as the website
 
-Owner: Nick (Nicólas Soul). Goal: replace the Wix site at soulnicolas.com with Soul Vault, running as a web app,
-the same way nrnszn.com was moved (static app on Cloudflare Pages, domain/DNS on Cloudflare, no Wix renewal).
+Owner: Nick (Nicólas Soul). Goal (DONE Nov 10, 2026): soulnicolas.com is Soul Vault, a web app on Cloudflare Pages (project `soul-vault`). DNS is on Cloudflare (nameservers cleo/molly.ns.cloudflare.com);
+the domain registration is still with Wix (keep it renewed; Wix has no email records for this domain). www redirects to soulnicolas.com, app.soulnicolas.com also still works.
 Plain language for Nick: short explanations, no jargon. Do not overstate certainty; say what is untested.
 
 ## How it fits together
@@ -31,7 +31,7 @@ Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / 
 Back/Forward work and the tab title changes. Owner screens (Settings, Share links, Insights) have no address; single-release share links keep theirs.
 Cloudflare Pages serves index.html for any unknown path, which is what makes this work. Old Wix addresses are 301 redirects written to `dist/_redirects` by `build.js`
 (list `wix` there; do not redirect `/shows` or `/roadto100shows`, those are real files used inside the Tour tab). Press images live in `public/press-img/` so `/press` stays free.
-Tested locally with a Pages-like server, not yet on Cloudflare.
+Checked on the live site (pages load, old Wix links redirect, iPhone confirmed by Nick).
 
 ## Layout (phone app on every screen)
 Like the Certified and NuDirectory apps, the phone layout is used at every width: no sidebar, a tab bar along the bottom of the
@@ -52,11 +52,16 @@ width, edit that block. The sidebar code in `renderChrome` is still there but hi
   Owner decisions: the music by other artists (The Birdhouse, SHiKi, Berhani, LyriCal) is cleared; demo versions stay public;
   "A Love Letter to Kenya" is sealed until Feb 14, 2027.
 
+## Search and crawlers
+`build.js` writes `dist/sitemap.xml` and `dist/robots.txt` (using `siteUrl`) and adds a hidden plain-text block (site name, tagline, links to every page and the 8 main releases)
+inside `<main id="main">` of index.html; the app replaces it when it starts. To add a release to the sitemap/text, add it to the `releases` list in `build.js`.
+Next for Nick: add soulnicolas.com in Google Search Console and submit `/sitemap.xml`.
+
 ## Cloudflare Pages deploy (same as app.nrnszn.com)
 1. `node build.js`, then upload `dist/` (Pages > Create > Direct upload) or connect a git repo with build command `node build.js`, output `dist`.
 2. Add custom domain `app.soulnicolas.com` first, test everything, then move soulnicolas.com DNS to Cloudflare and attach the apex.
 3. Apps Script: Deploy > Manage deployments > keep "Execute as me / Anyone". Set Settings tab `app_url` to the /exec URL.
-4. Do NOT cancel Wix until the new site has been live and checked (email records at the domain must be copied first).
+4. Wix: keep the domain registration (renewal on). The Wix website plan can be removed once the new site has been checked for a few days. No email records existed to copy.
 
 ## Known open items (work through with Nick, one at a time)
 1. Pages the Wix site has that Vault lacks: shows (Bandsintown), SOULmates fan sign-up + newsletter, bio/press, contact, privacy policy

@@ -39,6 +39,15 @@ const shareTags = '<meta name="description" content="' + attr(cfg.description) +
 // Open the connection to Google early: the library comes from there, and the handshake is otherwise paid after the app code loads.
 const preconnect = '<link rel="preconnect" href="https://script.google.com" crossorigin>\n<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>';
 page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<meta name="theme-color" content="#151318">\n' + preconnect + '\n' + iconLinks + '\n' + shareTags);
+// Crawlable text: the app draws everything in the browser, so give crawlers that don't run it a plain-text version. The app replaces it as soon as it starts.
+const releases = [['Rise of the Lost', '2025-rise-of-the-lost'], ['Cause It Feels Good EP', '2024-cause-it-feels-good-ep'], ['soulSEARCHING', '2022-soulsearching'],
+  ['Jambo Jacque Tesphaye', '2022-jambo-jacque-tesphaye'], ['Surviving the NuWorld (BLUU REDD)', '2020-bluu-redd'], ['A Love Letter to Cali EP', '2020-a-love-letter-to-cali-ep'],
+  ['soulLESS', '2019-soulless'], ['Trouble in Paradise', '2018-trouble-in-paradise']];
+const pages = [['Vault: the music', '/vault'], ['Tour: upcoming shows', '/tour'], ['Road to 100 Shows', '/tour/road-to-100'], ['Press', '/press'], ['Press videos', '/press/video'], ['Lore: bio and story', '/lore'], ['Join the Soul Tribe', '/join'], ['Privacy policy', '/privacy-policy']];
+const seo = '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"><h1>' + attr(cfg.siteName) + '</h1><p>' + attr(cfg.description) + '</p><nav><ul>'
+  + pages.map(p => '<li><a href="' + p[1] + '">' + attr(p[0]) + '</a></li>').join('') + releases.map(r => '<li><a href="/vault/' + r[1] + '">' + attr(r[0]) + '</a></li>').join('') + '</ul></nav></div>';
+if (!page.includes('</div></main>')) throw new Error('index.html: </main> not found, cannot add crawlable text');
+page = page.replace('</div></main>', '</div>' + seo + '</main>');
 fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recursive: true });
 // Shrink the app code (esbuild is a dev dependency; Cloudflare installs it before building). If it is missing, ship the readable code instead.
 let minified = false;
@@ -64,4 +73,7 @@ const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault
   ['/survivingthenuworld', '/vault/2020-bluu-redd'], ['/jambojacquetesphaye', '/vault/2022-jambo-jacque-tesphaye'], ['/alltc', '/vault/2020-a-love-letter-to-cali-ep'],
   ['/about', '/lore'], ['/bio', '/lore'], ['/roadto100', '/tour/road-to-100']];
 fs.writeFileSync('dist/_redirects', 'https://www.' + String(cfg.domain) + '/* https://' + String(cfg.domain) + '/:splat 301\n' + wix.map(r => r[0] + ' ' + r[1] + ' 301').join('\n') + '\n');
+const urls = ['/'].concat(pages.map(p => p[1]).filter(p => p !== '/press/video'), releases.map(r => '/vault/' + r[1]));
+fs.writeFileSync('dist/sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls.map(u => '  <url><loc>' + siteUrl + u + '</loc></url>').join('\n') + '\n</urlset>\n');
+fs.writeFileSync('dist/robots.txt', 'User-agent: *\nAllow: /\n\nSitemap: ' + siteUrl + '/sitemap.xml\n');
 console.log('built dist/ (build ' + build + ', ' + Math.round(code.length / 1024) + ' KB app.js' + (minified ? ', minified' : ', NOT minified') + ')');
