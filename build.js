@@ -11,10 +11,12 @@ const lameOld = ": '';\n  return lameP";
 if (!code.includes(lameOld)) throw new Error('loadLame() changed; update the patch in build.js');
 code = code.replace(lameOld, ": '/lame.js';\n  return lameP");
 // Boot: owner opens /?k=<owner key>; a fan link is /?s=<share token>; everyone else gets the public token.
+let homeBaked = {};
+try { homeBaked = JSON.parse(fs.readFileSync('home.json', 'utf8')); } catch (e) { console.log('no home.json: Home covers will load from the backend'); }
 const boot = `<script>(function(){if(/^www\\./.test(location.hostname)){location.replace(location.href.replace('//www.','//'));return}var q=new URLSearchParams(location.search),c=x=>String(x||'').replace(/[^A-Za-z0-9]/g,'').slice(0,64),ls=function(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}};
 var k=c(q.get('k'))||c(ls('sv_owner_key')),s=c(q.get('s'));if(q.get('k')){ls('sv_owner_key',k);history.replaceState(null,'',location.pathname)}
 var pub=!k&&!s;if(pub)s=${JSON.stringify(cfg.publicToken.replace(/[^A-Za-z0-9]/g, ''))};
-window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.api)},pub:pub,site:${JSON.stringify(String(cfg.siteUrl || 'https://' + cfg.domain).replace(/\/$/, ''))}};})();</script>`;
+window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.api)},pub:pub,home:${JSON.stringify(homeBaked).replace(/</g, '\\u003c')},site:${JSON.stringify(String(cfg.siteUrl || 'https://' + cfg.domain).replace(/\/$/, ''))}};})();</script>`;
 let page = raw.slice(0, a).replace('window.SV_BOOT = __SV_BOOT__;', '') + `<script src="/app.js?v=${build}" onerror="svAppFailed()"></script>` + raw.slice(b + 9);
 page = page.replace(/<script>window\.SV_BOOT = __SV_BOOT__;<\/script>/, '');
 // boot must run before app.js: put it right before the app script tag
@@ -37,7 +39,8 @@ const shareTags = '<meta name="description" content="' + attr(cfg.description) +
   + '<meta name="twitter:title" content="' + attr(cfg.shareTitle || cfg.siteName) + '">\n<meta name="twitter:description" content="' + attr(cfg.description) + '">\n'
   + '<meta name="twitter:image" content="' + siteUrl + '/og-image.jpg">';
 // Open the connection to Google early: the library comes from there, and the handshake is otherwise paid after the app code loads.
-const preconnect = '<link rel="preconnect" href="https://script.google.com" crossorigin>\n<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>';
+const preload = homeBaked.single && /^\/home-covers\/[A-Za-z0-9_.-]+$/.test(homeBaked.single.src) ? '<link rel="preload" as="image" href="' + homeBaked.single.src + '" fetchpriority="high">\n' : '';
+const preconnect = preload + '<link rel="preconnect" href="https://script.google.com" crossorigin>\n<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>';
 page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<meta name="theme-color" content="#151318">\n' + preconnect + '\n' + iconLinks + '\n' + shareTags);
 // Crawlable text: the app draws everything in the browser, so give crawlers that don't run it a plain-text version. The app replaces it as soon as it starts.
 const releases = JSON.parse(fs.readFileSync('releases.json', 'utf8'));   // refresh with: node tools/updatereleases.js
@@ -66,6 +69,7 @@ for (const f of fs.readdirSync('dist')) {
 fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n'
   + ['/home-bg-hd.mp4', '/home-bg-hd-poster.jpg', '/press-img/*', '/photos/*', '/og-image.jpg', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
   + '/fonts/*\n  Cache-Control: public, max-age=2592000\n'
+  + '/home-covers/*\n  Cache-Control: public, max-age=31536000, immutable\n'
   + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Strict-Transport-Security: max-age=15552000\n');
 // Old Wix addresses -> new ones (permanent redirects). Real files in dist/ (join, shows, privacy-policy, roadto100shows) are not listed.
 const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault/2019-soulless'], ['/riseofthelost', '/vault/2025-rise-of-the-lost'],
