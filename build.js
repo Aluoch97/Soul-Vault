@@ -63,9 +63,10 @@ for (const f of fs.readdirSync('dist')) {
   let h = fs.readFileSync('dist/' + f, 'utf8');
   if (!/rel=["']icon["']/.test(h) && h.includes('</head>')) fs.writeFileSync('dist/' + f, h.replace('</head>', iconLinks + '\n</head>'));
 }
-// Big files that rarely change are kept by the browser for a day (fonts, a week); app.js stays at 5 minutes so updates show up quickly.
-fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n/home-bg.mp4\n  Cache-Control: public, max-age=86400\n/home-bg-poster.jpg\n  Cache-Control: public, max-age=86400\n'
-  + '/fonts/*\n  Cache-Control: public, max-age=604800\n/press-img/*\n  Cache-Control: public, max-age=86400\n/photos/*\n  Cache-Control: public, max-age=86400\n'
+// Big files that rarely change are kept by the browser for a week (fonts, 30 days); app.js stays at 5 minutes so updates show up quickly. If you replace a picture or video, give it a new file name.
+fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n'
+  + ['/home-bg.mp4', '/home-bg-m.mp4', '/home-bg-poster.jpg', '/press-img/*', '/photos/*', '/og-image.jpg', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
+  + '/fonts/*\n  Cache-Control: public, max-age=2592000\n'
   + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n');
 // Old Wix addresses -> new ones (permanent redirects). Real files in dist/ (join, shows, privacy-policy, roadto100shows) are not listed.
 const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault/2019-soulless'], ['/riseofthelost', '/vault/2025-rise-of-the-lost'],

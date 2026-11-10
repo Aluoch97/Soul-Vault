@@ -14,6 +14,8 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
   in the single/project covers when the library arrives; the background video starts only after that (`startHomeVideo`). `SV_BOOT.pub` marks
   "public default visit". The biggest remaining cost is the ~730 KB library JSON from Apps Script (lyrics for 132 songs, 367 versions): next fix is a
   lighter first response in Vault.gs (lyrics on demand). Measure with Lighthouse (mobile) against a local copy of dist/.
+  PageSpeed (live, mobile, Nov 10): Performance 74, others 100; LCP 7.7 s (covers wait for the library), page weight 3.7 MB. Done since: phones get `public/home-bg-m.mp4` (0.6 MB; the 2.5 MB
+  `home-bg.mp4` is for wider screens), no video on 3g or Save-Data, longer cache headers in `build.js` (media 7 days, fonts 30 days; rename a file when you replace it).
 - `site.config.json` — Apps Script URL, public token, site name.
 - Audio streams straight from Google Drive with an API key (Settings tab: `drive_api_key`); covers via `getCover`.
 - The app already has a fetch transport (`runFetch`, `BOOT.api`), so the Apps Script page itself is no longer the host.

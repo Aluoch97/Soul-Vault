@@ -1448,7 +1448,10 @@ function startHomeVideo(v, delay) {
   if (!v || v.dataset.started) return;
   const c = navigator.connection;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')))) { v.parentNode.classList.add('still'); v.remove(); return; }
-  const go = () => { if (v.dataset.started || !v.isConnected) return; v.dataset.started = '1'; v.src = '/home-bg.mp4'; v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+  // Slow cellular (3g or worse): keep the still picture. Phones get a small copy of the video (0.6 MB instead of 2.5 MB).
+  if (c && /(^|-)3g$/.test(c.effectiveType || '')) { v.parentNode.classList.add('still'); v.remove(); return; }
+  const small = matchMedia('(max-width: 820px)').matches;
+  const go = () => { if (v.dataset.started || !v.isConnected) return; v.dataset.started = '1'; v.src = small ? '/home-bg-m.mp4' : '/home-bg.mp4'; v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
   clearTimeout(v._t); v._t = setTimeout(() => (window.requestIdleCallback || (f => f()))(go, { timeout: 1500 }), delay);
 }
 // First visit: draw the parts of Home that need no data (name, Support, sign-up, links, YouTube) right away.
