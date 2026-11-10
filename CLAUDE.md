@@ -21,7 +21,7 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
   (`img`, from `driveThumb_`, kept 6 h as `hcov_<id>`; the `getHome` answer itself is cached 60 s with `bigPut_`/`bigGet_`).
   On a first public visit the app calls it alongside `getShare` and shows the two covers at once (`paintHomeLite`); a tap before the library arrives is remembered (`S.pendingRel`) and opens when it does. Measure with Lighthouse (mobile) against a local copy of dist/.
   PageSpeed (live, mobile, Nov 10): Performance 74, others 100; LCP 7.7 s (covers wait for the library), page weight 3.7 MB. Done since: no video on 3g or Save-Data, longer cache headers in `build.js` (media 7 days, fonts 30 days; rename a file when you replace it).
-  The background video `public/home-bg.mp4` is only 854x480 at ~170 kbps (the file taken from the Wix site), so it looks soft on big screens; a small 426 px phone copy was tried and removed (too soft). For a sharper background, replace it with a higher-resolution original (720p or 1080p, no sound, H.264, under ~6 MB) under a new file name.
+  The background video is `public/home-bg-hd.mp4` (1280x720, 24 fps, no sound, 90 s, 5.1 MB) cut from the "smoky blues" music video starting at 0:17, with `public/home-bg-hd-poster.jpg`. It replaced an 854x480 clip from the Wix site. When you replace a picture or video, give it a new file name (the browser keeps media for 7 days).
 - `site.config.json` — Apps Script URL, public token, site name.
 - Audio streams straight from Google Drive with an API key (Settings tab: `drive_api_key`); covers via `getCover`.
 - The app already has a fetch transport (`runFetch`, `BOOT.api`), so the Apps Script page itself is no longer the host.
