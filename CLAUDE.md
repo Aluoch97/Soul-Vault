@@ -66,8 +66,8 @@ width, edit that block. The sidebar code in `renderChrome` is still there but hi
 ## Search and crawlers
 Every page sets its own `<link rel="canonical">` (`setCanonical`, using `SV_BOOT.site` = `siteUrl`). An address nobody made (not a tab or release) still shows Home, but gets `<meta name="robots" content="noindex">` and no canonical until the visitor moves on (`parseRoute().unknown`, `setRobots`). Pages cannot send a real 404 for these because of the single-page fallback.
 `join.html` now has a title, description and canonical. `_headers` also sends HSTS (6 months, this domain only, no subdomains).
-`build.js` writes `dist/sitemap.xml` and `dist/robots.txt` (using `siteUrl`) and adds a hidden plain-text block (site name, tagline, links to every page and the 8 main releases)
-inside `<main id="main">` of index.html; the app replaces it when it starts. To add a release to the sitemap/text, add it to the `releases` list in `build.js`.
+`build.js` writes `dist/sitemap.xml` and `dist/robots.txt` (using `siteUrl`) and adds a hidden plain-text block (site name, tagline, links to every page and every open release)
+inside `<main id="main">` of index.html; the app replaces it when it starts. The release list comes from `releases.json` (27 open releases, sealed ones skipped). After you add or seal a release, run `node tools/updatereleases.js` (reads the public link only), commit `releases.json`, and deploy.
 Next for Nick: add soulnicolas.com in Google Search Console and submit `/sitemap.xml`.
 
 ## Cloudflare Pages deploy (same as app.nrnszn.com)
