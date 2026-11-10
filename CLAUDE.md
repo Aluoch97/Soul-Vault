@@ -9,6 +9,11 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
 - `apps-script/` — the backend, unchanged: `Vault.gs`, `MusicVaultImporter.gs`, `Lame.html`. Lives in Nick's Apps Script
   project (Sheet "Music Vault" + Drive). Deployed as a web app; the site talks to it with `fetch` POST (`doPost`, whitelisted list).
 - `build.js` — turns `src/App.html` into `dist/` (index.html, app.js, lame.js). `node build.js`. Deploy `dist/`.
+  `package.json` has one dev dependency, esbuild, which minifies app.js (Cloudflare runs `npm install` first; if it is missing the build still works, unminified).
+  Speed notes: on a first visit to the public site Home is drawn at once from `paintHomeShell()` (no library needed) and `fillHomeLatest()` swaps
+  in the single/project covers when the library arrives; the background video starts only after that (`startHomeVideo`). `SV_BOOT.pub` marks
+  "public default visit". The biggest remaining cost is the ~730 KB library JSON from Apps Script (lyrics for 132 songs, 367 versions): next fix is a
+  lighter first response in Vault.gs (lyrics on demand). Measure with Lighthouse (mobile) against a local copy of dist/.
 - `site.config.json` — Apps Script URL, public token, site name.
 - Audio streams straight from Google Drive with an API key (Settings tab: `drive_api_key`); covers via `getCover`.
 - The app already has a fetch transport (`runFetch`, `BOOT.api`), so the Apps Script page itself is no longer the host.

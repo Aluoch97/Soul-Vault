@@ -13,8 +13,8 @@ code = code.replace(lameOld, ": '/lame.js';\n  return lameP");
 // Boot: owner opens /?k=<owner key>; a fan link is /?s=<share token>; everyone else gets the public token.
 const boot = `<script>(function(){var q=new URLSearchParams(location.search),c=x=>String(x||'').replace(/[^A-Za-z0-9]/g,'').slice(0,64),ls=function(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}};
 var k=c(q.get('k'))||c(ls('sv_owner_key')),s=c(q.get('s'));if(q.get('k')){ls('sv_owner_key',k);history.replaceState(null,'',location.pathname)}
-if(!k&&!s)s=${JSON.stringify(cfg.publicToken.replace(/[^A-Za-z0-9]/g, ''))};
-window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.api)}};})();</script>`;
+var pub=!k&&!s;if(pub)s=${JSON.stringify(cfg.publicToken.replace(/[^A-Za-z0-9]/g, ''))};
+window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.api)},pub:pub};})();</script>`;
 let page = raw.slice(0, a).replace('window.SV_BOOT = __SV_BOOT__;', '') + `<script src="/app.js?v=${build}" onerror="svAppFailed()"></script>` + raw.slice(b + 9);
 page = page.replace(/<script>window\.SV_BOOT = __SV_BOOT__;<\/script>/, '');
 // boot must run before app.js: put it right before the app script tag
@@ -36,8 +36,14 @@ const shareTags = '<meta name="description" content="' + attr(cfg.description) +
   + '<meta property="og:image:alt" content="' + attr(cfg.siteName) + ' logo">\n<meta name="twitter:card" content="summary_large_image">\n'
   + '<meta name="twitter:title" content="' + attr(cfg.shareTitle || cfg.siteName) + '">\n<meta name="twitter:description" content="' + attr(cfg.description) + '">\n'
   + '<meta name="twitter:image" content="' + siteUrl + '/og-image.jpg">';
-page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<meta name="theme-color" content="#151318">\n' + iconLinks + '\n' + shareTags);
+// Open the connection to Google early: the library comes from there, and the handshake is otherwise paid after the app code loads.
+const preconnect = '<link rel="preconnect" href="https://script.google.com" crossorigin>\n<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>';
+page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<meta name="theme-color" content="#151318">\n' + preconnect + '\n' + iconLinks + '\n' + shareTags);
 fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recursive: true });
+// Shrink the app code (esbuild is a dev dependency; Cloudflare installs it before building). If it is missing, ship the readable code instead.
+let minified = false;
+try { code = require('esbuild').transformSync(code, { minify: true, target: 'safari15', legalComments: 'none' }).code; minified = true; }
+catch (e) { console.log('minify skipped (' + String(e.message || e).split('\n')[0].slice(0, 80) + ')'); }
 fs.writeFileSync('dist/index.html', page); fs.writeFileSync('dist/app.js', code);
 const lame = fs.readFileSync('apps-script/Lame.html', 'utf8').replace(/^\s*<script[^>]*>/, '').replace(/<\/script>\s*$/, '');
 fs.writeFileSync('dist/lame.js', lame);
@@ -48,5 +54,8 @@ for (const f of fs.readdirSync('dist')) {
   let h = fs.readFileSync('dist/' + f, 'utf8');
   if (!/rel=["']icon["']/.test(h) && h.includes('</head>')) fs.writeFileSync('dist/' + f, h.replace('</head>', iconLinks + '\n</head>'));
 }
-fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n');
-console.log('built dist/ (build ' + build + ', ' + Math.round(code.length / 1024) + ' KB app.js)');
+// Big files that rarely change are kept by the browser for a day (fonts, a week); app.js stays at 5 minutes so updates show up quickly.
+fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n/home-bg.mp4\n  Cache-Control: public, max-age=86400\n/home-bg-poster.jpg\n  Cache-Control: public, max-age=86400\n'
+  + '/fonts/*\n  Cache-Control: public, max-age=604800\n/press/*\n  Cache-Control: public, max-age=86400\n/photos/*\n  Cache-Control: public, max-age=86400\n'
+  + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n');
+console.log('built dist/ (build ' + build + ', ' + Math.round(code.length / 1024) + ' KB app.js' + (minified ? ', minified' : ', NOT minified') + ')');
