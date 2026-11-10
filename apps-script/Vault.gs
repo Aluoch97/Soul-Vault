@@ -14,7 +14,7 @@ const VAULT_DL = 'https://drive.google.com/uc?export=download&id=';
 
 /* ───────────────────────── Page ───────────────────────── */
 
-const SV_BUILD = '67';
+const SV_BUILD = '68';
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -322,18 +322,27 @@ function getHome(token) {
   const s = findShare_(token);
   if (!s) return { error: 'This link has expired or been turned off. Ask the person who sent it for a new one.' };
   if (s.target_type !== 'all') return { picks: {} };
-  const cache = CacheService.getScriptCache(), ck = 'home1_all', hit = cache.get(ck);
-  if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  const hit = bigGet_('home1_all');
+  if (hit) return hit;
   const now = new Date(), today = Utilities.formatDate(now, 'UTC', 'yyyy-MM-dd');
   const key = function (r) { const d = String(dateOnly_(r.release_date) || ''); return /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : String(r.year || 0) + '-00-00'; };
   const list = readTable_('Releases').filter(function (r) {
     return r.hidden !== true && !isLocked_(r, now) && !(r.unreleased === true || String(r.unreleased) === 'true') && key(r) <= today;
   }).sort(function (a, b) { return key(b).localeCompare(key(a)) || String(a.title).localeCompare(String(b.title)); });
   const kind = function (r) { return ['Deluxe', 'B-Sides'].indexOf(r.type) > -1 || !r.type ? 'Album' : r.type; };
-  const pick = function (r) { return r ? { release_id: r.release_id, title: r.title, cover_file_id: r.cover_file_id, thumb: r.cover_thumb || '' } : null; };
+  // A sharp 420 px cover (the Home cover is about 380 px wide on a phone; a tiny thumbnail would be stretched and the browser would wait for the big one). Kept 6 hours.
+  const cache = CacheService.getScriptCache();
+  const sharp = function (id) {
+    if (!id) return '';
+    const hk = 'hcov_' + id, got = cache.get(hk);
+    if (got) return got;
+    const img = driveThumb_(id, 420);
+    if (img && img.length < 95000) cache.put(hk, img, 21600);
+    return img;
+  };
+  const pick = function (r) { if (!r) return null; const img = sharp(r.cover_file_id); return { release_id: r.release_id, title: r.title, cover_file_id: r.cover_file_id, img: img, thumb: img ? '' : (r.cover_thumb || '') }; };
   const out = { picks: { single: pick(list.filter(function (r) { return kind(r) === 'Single'; })[0]), project: pick(list.filter(function (r) { return kind(r) !== 'Single'; })[0]) } };
-  const json = JSON.stringify(out);
-  if (json.length < 90000) cache.put(ck, json, 60);
+  bigPut_('home1_all', out, 60);
   return out;
 }
 
@@ -1931,7 +1940,7 @@ function dropRows_(name, rows) {
 }
 function scopeKeys_() {
   const rows = sheetRows_('Shares'), keys = rows.map(function (x) { return 'scope_' + x.token; });
-  keys.push('gs1_all_all_n', 'home1_all');
+  keys.push('gs1_all_all_n', 'home1_all_n');
   rows.forEach(function (x) { keys.push('gs1_' + x.target_type + '_' + x.target_id + '_n'); });
   return keys;
 }

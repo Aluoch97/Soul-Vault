@@ -23,7 +23,7 @@ const denied=r=>r.ok===false; const gotData=r=>r.ok===true&&r.result&&!r.result.
  else {
   const relIds=new Set((d.releases||[]).filter(x=>!x.locked).map(x=>x.release_id)), ids=['single','project'].map(k=>gh.picks&&gh.picks[k]&&gh.picks[k].release_id).filter(Boolean);
   add('13 getHome with the public link','only open releases',gotData(r)&&ids.length>0&&ids.every(i=>relIds.has(i)),'picks: '+ids.join(', '));
-  add('13 getHome sends nothing but covers','few fields',gotData(r)&&['single','project'].every(k=>!gh.picks[k]||Object.keys(gh.picks[k]).sort().join()==='cover_file_id,release_id,thumb,title'),'fields checked');
+  add('13 getHome sends nothing but covers','few fields',gotData(r)&&['single','project'].every(k=>!gh.picks[k]||Object.keys(gh.picks[k]).sort().join()==='cover_file_id,img,release_id,thumb,title'),'fields checked');
   r=await call('getHome',TOK.toUpperCase()); add('13 getHome with a CAPITALS link','refused',!gotData(r),String(r.error||r.result&&r.result.error||'').slice(0,60));
   r=await call('getHome',''); add('13 getHome with an empty link','refused',!gotData(r),String(r.error||r.result&&r.result.error||'').slice(0,60));
  }
