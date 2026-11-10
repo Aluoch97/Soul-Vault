@@ -1,0 +1,7 @@
+{
+  "name": "soul-vault-site",
+  "private": true,
+  "description": "soulnicolas.com: Soul Vault as the website. Build: node build.js (output: dist/).",
+  "scripts": { "build": "node build.js" },
+  "devDependencies": { "esbuild": "^0.25.0" }
+}
