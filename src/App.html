@@ -695,6 +695,7 @@
   .sealart { overflow: hidden; border-radius: var(--r-art); }
   .sealart .art { filter: blur(14px) saturate(1.2) brightness(.65); transform: scale(1.08); }
   .sealart .lock svg { width: 48px; height: 48px; }
+  .art.sealedcov { filter: blur(9px) saturate(1.2) brightness(.65); clip-path: inset(0 round 12px); }
   .cdown { display: grid; gap: 2px; margin-top: 10px; }
   .cdown .cl { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: rgba(246,243,239,.75); }
   .cdown .cv { font: 800 clamp(28px, 5vw, 44px)/1.05 var(--serif); font-variant-numeric: tabular-nums; }
@@ -3799,6 +3800,7 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .stitle { font: 400 18px var(--serif); } .stitle b { font-weight: 800; }
   .sparts { list-style: none; margin: 0; padding: 0 0 4px; display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
   .sparts::-webkit-scrollbar { display: none; }
+  .sparts > li { flex: 0 0 116px; width: 116px; }   /* the width belongs on the list item, or a loaded cover stretches the tile to the picture's size */
   .spart { flex: 0 0 116px; display: grid; gap: 3px; text-align: left; padding: 6px; border-radius: 14px; background: rgba(0,0,0,.25); border: 1px solid transparent; }
   .spart:hover { background: rgba(0,0,0,.4); }
   .spart.cur { border-color: var(--green-hi); background: rgba(8,122,59,.25); }
@@ -3856,6 +3858,8 @@ function partSub(p) {
   if (!OWNER && p.locked) return 'Unlocks ' + whenLabel(p.unlock_at);
   return String(p.year || '');
 }
+// A sealed part's cover is blurred everywhere fans can see it (same look as the sealed page and the "coming attractions" card).
+const sealedCov = p => (!OWNER && p && p.locked) ? ' sealedcov' : '';
 function seriesPanel(r) {
   const name = seriesOf(r); if (!name) return '';
   const parts = seriesParts(name), i = parts.findIndex(p => p.release_id === r.release_id);
@@ -3866,7 +3870,7 @@ function seriesPanel(r) {
       <span class="cs">${parts.length === 1 ? '1 part so far' : parts.length + ' parts'}</span></div>
     <ol class="sparts">${parts.map(p => `<li><button class="spart${p.release_id === r.release_id ? ' cur' : ''}" data-rel="${esc(p.release_id)}"${p.release_id === r.release_id ? ' aria-current="true"' : ''}
         aria-label="${esc((partLabel(p) ? partLabel(p) + ': ' : '') + p.title)}${p.locked && !OWNER ? ', sealed' : ''}">
-      <span class="sart"><img class="art" data-cover="${esc(p.cover_file_id)}" alt="">${!OWNER && p.locked ? `<span class="lock">${I.lock}</span>` : ''}</span>
+      <span class="sart"><img class="art${sealedCov(p)}" data-cover="${esc(p.cover_file_id)}" alt="">${!OWNER && p.locked ? `<span class="lock">${I.lock}</span>` : ''}</span>
       ${partLabel(p) ? `<span class="sp">${esc(partLabel(p))}</span>` : ''}<span class="st">${esc(p.title)}</span>
       <span class="cs">${esc(partSub(p))}</span>${OWNER && hidden(p) ? '<span class="hid">Hidden from fans</span>' : ''}</button></li>`).join('')}</ol>
     ${prev || next ? `<div class="snav">${prev ? `<button class="pill soft" data-rel="${esc(prev.release_id)}">${I.back}${esc(partLabel(prev) || prev.title)}</button>` : ''}
@@ -3886,7 +3890,7 @@ function seriesRow() {
     <div class="hrow">${cards.map(({ n, parts }) => {
       const years = parts.map(p => Number(p.year)).filter(Boolean), span = years.length ? (Math.min(...years) === Math.max(...years) ? Math.min(...years) : Math.min(...years) + '–' + Math.max(...years)) : '';
       return `<button class="scard" data-series="${esc(n)}" aria-label="${esc(n)}, ${parts.length} parts. Tap to play the whole series or choose a project">
-        <div class="fan" aria-hidden="true">${parts.slice(0, 4).map((p, k) => `<img class="art" data-cover="${esc(p.cover_file_id)}" alt="" style="left:${k * 52}px;z-index:${10 - k}">`).join('')}</div>
+        <div class="fan" aria-hidden="true">${parts.slice(0, 4).map((p, k) => `<img class="art${sealedCov(p)}" data-cover="${esc(p.cover_file_id)}" alt="" style="left:${k * 52}px;z-index:${10 - k}">`).join('')}</div>
         <div><div class="nm">${esc(n)}</div><div class="cs">${parts.length} parts${span ? ' · ' + span : ''}</div></div>
         <div class="chips">${parts.map(p => `<span class="chip">${esc(partLabel(p) ? partLabel(p) + ': ' + p.title : p.title)}${!OWNER && p.locked ? ' 🔒' : ''}</span>`).join('')}</div>
       <span class="serhint">Tap to play or choose</span></button>`; }).join('')}</div>`;
@@ -5484,7 +5488,7 @@ function openSeriesChooser(name) {
   $('#modal').innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <h2 id="mTitle">${esc(name)}</h2><p class="cs">${parts.length} parts. Play the whole series in order, or pick one project.</p>
     <button class="pill main serall" data-ser-all="${esc(name)}"${n ? '' : ' disabled'}>${I.play}Play the whole series</button>
-    <ol class="serparts" aria-label="Projects in ${esc(name)}">${parts.map(p => `<li><div class="sp"><img class="art" data-cover="${esc(p.cover_file_id)}" alt="">
+    <ol class="serparts" aria-label="Projects in ${esc(name)}">${parts.map(p => `<li><div class="sp"><img class="art${sealedCov(p)}" data-cover="${esc(p.cover_file_id)}" alt="">
       <div style="min-width:0"><div class="st">${esc((partLabel(p) ? partLabel(p) + ': ' : '') + p.title)}</div><div class="cs">${esc(partSub(p))}</div></div>
       ${can(p) ? `<button class="pill soft" data-ser-play="${esc(p.release_id)}" aria-label="Play ${esc(p.title)}">${I.play}Play</button>` : ''}
       <button class="pill soft" data-ser-open="${esc(p.release_id)}" aria-label="${can(p) ? 'Open ' : 'See the countdown for '}${esc(p.title)}">${can(p) ? 'Open' : 'Countdown'}</button></div></li>`).join('')}</ol>
