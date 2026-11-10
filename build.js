@@ -40,9 +40,8 @@ const shareTags = '<meta name="description" content="' + attr(cfg.description) +
 const preconnect = '<link rel="preconnect" href="https://script.google.com" crossorigin>\n<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>';
 page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<meta name="theme-color" content="#151318">\n' + preconnect + '\n' + iconLinks + '\n' + shareTags);
 // Crawlable text: the app draws everything in the browser, so give crawlers that don't run it a plain-text version. The app replaces it as soon as it starts.
-const releases = [['Rise of the Lost', '2025-rise-of-the-lost'], ['Cause It Feels Good EP', '2024-cause-it-feels-good-ep'], ['soulSEARCHING', '2022-soulsearching'],
-  ['Jambo Jacque Tesphaye', '2022-jambo-jacque-tesphaye'], ['Surviving the NuWorld (BLUU REDD)', '2020-bluu-redd'], ['A Love Letter to Cali EP', '2020-a-love-letter-to-cali-ep'],
-  ['soulLESS', '2019-soulless'], ['Trouble in Paradise', '2018-trouble-in-paradise']];
+const releases = JSON.parse(fs.readFileSync('releases.json', 'utf8'));   // refresh with: node tools/updatereleases.js
+if (!Array.isArray(releases) || !releases.length) throw new Error('releases.json is empty; run node tools/updatereleases.js');
 const pages = [['Vault: the music', '/vault'], ['Tour: upcoming shows', '/tour'], ['Road to 100 Shows', '/tour/road-to-100'], ['Press', '/press'], ['Press videos', '/press/video'], ['Lore: bio and story', '/lore'], ['Join the Soul Tribe', '/join'], ['Privacy policy', '/privacy-policy']];
 const seo = '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"><h1>' + attr(cfg.siteName) + '</h1><p>' + attr(cfg.description) + '</p><nav><ul>'
   + pages.map(p => '<li><a href="' + p[1] + '">' + attr(p[0]) + '</a></li>').join('') + releases.map(r => '<li><a href="/vault/' + r[1] + '">' + attr(r[0]) + '</a></li>').join('') + '</ul></nav></div>';
