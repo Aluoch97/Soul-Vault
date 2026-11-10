@@ -671,7 +671,10 @@ footer{
 }
 .share-btn:active{ transform:scale(0.98); }
 .share-btn[disabled]{ opacity:0.6; }
+/* Inside the app (Tour tab): keep the end of the page clear of the tab bar so nothing is hidden behind it */
+html.embedded body{ padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
 </style>
+<script>try{ if(window.top!==window.self) document.documentElement.className+=' embedded'; }catch(e){ document.documentElement.className+=' embedded'; }</script>
 </head>
 <body>
 

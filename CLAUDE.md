@@ -36,6 +36,11 @@ Home, Vault, Tour, Press, Lore: same five on the sidebar (desktop) and bottom ta
 The internal nav id `vault` still means the owner's Settings screen. Strangers and fan links open on Home; the owner opens on the Vault.
 Static pages in `public/`: `roadto100shows.html` (tour tracker, reads a Google Sheet), `join.html` (fan sign-up, posts to the soulMATES Apps Script).
 
+## Loading and videos
+No loading screen: `<main id="main">` starts empty (build.js adds the hidden crawler text). A first public visit draws Home at once; other first visits show the tab bar and grey blocks (`paintSkeleton`) until the data arrives.
+YouTube videos on Home and Press play inside the page (`wireYt`: the picture turns into the youtube-nocookie player on tap). The privacy policy says so.
+The Road to 100 page (`public/roadto100shows.html`) adds `html.embedded` when it is inside the Tour tab and keeps 96 px free at the bottom so the tab bar never covers its end; the Tour tab keeps `--tabh` in step with the tab bar (ResizeObserver).
+
 ## Tab addresses and old links
 Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
 `/vault/<release>` (release id without `rel_`, `_` becomes `-`, e.g. `/vault/2019-soulless`), `/tour`, `/tour/road-to-100`, `/press`, `/press/video`, `/lore`.

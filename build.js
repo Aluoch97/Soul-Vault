@@ -48,8 +48,8 @@ if (!Array.isArray(releases) || !releases.length) throw new Error('releases.json
 const pages = [['Vault: the music', '/vault'], ['Tour: upcoming shows', '/tour'], ['Road to 100 Shows', '/tour/road-to-100'], ['Press', '/press'], ['Press videos', '/press/video'], ['Lore: bio and story', '/lore'], ['Join the Soul Tribe', '/join'], ['Privacy policy', '/privacy-policy']];
 const seo = '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"><h1>' + attr(cfg.siteName) + '</h1><p>' + attr(cfg.description) + '</p><nav><ul>'
   + pages.map(p => '<li><a href="' + p[1] + '">' + attr(p[0]) + '</a></li>').join('') + releases.map(r => '<li><a href="/vault/' + r[1] + '">' + attr(r[0]) + '</a></li>').join('') + '</ul></nav></div>';
-if (!page.includes('</div></main>')) throw new Error('index.html: </main> not found, cannot add crawlable text');
-page = page.replace('</div></main>', '</div>' + seo + '</main>');
+if (!page.includes('<main id="main"></main>')) throw new Error('index.html: empty <main id="main"> not found, cannot add crawlable text');
+page = page.replace('<main id="main"></main>', '<main id="main">' + seo + '</main>');
 fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recursive: true });
 // Shrink the app code (esbuild is a dev dependency; Cloudflare installs it before building). If it is missing, ship the readable code instead.
 let minified = false;
