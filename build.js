@@ -14,7 +14,7 @@ code = code.replace(lameOld, ": '/lame.js';\n  return lameP");
 const boot = `<script>(function(){if(/^www\\./.test(location.hostname)){location.replace(location.href.replace('//www.','//'));return}var q=new URLSearchParams(location.search),c=x=>String(x||'').replace(/[^A-Za-z0-9]/g,'').slice(0,64),ls=function(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}};
 var k=c(q.get('k'))||c(ls('sv_owner_key')),s=c(q.get('s'));if(q.get('k')){ls('sv_owner_key',k);history.replaceState(null,'',location.pathname)}
 var pub=!k&&!s;if(pub)s=${JSON.stringify(cfg.publicToken.replace(/[^A-Za-z0-9]/g, ''))};
-window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.api)},pub:pub};})();</script>`;
+window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.api)},pub:pub,site:${JSON.stringify(String(cfg.siteUrl || 'https://' + cfg.domain).replace(/\/$/, ''))}};})();</script>`;
 let page = raw.slice(0, a).replace('window.SV_BOOT = __SV_BOOT__;', '') + `<script src="/app.js?v=${build}" onerror="svAppFailed()"></script>` + raw.slice(b + 9);
 page = page.replace(/<script>window\.SV_BOOT = __SV_BOOT__;<\/script>/, '');
 // boot must run before app.js: put it right before the app script tag
@@ -67,7 +67,7 @@ for (const f of fs.readdirSync('dist')) {
 fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n'
   + ['/home-bg.mp4', '/home-bg-m.mp4', '/home-bg-poster.jpg', '/press-img/*', '/photos/*', '/og-image.jpg', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
   + '/fonts/*\n  Cache-Control: public, max-age=2592000\n'
-  + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n');
+  + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Strict-Transport-Security: max-age=15552000\n');
 // Old Wix addresses -> new ones (permanent redirects). Real files in dist/ (join, shows, privacy-policy, roadto100shows) are not listed.
 const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault/2019-soulless'], ['/riseofthelost', '/vault/2025-rise-of-the-lost'],
   ['/causeitfeelsgood', '/vault/2024-cause-it-feels-good-ep'], ['/soulsearching', '/vault/2022-soulsearching'], ['/troubleinparadise', '/vault/2018-trouble-in-paradise'],

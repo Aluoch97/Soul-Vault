@@ -1263,6 +1263,7 @@ async function init() {
   $$('[data-ctl="close"]').forEach(b => b.innerHTML = I.down);
   setToggle(false);
   watchStall();
+  setRobots(parseRoute().unknown);
   try {
     if (BOOT.token) {
       const cached = libCacheGet();
@@ -1317,7 +1318,7 @@ function parseRoute() {
   if (p[0] === 'tour') return { v: 'tour', tab: p[1] === 'road-to-100' ? 'road' : 'shows' };
   if (p[0] === 'press') return { v: 'press', tab: p[1] === 'video' ? 'video' : 'articles' };
   if (p[0] === 'lore') return { v: 'lore' };
-  return { v: 'home' };
+  return { v: 'home', unknown: p.length > 0 };   // an address nobody made: show Home, but tell search engines not to index it
 }
 function pathFor() {
   const v = S.view;
@@ -1329,9 +1330,23 @@ function pathFor() {
   if (v === 'lore') return '/lore';
   return null;   // owner screens (settings, share links, insights) have no address
 }
+// Search engines: unknown addresses get "noindex"; every page names its own address as canonical.
+function setRobots(on) {
+  let m = document.querySelector('meta[name="robots"]');
+  if (on && !m) { m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex'; document.head.appendChild(m); }
+  else if (!on && m && m.content === 'noindex') m.remove();
+}
+function setCanonical(p) {
+  let l = document.querySelector('link[rel="canonical"]');
+  if (document.querySelector('meta[name="robots"][content="noindex"]')) { if (l) l.remove(); return; }   // an unknown address names no canonical
+  if (!l) { l = document.createElement('link'); l.rel = 'canonical'; document.head.appendChild(l); }
+  l.href = String(BOOT.site || location.origin).replace(/\/$/, '') + (p === '/' ? '/' : p);
+}
 function syncUrl() {
   if (!OWNER && !document.body.classList.contains('club-mode')) return;   // single-release share links keep their own address
   const p = pathFor(); if (!p) return;
+  if (S.urlInit && location.pathname !== p) setRobots(false);   // the visitor moved on from an unknown address
+  setCanonical(p);
   const r = S.lib && S.view === 'release' ? rel(S.releaseId) : null;
   const names = { home: '', library: 'Vault', tour: 'Tour', press: 'Press', lore: 'Lore' };
   S.siteName = S.siteName || document.title.split(' | ')[0] || 'Nicólas Soul';
@@ -1341,6 +1356,7 @@ function syncUrl() {
   S.urlInit = true;
 }
 function routeTo(r) {
+  setRobots(!!r.unknown);
   S.fromPop = true;
   try {
     if (r.v === 'tour') { S.tourTab = r.tab; renderTour(); }
