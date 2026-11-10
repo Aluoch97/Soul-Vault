@@ -338,11 +338,11 @@
   .homepg { position: relative; z-index: 1; }
   .homepg .herot, .homepg .herop, .homepg .eyebrow { text-shadow: 0 2px 18px rgba(0,0,0,.55); }
   /* Support button */
-  .support { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: min(420px, 100%); margin: 20px auto 0; padding: 0 12px 0 26px; min-height: 58px;
-             border-radius: 999px; background: #3f8f2e; color: #fff; text-decoration: none; font-weight: 700; font-size: 13px; letter-spacing: .22em; text-transform: uppercase;
-             box-shadow: 0 10px 28px -10px rgba(0,0,0,.7); }
+  .support { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: min(260px, 100%); margin: 16px auto 0; padding: 0 7px 0 18px; min-height: 40px;
+             border-radius: 999px; background: #3f8f2e; color: #fff; text-decoration: none; font-weight: 700; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase;
+             box-shadow: 0 8px 22px -10px rgba(0,0,0,.7); }
   .support:hover { background: #48a336; }
-  .support i { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #3f8f2e; font: 800 22px/1 var(--serif, Georgia, serif); font-style: normal; }
+  .support i { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #3f8f2e; font: 800 16px/1 var(--serif, Georgia, serif); font-style: normal; }
   /* Latest: single, project, feature, video (label under each, like the website) */
   .latest { margin: 34px 0 10px; }
   .lathead { margin: 0 0 6px; font: 800 clamp(38px, 11vw, 60px)/1 var(--sans, inherit); letter-spacing: .2em; text-transform: uppercase; text-indent: .2em; text-shadow: 0 3px 20px rgba(0,0,0,.6); }
@@ -361,6 +361,17 @@
          border: 1px solid var(--line); text-decoration: none; font-size: 11px; } .soc:hover { background: rgba(255,255,255,.14); } .soc svg { width: 24px; height: 24px; }
   .sitefoot { margin-top: 26px; }
   .sitefoot a { color: inherit; }
+  /* Press article cards: picture on top, headline, blurb, publication (like a link preview) */
+  .pcards { display: grid; gap: 18px; margin: 10px 0 26px; max-width: 560px; }
+  .pcard { display: block; background: #000; border: 1px solid rgba(255,255,255,.16); color: inherit; text-decoration: none; overflow: hidden; border-radius: 4px; }
+  .pcard img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #111; }
+  .pbody { padding: 16px 18px 14px; }
+  .ptitle { font-weight: 800; font-size: 19px; line-height: 1.25; }
+  .pdesc { margin: 8px 0 12px; font-size: 15px; line-height: 1.5; color: rgba(246,243,239,.88); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .pfoot { display: flex; align-items: center; gap: 10px; color: var(--dim, #a9a6a1); font-size: 14px; }
+  .pico { flex: none; width: 28px; height: 28px; border-radius: 4px; display: grid; place-items: center; background: #26252b; color: #fff; font-weight: 800; font-size: 14px; }
+  .psrc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pfoot svg { flex: none; width: 18px; height: 18px; opacity: .6; }
   .presslist { list-style: none; margin: 8px 0 18px; padding: 0; display: grid; gap: 8px; max-width: 640px; }
   .presslist a { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.05);
                  border: 1px solid var(--line); color: inherit; text-decoration: none; min-height: 48px; }
@@ -1315,11 +1326,20 @@ const SITE = {
     ['Threads', 'https://www.threads.com/@soulnicolas'],
     ['Facebook', 'https://www.facebook.com/soulnicolas']
   ],
+  // Press articles, newest first. Each card: link, headline, blurb, publication, and a picture saved in /press/ (public/press/<image>.jpg).
   press: [
-    ['Bold Journey', 'Interview', 'https://boldjourney.com/meet-nicolas-soul/'],
-    ['Canvas Rebel', 'Interview', 'https://canvasrebel.com/meet-nicolas-soul/'],
-    ['Nashville Voyager', '2024', 'https://nashvillevoyager.com/interview/rising-stars-meet-nicolas-soul-of-nashville'],
-    ['Nashville Voyager', '2026', 'https://nashvillevoyager.com/interview/nicolas-soul-on-life-lessons-legacy-highlight']
+    { url: 'https://umcworldwide.com/2026/01/14/nicolas-soul-smoky-blues/', image: 'umc', site: 'Underground Music Collective', date: 'Jan 14, 2026',
+      title: "WATCH: Nicólas Soul & Foundation Mecca Catch the 'smoky blues'", desc: 'A weekend trip to the Smoky Mountains has resulted in the latest collaboration between UnderDogs.' },
+    { url: 'https://nashvillevoyager.com/interview/nicolas-soul-on-life-lessons-legacy-highlight', image: 'nv2026', site: 'Nashville Voyager', date: '2026',
+      title: 'Nicólas Soul on Life, Lessons & Legacy', desc: 'Nicólas Soul shared their story and experiences with us recently and you can find our conversation below. Nicólas, so good to connect and we’re excited to share your story and insights with…' },
+    { url: 'https://boldjourney.com/meet-nicolas-soul/', image: 'boldjourney', site: 'Bold Journey Magazine', date: '',
+      title: 'Meet Nicólas Soul', desc: 'We were lucky to catch up with Nicólas Soul recently and have shared our conversation below. Nicólas, so great to be with you and I think a lot of folks are going to benefit from hearing…' },
+    { url: 'https://canvasrebel.com/meet-nicolas-soul/', image: 'canvasrebel', site: 'Canvas Rebel', date: '',
+      title: 'Meet Nicólas Soul', desc: 'We caught up with the brilliant and insightful Nicólas Soul a few weeks ago and have shared our conversation below.' },
+    { url: 'https://nashvillevoyager.com/interview/rising-stars-meet-nicolas-soul-of-nashville', image: 'nv2024', site: 'Nashville Voyager', date: '2024',
+      title: 'Rising Stars: Meet Nicólas Soul of Nashville', desc: 'Today we’d like to introduce you to Nicólas Soul Alright, so thank you so much for sharing your story and insight with our readers. To kick things off, can you tell us a bit about how you…' },
+    { url: 'https://www.buzz-music.com/post/nic%C3%B3las-soul-tells-a-story-with-his-album-soulless', image: 'buzz', site: 'BUZZMUSIC', author: 'Jennifer Gurton', date: 'Feb 7, 2020',
+      title: 'Nicólas Soul Tells A Story With His Album, “SoulLESS”', desc: 'Nicólas Soul released the thought-provoking album titled “SoulLESS”. When asked about the name of this album, Nicólas Soul explains that the name is based upon two concepts. This album…' }
   ],
   videos: [
     ["Da' Healerz Circle Ep. 5 w/ Special Guest Nicólas Soul", 'fJkff8Er46Q'],
@@ -1406,7 +1426,10 @@ function renderPress() {
   $('#main').innerHTML = `<div class="wrap sitepg">
     <h1 class="page-h" style="padding-left:0"><b>Press</b></h1>
     <h2 class="sh"><span><b>Articles</b></span></h2>
-    <ul class="presslist">${SITE.press.map(p => `<li><a href="${esc(p[2])}" target="_blank" rel="noopener"><span>${esc(p[0])}</span><span class="cs">${esc(p[1])}</span>${I.chev}</a></li>`).join('')}</ul>
+    <div class="pcards">${SITE.press.map(p => `<a class="pcard" href="${esc(p.url)}" target="_blank" rel="noopener">
+      <img src="/press/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()">
+      <div class="pbody"><div class="ptitle">${esc(p.title)}</div><p class="pdesc">${esc(p.desc)}</p>
+        <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">${esc([p.site, p.author, p.date].filter(Boolean).join(' · '))}</span>${I.chev}</div></div></a>`).join('')}</div>
     <h2 class="sh"><span><b>Video</b> interviews</span></h2>
     <div class="vidgrid">${SITE.videos.map(v => `<a class="vid" href="https://www.youtube.com/watch?v=${esc(v[1])}" target="_blank" rel="noopener">
       <span class="thumb"><img src="https://i.ytimg.com/vi/${esc(v[1])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></span><span class="vt">${esc(v[0])}</span></a>`).join('')}</div>
