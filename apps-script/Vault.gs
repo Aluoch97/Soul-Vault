@@ -14,7 +14,7 @@ const VAULT_DL = 'https://drive.google.com/uc?export=download&id=';
 
 /* ───────────────────────── Page ───────────────────────── */
 
-const SV_BUILD = '66';
+const SV_BUILD = '67';
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -314,6 +314,27 @@ function bigGet_(key) {
     const txt = Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(b64), 'application/x-gzip', 'x.gz')).getDataAsString();
     return JSON.parse(txt);
   } catch (e) { return null; }
+}
+
+// Just what the first screen of Home needs: the newest single and the newest project (same rule as the app's Home), with small cover pictures.
+// Fast because it reads only the Releases sheet and is kept for 60 s. Only the fan-club / public link gets an answer; the full library follows separately.
+function getHome(token) {
+  const s = findShare_(token);
+  if (!s) return { error: 'This link has expired or been turned off. Ask the person who sent it for a new one.' };
+  if (s.target_type !== 'all') return { picks: {} };
+  const cache = CacheService.getScriptCache(), ck = 'home1_all', hit = cache.get(ck);
+  if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  const now = new Date(), today = Utilities.formatDate(now, 'UTC', 'yyyy-MM-dd');
+  const key = function (r) { const d = String(dateOnly_(r.release_date) || ''); return /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : String(r.year || 0) + '-00-00'; };
+  const list = readTable_('Releases').filter(function (r) {
+    return r.hidden !== true && !isLocked_(r, now) && !(r.unreleased === true || String(r.unreleased) === 'true') && key(r) <= today;
+  }).sort(function (a, b) { return key(b).localeCompare(key(a)) || String(a.title).localeCompare(String(b.title)); });
+  const kind = function (r) { return ['Deluxe', 'B-Sides'].indexOf(r.type) > -1 || !r.type ? 'Album' : r.type; };
+  const pick = function (r) { return r ? { release_id: r.release_id, title: r.title, cover_file_id: r.cover_file_id, thumb: r.cover_thumb || '' } : null; };
+  const out = { picks: { single: pick(list.filter(function (r) { return kind(r) === 'Single'; })[0]), project: pick(list.filter(function (r) { return kind(r) !== 'Single'; })[0]) } };
+  const json = JSON.stringify(out);
+  if (json.length < 90000) cache.put(ck, json, 60);
+  return out;
 }
 
 function createShare(key, o) {
@@ -914,7 +935,7 @@ function doPost(e) {
     addYoutubePlaylistVideos: addYoutubePlaylistVideos, createReleaseFromYoutube: createReleaseFromYoutube, checkYoutube: checkYoutube,
     addCover: addCover, removeCover: removeCover, setMainCover: setMainCover, updateExtra: updateExtra, probeAudio: probeAudio,
     errorSummary: errorSummary, youtubeTitleStatus: youtubeTitleStatus, refreshYoutubeTitles: refreshYoutubeTitles, logListens: logListens, getInsights: getInsights, setTrackCover: setTrackCover, setReleaseBg: setReleaseBg,
-    logClientError: logClientError
+    logClientError: logClientError, getHome: getHome
   };
   let out;
   try {
@@ -1910,7 +1931,7 @@ function dropRows_(name, rows) {
 }
 function scopeKeys_() {
   const rows = sheetRows_('Shares'), keys = rows.map(function (x) { return 'scope_' + x.token; });
-  keys.push('gs1_all_all_n');
+  keys.push('gs1_all_all_n', 'home1_all');
   rows.forEach(function (x) { keys.push('gs1_' + x.target_type + '_' + x.target_id + '_n'); });
   return keys;
 }

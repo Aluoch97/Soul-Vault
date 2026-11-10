@@ -15,7 +15,9 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
   "public default visit". The library JSON from Apps Script was 1.37 MB (738 KB gzip) and took 3.7-5.5 s to build; measured Nov 10: song-cover thumbnails were ~45% of it, lyrics only ~11%.
   Build 66 (Vault.gs): `getShare` no longer sends `track_cover_thumb` (the app fetches song covers on demand with `getCover`), and the finished response is cached for 60 s
   (`bigPut_/bigGet_`, gzip + base64 in pieces under 100 KB; `shareBody_` builds it, `getShare` adds the per-link `share` block). Every place that clears link caches goes through `scopeKeys_()`,
-  which now also clears the response cache; direct edits typed into the Sheet show up within 60 s. Lyrics on demand is still possible later but is a small win. Measure with Lighthouse (mobile) against a local copy of dist/.
+  which now also clears the response cache; direct edits typed into the Sheet show up within 60 s. Lyrics on demand is still possible later but is a small win.
+  Build 67: `getHome(token)` (Vault.gs) returns only the newest single and project (same rule as `homePicks`) with their small cover pictures, from the Releases sheet only, cached 60 s (`home1_all`, cleared by `scopeKeys_()`).
+  On a first public visit the app calls it alongside `getShare` and shows the two covers at once (`paintHomeLite`); a tap before the library arrives is remembered (`S.pendingRel`) and opens when it does. Measure with Lighthouse (mobile) against a local copy of dist/.
   PageSpeed (live, mobile, Nov 10): Performance 74, others 100; LCP 7.7 s (covers wait for the library), page weight 3.7 MB. Done since: phones get `public/home-bg-m.mp4` (0.6 MB; the 2.5 MB
   `home-bg.mp4` is for wider screens), no video on 3g or Save-Data, longer cache headers in `build.js` (media 7 days, fonts 30 days; rename a file when you replace it).
 - `site.config.json` — Apps Script URL, public token, site name.

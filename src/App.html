@@ -919,7 +919,7 @@
   <div class="vdoor" aria-hidden="true"><span class="vb t"></span><span class="vb r"></span><span class="vb b"></span><span class="vb l"></span>
     <span class="vwheel"><i></i><i></i><i></i></span></div>
   <p class="vtext">Entering Vault<span class="vdots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
-  <small id="buildTag" style="opacity:.5">SV build 66</small></div></main>
+  <small id="buildTag" style="opacity:.5">SV build 67</small></div></main>
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <div class="mini" id="mini" hidden>
@@ -1007,7 +1007,7 @@
     var m = document.getElementById('main');
     if (m) m.innerHTML = '<div class="status"><p>Soul Vault could not download its app code from Google.</p>' +
       '<p style="opacity:.75">Check your internet connection. If it keeps happening, make sure the app_url row in the Settings tab is your web app address ending in /exec.</p>' +
-      '<p style="opacity:.5">SV build 66</p></div>';
+      '<p style="opacity:.5">SV build 67</p></div>';
     window.SV_ERRORS.push('download failed');
   };
   window.addEventListener('error', function (e) {
@@ -1017,7 +1017,7 @@
       if (m) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault could not start on this browser.</p>' +
         '<p style="opacity:.8">' + svClean((e && e.message) || 'Unknown error') + '</p>' +
         '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
-        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 66</p></div>';
+        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 67</p></div>';
     }
   });
   setTimeout(function () {
@@ -1025,7 +1025,7 @@
     var m = document.getElementById('main');
     if (m && !window.SV_ERRORS.length) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault did not start. Its code never ran on this browser.</p>' +
       '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
-      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 66 / ' + svClean(navigator.userAgent) + '</p></div>';
+      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 67 / ' + svClean(navigator.userAgent) + '</p></div>';
   }, 15000);
 </script>
 <script>window.SV_BOOT = __SV_BOOT__;</script>
@@ -1269,13 +1269,19 @@ async function init() {
       const show = d => { if (CLUB()) { document.body.classList.add('club-mode'); routeTo(parseRoute()); }
                           else { document.body.classList.add('share-mode'); renderRelease(d.releases[0].release_id); } };
       if (cached && cached.releases && cached.releases.length) { S.lib = normalizeLib(cached); S.share = cached.share; primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; show(cached); }
-      else if (BOOT.pub) { document.body.classList.add('club-mode'); const r0 = parseRoute(); if (r0.v === 'tour' || r0.v === 'press') routeTo(r0); else if (r0.v === 'home') paintHomeShell(); }   // first visit to the public site: show Home now, fill in the covers when the library arrives
+      else if (BOOT.pub) {
+        document.body.classList.add('club-mode'); const r0 = parseRoute(); if (r0.v === 'tour' || r0.v === 'press') routeTo(r0); else if (r0.v === 'home') {
+          paintHomeShell();
+          firstCall('getHome', BOOT.token).then(h => { if (!S.lib && h && h.picks) paintHomeLite(h.picks); }).catch(() => {});   // small and quick: the two covers, before the whole library
+        }
+      }   // first visit to the public site: show Home now, fill in the covers when the library arrives
       let d;
       try { d = await firstCall('getShare', BOOT.token); } catch (e) { if (cached) { S.stale = false; toast("Couldn't refresh. Showing your last copy."); return; } throw e; }
       if (d.error) { libCacheClear(); document.body.classList.add('share-mode'); return empty(d.error); }
       S.lib = normalizeLib(d); S.share = d.share; primeThumbs(); S.streamKey = d.stream_key || ''; S.stale = false; libCacheSet(d);
       if (!d.releases.length) { document.body.classList.add('share-mode'); return empty('There is nothing to play on this link yet.'); }
       if (cached) refreshView(); else show(d);
+      if (S.pendingRel) { const id = S.pendingRel; S.pendingRel = ''; if (rel(id)) renderRelease(id); }   // tapped a cover before the library arrived
     } else if (BOOT.key) {
       const cached = libCacheGet();
       if (cached) { S.lib = normalizeLib(cached); primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; renderChrome(); routeTo(parseRoute()); }
@@ -1429,9 +1435,19 @@ function homePicks() {
 }
 // Until the library arrives, the single and project show a grey placeholder; the rest of Home does not need the library.
 function homeCover(r, label, slot) {
+  if (!S.lib) {   // first visit: getHome may already have sent the two covers (small pictures); the library follows
+    const l = S.homeLite && S.homeLite[slot];
+    if (l && l.thumb) return `<figure class="lat" data-slot="${slot}"><button class="latcover" data-rel="${esc(l.release_id)}" aria-label="Open ${esc(l.title)}">
+      <img src="${esc(l.thumb)}" alt="${esc(l.title)} cover"></button><figcaption class="latlabel">${label}</figcaption></figure>`;
+  }
   if (!S.lib) return `<figure class="lat" data-slot="${slot}"><div class="latcover skel" aria-hidden="true"></div><figcaption class="latlabel">${label}</figcaption></figure>`;
   return r ? `<figure class="lat" data-slot="${slot}"><button class="latcover" data-rel="${esc(r.release_id)}" aria-label="Open ${esc(r.title)}">
       <img data-home-cover="${esc(r.cover_file_id)}" alt="${esc(r.title)} cover"></button><figcaption class="latlabel">${label}</figcaption></figure>` : '';
+}
+// getHome answered before the library: show the two covers now (the library swaps in the full version later).
+function paintHomeLite(p) {
+  S.homeLite = p || {};
+  ['single', 'project'].forEach(slot => { const el = $('.homepg [data-slot="' + slot + '"]'); if (el && S.view === 'home') el.outerHTML = homeCover(null, slot === 'single' ? 'Single' : 'Project', slot); });
 }
 // The library arrived after Home was already on screen: swap in the real covers and leave everything else (video, scroll, a playing video) alone.
 function fillHomeLatest() {
@@ -6624,6 +6640,7 @@ document.addEventListener('click', e => {
   else if ('editCancel' in d) { S.editing = false; renderRelease(S.releaseId); }
   else if ('editSave' in d) saveEdits();
   else if ('coverChange' in d) $('#coverFile').click();
+  else if (d.rel && !S.lib) { S.pendingRel = d.rel; toast('Opening…'); }
   else if (d.rel) renderRelease(d.rel);
   else if (d.play) { const pc = el.closest('[data-plctx]'); playFromTap(d.play, pc ? pc.dataset.plctx : ''); }
   else if (d.share) openShare(d.share, d.id);
