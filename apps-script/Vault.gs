@@ -14,7 +14,7 @@ const VAULT_DL = 'https://drive.google.com/uc?export=download&id=';
 
 /* ───────────────────────── Page ───────────────────────── */
 
-const SV_BUILD = '65';
+const SV_BUILD = '66';
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -239,9 +239,25 @@ function isLocked_(r, now) {
   return !isNaN(t) && t > (now || new Date());
 }
 
+// The big, slow part of getShare is the same for every link that covers the same things (all fan links, the public link).
+// It is built once, squeezed, and kept for 60 s (CacheService, in pieces under 100 KB). Anything wrong with the cache just means it is built the slow way.
 function getShare(token) {
   const s = findShare_(token);
   if (!s) return { error: 'This link has expired or been turned off. Ask the person who sent it for a new one.' };
+  const ck = 'gs1_' + s.target_type + '_' + s.target_id;
+  let out = bigGet_(ck);
+  if (!out) {
+    out = shareBody_(s);
+    let ttl = 60;   // never keep a sealed release past its unlock time
+    (out.releases || []).forEach(function (r) { if (r.locked && r.unlock_at) ttl = Math.min(ttl, Math.max(5, Math.ceil((new Date(r.unlock_at) - new Date()) / 1000))); });
+    bigPut_(ck, out, ttl);
+  }
+  out.share = { target_type: s.target_type, allow_download: s.allow_download === true,
+                fan_name: s.fan_name || '', member_no: Number(s.member_no) || 0, created: s.created || '' };
+  return out;
+}
+
+function shareBody_(s) {
   const sc = shareScope_(s);
   const relOut = function (r, isLockedRel) {
     return { release_id: r.release_id, title: r.title, year: r.year, type: r.type, cover_file_id: r.cover_file_id,
@@ -265,18 +281,39 @@ function getShare(token) {
                features: t.features || '', producer: t.producer || '', engineer: t.engineer || '', bpm: t.bpm || '', key: t.key || '',
                video_url: t.video_url || '', lyrics: t.lyrics || '', voice_note_id: t.voice_note_id || '', chapter: t.chapter || '',
                category: t.category || 'Main', is_single: t.is_single === true,
-               track_cover: t.track_cover || '', track_cover_thumb: t.track_cover_thumb || '',
+               track_cover: t.track_cover || '',
                number_label: String(t.number_label || '').replace(/^'/, ''), genre: t.genre || '', unreleased: t.unreleased === true || String(t.unreleased) === 'true' };
     }),
     versions: sc.versions,
     shares: [],
-    share: { target_type: s.target_type, allow_download: s.allow_download === true,
-             fan_name: s.fan_name || '', member_no: Number(s.member_no) || 0, created: s.created || '' },
     letter: letter_(), newsletter: newsletterUrl_(),
     extras: extrasFor_(sc.releases.reduce(function (m, r) { m[r.release_id] = true; return m; }, {})),
     stream_key: setting_('drive_api_key'), artist_links: artistLinks_(), playlists: playlistsFor_(sc.tracks.reduce(function (m, t) { m[t.track_id] = true; return m; }, {})),
-    artist_bio: bioForShare_(token)
+    artist_bio: s.target_type === 'all' ? setting_('artist_bio') : ''
   };
+}
+
+/* ───────────────────────── Big cache (values over 100 KB, squeezed and split) ───────────────────────── */
+function bigPut_(key, obj, ttl) {
+  try {
+    const gz = Utilities.gzip(Utilities.newBlob(JSON.stringify(obj), 'application/json', 'x.json'));
+    const b64 = Utilities.base64Encode(gz.getBytes()), size = 90000, n = Math.ceil(b64.length / size), put = {};
+    if (n > 40) return;
+    for (let i = 0; i < n; i++) put[key + '_' + i] = b64.substr(i * size, size);
+    put[key + '_n'] = String(n);
+    CacheService.getScriptCache().putAll(put, ttl);
+  } catch (e) {}
+}
+function bigGet_(key) {
+  try {
+    const cache = CacheService.getScriptCache(), n = Number(cache.get(key + '_n')) || 0;
+    if (!n || n > 40) return null;
+    const keys = []; for (let i = 0; i < n; i++) keys.push(key + '_' + i);
+    const got = cache.getAll(keys); let b64 = '';
+    for (let i = 0; i < n; i++) { const p = got[keys[i]]; if (!p) return null; b64 += p; }
+    const txt = Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(b64), 'application/x-gzip', 'x.gz')).getDataAsString();
+    return JSON.parse(txt);
+  } catch (e) { return null; }
 }
 
 function createShare(key, o) {
@@ -567,7 +604,7 @@ function saveTracklist(key, releaseId, releaseTitle, items, releaseHidden, relea
     if (rr && chapterMode === '2') rsh.getRange(rr._row, colOf_(rsh, 'chapter_mode')).setValue("'2");
     if (rr && chapterColors != null) rsh.getRange(rr._row, colOf_(rsh, 'chapter_colors')).setValue(cleanChapterColors_(chapterColors));
     if (rr && chapterMeta != null) rsh.getRange(rr._row, colOf_(rsh, 'chapter_meta')).setValue(cleanChapterMeta_(chapterMeta));
-    CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (s) { return 'scope_' + s.token; }));
+    CacheService.getScriptCache().removeAll(scopeKeys_());
     return true;
   } finally {
     lock.releaseLock();
@@ -951,7 +988,7 @@ function saveWorld(key, releaseId, f) {
     sh.getRange(r._row, colOf_(sh, k)).setValue(textDate ? "'" + vals[k] : vals[k]);
   });
   if (vals.release_date) sh.getRange(r._row, colOf_(sh, 'year')).setValue(Number(vals.release_date.slice(0, 4)));
-  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  CacheService.getScriptCache().removeAll(scopeKeys_());
   const rr = readTable_('Releases').filter(function (x) { return x.release_id === releaseId; })[0];
   const ages = agesFor_(rr);
   vals.age_made = ages.made; vals.age_released = ages.released;
@@ -1026,7 +1063,7 @@ function saveUnlock(key, releaseId, iso) {
     v = d.toISOString();
   }
   sh.getRange(r._row, colOf_(sh, 'unlock_at')).setValue(v);
-  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  CacheService.getScriptCache().removeAll(scopeKeys_());
   return v;
 }
 
@@ -1037,7 +1074,7 @@ function setVoiceNote(key, trackId, fileId) {
   const t = readTable_('Tracks').filter(function (x) { return x.track_id === trackId; })[0];
   if (!t) throw new Error('Song not found.');
   sh.getRange(t._row, colOf_(sh, 'voice_note_id')).setValue(fileId || '');
-  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  CacheService.getScriptCache().removeAll(scopeKeys_());
   return true;
 }
 
@@ -1141,7 +1178,7 @@ function addPhoto(key, releaseId, fileId, caption) {
                 title: String(caption || '').trim().slice(0, 200), description: '', image: '', site: '', file_id: fileId, created: new Date() };
   const sh = ensureHeaders_('Extras');
   sh.appendRow(TABS.Extras.map(function (h) { return row[h]; }));
-  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  CacheService.getScriptCache().removeAll(scopeKeys_());
   try { if (releaseOpenToAll_(releaseId)) ensureLinkOpen_(fileId); } catch (e) {}
   row.created = row.created.toISOString();
   return row;
@@ -1376,7 +1413,7 @@ function setTrackCover(key, trackId, fileId, thumbUrl) {
   const thumb = fileId && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(String(thumbUrl || '')) && thumbUrl.length < 30000 ? thumbUrl : '';
   sh.getRange(t._row, colOf_(sh, 'track_cover')).setValue(fileId || '');
   sh.getRange(t._row, colOf_(sh, 'track_cover_thumb')).setValue(thumb);
-  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  CacheService.getScriptCache().removeAll(scopeKeys_());
   return { fileId: fileId || '', thumb: thumb };
 }
 
@@ -1390,7 +1427,7 @@ function setReleaseBg(key, releaseId, fileId) {
   const r = readTable_('Releases').filter(function (x) { return x.release_id === releaseId; })[0];
   if (!r) throw new Error('Release not found.');
   sh.getRange(r._row, colOf_(sh, 'bg_file_id')).setValue(fileId || '');
-  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  CacheService.getScriptCache().removeAll(scopeKeys_());
   return fileId || '';
 }
 
@@ -1607,7 +1644,7 @@ function saveVideosMeta(key, releaseId, meta) {
   if (!r) throw new Error('Release not found.');
   const v = cleanVideosMeta_(meta);
   sh.getRange(r._row, colOf_(sh, 'videos_meta')).setValue(v);
-  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  CacheService.getScriptCache().removeAll(scopeKeys_());
   return v;
 }
 
@@ -1768,7 +1805,7 @@ function addYoutubeSong(key, o) {
     appendRows_(ss, 'Tracks', [TABS.Tracks.map(function (k) { return vals[k] != null ? vals[k] : ''; })], []);
     const row = ['ver_' + hash_('yt|' + vid + '|' + o.releaseId), trackId, 'YouTube', true, '', 'YOUTUBE', '', 0, '', '', 'Added from YouTube: ' + url, new Date(), false];
     appendRows_(ss, 'Versions', [row], [4]);
-    CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+    CacheService.getScriptCache().removeAll(scopeKeys_());
     return {
       track: { track_id: trackId, release_id: o.releaseId, track_no: no, title: title, category: 'Main', video_url: vals.video_url, hidden: false, artist: '', features: '' },
       version: slimVersions_([{ version_id: row[0], track_id: trackId, label: 'YouTube', is_primary: true, audio_file_id: '', format: 'YOUTUBE', preview_file_id: '', size_mb: 0, duration: '', specs: '', hidden: false }])[0]
@@ -1811,7 +1848,7 @@ function savePlaylist(key, o) {
       const full = Object.assign({ playlist_id: id, created: now }, vals);
       sh.appendRow(head.map(function (h) { return full[h] != null ? full[h] : ''; }));
     }
-    CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+    CacheService.getScriptCache().removeAll(scopeKeys_());
     dropPlaylistCaches_();
     return { playlist_id: id, title: vals.title, description: vals.description, tracks: tracks, fans: vals.fans, updated: now.toISOString() };
   } finally { lock.releaseLock(); }
@@ -1850,7 +1887,7 @@ function uploadCleanCover(key, releaseId, dataUrl, thumbUrl) {
   const thumb = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(String(thumbUrl || '')) && thumbUrl.length < 45000 ? thumbUrl : '';
   rsh.getRange(r._row, colOf_(rsh, 'clean_cover_file_id')).setValue(file.getId());
   rsh.getRange(r._row, colOf_(rsh, 'clean_cover_thumb')).setValue(thumb);
-  CacheService.getScriptCache().removeAll(readTable_('Shares').map(function (x) { return 'scope_' + x.token; }));
+  CacheService.getScriptCache().removeAll(scopeKeys_());
   return { fileId: file.getId(), thumb: thumb };
 }
 // Every song and release gets one reusable public link: returned if it exists, created the first time.
@@ -1871,7 +1908,12 @@ function dropRows_(name, rows) {
   const sh = sheet_(name); if (!sh) return;
   rows.slice().sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { sh.deleteRow(r._row); });   // bottom first, so row numbers stay right
 }
-function scopeKeys_() { return sheetRows_('Shares').map(function (x) { return 'scope_' + x.token; }); }
+function scopeKeys_() {
+  const rows = sheetRows_('Shares'), keys = rows.map(function (x) { return 'scope_' + x.token; });
+  keys.push('gs1_all_all_n');
+  rows.forEach(function (x) { keys.push('gs1_' + x.target_type + '_' + x.target_id + '_n'); });
+  return keys;
+}
 function bioForShare_(token) { const s = findShare_(token); return s && s.target_type === 'all' ? setting_('artist_bio') : ''; }
 
 // Removes songs completely: their versions, comments, share links, and their place in playlists.

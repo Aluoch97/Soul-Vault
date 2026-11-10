@@ -12,8 +12,10 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
   `package.json` has one dev dependency, esbuild, which minifies app.js (Cloudflare runs `npm install` first; if it is missing the build still works, unminified).
   Speed notes: on a first visit to the public site Home is drawn at once from `paintHomeShell()` (no library needed) and `fillHomeLatest()` swaps
   in the single/project covers when the library arrives; the background video starts only after that (`startHomeVideo`). `SV_BOOT.pub` marks
-  "public default visit". The biggest remaining cost is the ~730 KB library JSON from Apps Script (lyrics for 132 songs, 367 versions): next fix is a
-  lighter first response in Vault.gs (lyrics on demand). Measure with Lighthouse (mobile) against a local copy of dist/.
+  "public default visit". The library JSON from Apps Script was 1.37 MB (738 KB gzip) and took 3.7-5.5 s to build; measured Nov 10: song-cover thumbnails were ~45% of it, lyrics only ~11%.
+  Build 66 (Vault.gs): `getShare` no longer sends `track_cover_thumb` (the app fetches song covers on demand with `getCover`), and the finished response is cached for 60 s
+  (`bigPut_/bigGet_`, gzip + base64 in pieces under 100 KB; `shareBody_` builds it, `getShare` adds the per-link `share` block). Every place that clears link caches goes through `scopeKeys_()`,
+  which now also clears the response cache; direct edits typed into the Sheet show up within 60 s. Lyrics on demand is still possible later but is a small win. Measure with Lighthouse (mobile) against a local copy of dist/.
   PageSpeed (live, mobile, Nov 10): Performance 74, others 100; LCP 7.7 s (covers wait for the library), page weight 3.7 MB. Done since: phones get `public/home-bg-m.mp4` (0.6 MB; the 2.5 MB
   `home-bg.mp4` is for wider screens), no video on 3g or Save-Data, longer cache headers in `build.js` (media 7 days, fonts 30 days; rename a file when you replace it).
 - `site.config.json` — Apps Script URL, public token, site name.
