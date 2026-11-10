@@ -1,0 +1,6 @@
+{
+  "api": "PASTE the Apps Script web app URL here (Deploy > Manage deployments); it ends in /exec",
+  "publicToken": "PASTE the public share token here (see CLAUDE.md, Public access)",
+  "siteName": "Nicólas Soul",
+  "domain": "soulnicolas.com"
+}
