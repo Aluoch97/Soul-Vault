@@ -43,7 +43,8 @@ The Road to 100 page (`public/roadto100shows.html`) adds `html.embedded` when it
 
 The Soul Tribe card on Home opens the sign-up form in place (`wireTribe`: `/join?embed=1` in an iframe inside the card, sized to its content; the page adds `html.embedded` so it blends in and hides its back link). `/join` on its own still works.
 The app never redraws a page that is already showing when the library arrives (`show()` skips Tour/Press, `refreshView()` skips Home while `#tribe.open`), so a form being filled in or a playing playlist is not wiped.
-The Road to 100 page has a "Watch the voyage" panel: the YouTube playlist `PLdjhXdodmUqM` ("ROAD TO 100 SHOWS"), picture first, `youtube-nocookie` player only after a tap.
+The Road to 100 page has a "Watch the voyage" panel: the YouTube playlist `PLdjhXdodmUqM` ("ROAD TO 100 SHOWS", 41 videos on Nov 11, 2026). The full list is shown under the player (thumbnail + title rows); tapping a row plays it in the same player (`youtube-nocookie`, only after a tap).
+The list is read live from the YouTube API with the page's website-only key (`YT_API_KEY`, up to 200 videos, private/deleted skipped); if that fails the saved copy in the page (`SAVED`) is shown. Refresh `SAVED` occasionally.
 
 ## Tab addresses and old links
 Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,

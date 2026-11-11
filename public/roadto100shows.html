@@ -678,7 +678,13 @@ footer{
 .pl-thumb img{ width:100%; height:100%; object-fit:cover; display:block; opacity:.92; }
 .pl-thumb i{ position:absolute; left:50%; top:50%; width:62px; height:62px; margin:-31px 0 0 -31px; border-radius:50%; display:grid; place-items:center; background:var(--red); color:#fff; font-style:normal; font-size:22px; padding-left:4px; box-shadow:0 6px 18px rgba(0,0,0,.45); }
 .pl-player{ display:block; width:100%; aspect-ratio:16/9; border:2px solid var(--wood); border-radius:6px; background:#000; }
-.pl-note{ margin:8px 0 2px; text-align:center; font-size:12px; color:var(--muted); }
+.pl-note{ margin:8px 0 6px; text-align:center; font-size:12px; color:var(--muted); }
+.pl-list{ list-style:none; margin:6px 0 0; padding:0; display:grid; gap:6px; }
+.pl-list li button{ display:grid; grid-template-columns:96px 1fr; gap:10px; align-items:center; width:100%; padding:5px; text-align:left; cursor:pointer;
+  border:1px solid var(--locked-line); border-radius:6px; background:rgba(255,255,255,.28); color:var(--ink); font:inherit; font-size:12px; line-height:1.3; }
+.pl-list li button img{ width:96px; height:54px; object-fit:cover; border-radius:4px; background:#000; display:block; }
+.pl-list li.now button{ border-color:var(--wood); background:rgba(158,27,27,.16); font-weight:700; }
+.pl-list li button:focus-visible{ outline:2px solid var(--red); outline-offset:1px; }
 /* Inside the app (Tour tab): keep the end of the page clear of the tab bar so nothing is hidden behind it */
 html.embedded body{ padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
 </style>
@@ -756,17 +762,63 @@ html.embedded body{ padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
     <button type="button" class="pl-thumb" id="plPlay" aria-label="Play the Road to 100 Shows playlist">
       <img src="https://i.ytimg.com/vi/ygF-rGp0ZYU/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i aria-hidden="true">&#9654;</i>
     </button>
-    <p class="pl-note">Every show on one playlist. Tap to play it right here.</p>
+    <p class="pl-note" id="plCount">Every show on one playlist. Tap to play it right here.</p>
+    <ol class="pl-list" id="plList" aria-label="All videos in the playlist"></ol>
   </div>
 
   <script>
-    document.getElementById('plPlay').addEventListener('click', function(){
-      var f = document.createElement('iframe');
-      f.className = 'pl-player'; f.title = 'Road to 100 Shows playlist';
-      f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; web-share'; f.allowFullscreen = true;
-      f.src = 'https://www.youtube-nocookie.com/embed/videoseries?list=PLdjhXdodmUqM&autoplay=1&rel=0&playsinline=1';
-      this.replaceWith(f);
-    });
+    /* The whole playlist, newest first. The list is read live from YouTube (same website-only key as the follower count);
+       if that fails, this saved copy of it is shown instead. Tapping a row plays that video inside the page. */
+    (function(){
+      var PL = 'PLdjhXdodmUqM';
+      var SAVED = [["ygF-rGp0ZYU", "Nicólas Soul - SAIL AWAY! (feat. Aziza Latrece) (Official Music Video)"], ["50O0G30VDCM", "SHOW 19 - ALPHA BLOCK PARTY | #ROADTO100SHOWS"], ["6O4e7uwcYTA", "SHOW 18 - BORO FONDO FESTIVAL | #ROADTO100SHOWS"], ["jSKiQgyhJsY", "SHOW 17 - THREE SHOWS IN ONE DAY CHALLENGE - REFLECTION | #ROADTO100SHOWS"], ["RAEXUYSqLRc", "SHOW 17 - “SAIL AWAY” | NORTH NASHVILLE CULTURE CRAWL | #ROADTO100SHOWS"], ["66LmqKhx4iw", "SHOW 16 - Nicólas Soul (@NicolasSoul) | Certified Lounge | Fall 2026"], ["pgSdW7DEw2U", "SHOW 15 - \"SAIL AWAY\" | NASHVILLE VS EVERYBODY | #ROADTO100SHOWS"], ["TmHrFClbMZw", "SHOW 15 - \"RISE\", \"#SILLYVIBES\", \"SUNSET IN NAIROBI\" | NASHVILLE VS EVERYBODY | #ROADTO100SHOWS"], ["R8PoiSRkiBU", "SHOW 15 - WHAT A TIME TO BE ALIVE REFLECTION | #ROADTO100SHOWS"], ["2-bEgx6mlBM", "SHOW 14 - AFRICAN STREET FESTIVAL | DAY 2 | #ROADTO100SHOWS"], ["HaK4KSAIsgs", "SHOW 13 - AFRICAN STREET FESTIVAL | #ROADTO100SHOWS"], ["RPVKeL2-qDc", "SHOW 13 - REFLECTION | #ROADTO100SHOWS"], ["UrpJwS9ArNk", "SHOW 12 - DRIFTERS BBQ  | #ROADTO100SHOWS"], ["9KbyH6iNZrE", "SHOW 12 - HANGING WITH DITTO (REFLECTION)  | #ROADTO100SHOWS"], ["EfC997tKaHY", "SHOW 11 - 1865 CLUB | #ROADTO100SHOWS"], ["G34zjY97G9o", "SHOW 11 - IMPROMPTU OPEN MIC (REFLECTION) | #ROADTO100SHOWS"], ["NneN1k_RIbg", "SHOW 10 - THE HAPPENING AT SPRINGWATER  | #ROADTO100SHOWS"], ["iLrC-XBQ_Xk", "SHOW 10 - WE HIT DOUBLE DIGITS BABY (REFLECTION) | #ROADTO100SHOWS"], ["ctPGQPFy0m4", "ARE YOU SERIOUS? (feat. @Samaria Kay) | #ROADTO100SHOWS"], ["SukIR0Uhv-Y", "SHOW 9 - LIVE AT NASHVILLE MONDAY NIGHT JAZZ | #ROADTO100SHOWS"], ["xQMRhPe3l_k", "SHOW 9 - FIRST SHOW I LOST MY VOICE (REFLECTION) | #ROADTO100SHOWS"], ["G4JFDauB8yI", "SHOW 8 - NEW HEIGHTS BREWING | #ROADTO100SHOWS"], ["b6APsr6Xlno", "SHOW 8 - YOU GOTTA ROLL WITH THE PUNCHES (REFLECTION)"], ["FcyXKf2fdWk", "SHOW 7 - MONDAY NIGHT JAZZ AT KINGDOM CAFE | #ROADTO100SHOWS"], ["mbHWU19ZUDY", "SHOW 7 - WHAT MAKES ME SPECIAL? (REFLECTION) | #ROADTO100SHOWS"], ["AhQExIBHvRY", "Nicólas Soul - SUNSET IN NAIROBI | Live at Hit Parader | #ROADTO100SHOWS"], ["rOgojY-PHJc", "Nicólas Soul - #SILLYVIBES | Live at Hit Parader | #ROADTO100SHOWS"], ["XZQUtVGyZCY", "Nicólas Soul - ENOUGH? | Live at Hit Parader | #ROADTO100SHOWS"], ["b3OGhPZmP14", "Nicólas Soul - RISE | Live at Hit Parader | #ROADTO100SHOWS"], ["tjqQ8c__GHI", "Nicólas Soul - SAIL AWAY! | Live at Hit Parader | #ROADTO100SHOWS"], ["3q5sXuOaD-k", "SHOW 6 - HIT PARADER | #ROADTO100SHOWS"], ["4Al5r7H9kms", "SHOW 6 - REFLECTION | #ROADTO100SHOWS"], ["6Sg7CH67SrA", "DO YOU F**K WITH YOU? | #ROADTO100SHOWS"], ["fJrWFaHI-pw", "SHOW 5 - H.O.M.E STUDIOS | #ROADTO100SHOWS"], ["kxZ1asHaGLo", "SHOW 5 - REFLECTION | #ROADTO100SHOWS"], ["Hh03Uh7CsLg", "SHOW 4 - SKY CAFE | #ROADTO100SHOWS"], ["Bqt_fE8FZTk", "SHOW 4 - REFLECTION | #ROADTO100SHOWS"], ["QP8spRgQVtk", "SHOW 3 - OPEN CHORD | #ROADTO100SHOWS"], ["Hwh_NHJldyU", "SHOW 3 - REFLECTION w/ @why5hiki | #ROADTO100SHOWS"], ["Mgm8JuPHEmw", "SHOW 2 - PAPA TURNEYS | #ROADTO100SHOWS"], ["hrhY2OiDhjY", "FIRST SHOW - ROSEMARY & BEAUTY QUEEN | #ROADTO100SHOWS"]];
+      var list = document.getElementById('plList'), count = document.getElementById('plCount'), box = document.querySelector('.playlist-panel');
+      var player = null, current = '';
+      function clean(t){ return String(t||'').replace(/\s*\|\s*#ROADTO100SHOWS\s*$/i, '').replace(/\s+/g, ' ').trim(); }
+      function play(id){
+        current = id;
+        var src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(id) + '?list=' + PL + '&autoplay=1&rel=0&playsinline=1';
+        if (!player) {
+          player = document.createElement('iframe');
+          player.className = 'pl-player'; player.title = 'Road to 100 Shows playlist';
+          player.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; web-share'; player.allowFullscreen = true;
+          document.getElementById('plPlay').replaceWith(player);
+        }
+        player.src = src;
+        [].forEach.call(list.children, function(li){ var on = li.getAttribute('data-id') === id; li.firstChild.setAttribute('aria-current', on ? 'true' : 'false'); li.classList.toggle('now', on); });
+        player.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      function draw(items){
+        list.innerHTML = '';
+        items.forEach(function(v){
+          var li = document.createElement('li'); li.setAttribute('data-id', v[0]);
+          var b = document.createElement('button'); b.type = 'button';
+          b.innerHTML = '<img alt="" loading="lazy" width="96" height="54" src="https://i.ytimg.com/vi/' + encodeURIComponent(v[0]) + '/mqdefault.jpg"><span></span>';
+          b.lastChild.textContent = clean(v[1]);
+          b.addEventListener('click', function(){ play(v[0]); });
+          li.appendChild(b); list.appendChild(li);
+        });
+        count.textContent = items.length + ' videos. Tap one to play it right here.';
+        if (current) play(current);
+      }
+      document.getElementById('plPlay').addEventListener('click', function(){ play(((list.children[0] || {}).getAttribute && list.children[0].getAttribute('data-id')) || SAVED[0][0]); });
+      draw(SAVED);
+      /* then the live list (up to 200 videos), replacing the saved copy */
+      window.addEventListener('load', async function(){   // after the main script below has defined YT_API_KEY
+        try {
+          if (typeof YT_API_KEY === 'undefined' || !YT_API_KEY || YT_API_KEY.indexOf('PASTE') !== -1) return;
+          var all = [], token = '';
+          for (var page = 0; page < 4; page++) {
+            var r = await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=' + PL + '&key=' + YT_API_KEY + (token ? '&pageToken=' + token : ''));
+            if (!r.ok) return;
+            var j = await r.json();
+            (j.items || []).forEach(function(it){ var s = it.snippet || {}; if (s.resourceId && s.resourceId.videoId && s.title && s.title !== 'Private video' && s.title !== 'Deleted video') all.push([s.resourceId.videoId, s.title]); });
+            token = j.nextPageToken || ''; if (!token) break;
+          }
+          if (all.length) { box.dataset.live = '1'; draw(all); }
+        } catch (e) {}
+      });
+    })();
   </script>
   <footer>#ROADTO100SHOWS &middot; built as it happens<br><span style="opacity:0.7;">Map data adapted from Wikimedia Commons, CC BY-SA 3.0</span></footer>
 </div>
