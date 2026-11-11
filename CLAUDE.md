@@ -77,6 +77,7 @@ width, edit that block. The sidebar code in `renderChrome` is still there but hi
   "A Love Letter to Kenya" is sealed until Feb 14, 2027.
 
 ## Search and crawlers
+The share picture is `public/og-image.png` (1200x630, transparent background, the Kenya logo cut from Nick's original 1932 px logo; no white box). If you replace it, use a new file name: chat apps cache link previews by address.
 Every page sets its own `<link rel="canonical">` (`setCanonical`, using `SV_BOOT.site` = `siteUrl`). An address nobody made (not a tab or release) still shows Home, but gets `<meta name="robots" content="noindex">` and no canonical until the visitor moves on (`parseRoute().unknown`, `setRobots`). Pages cannot send a real 404 for these because of the single-page fallback.
 `join.html` now has a title, description and canonical. `_headers` also sends HSTS (6 months, this domain only, no subdomains).
 `build.js` writes `dist/sitemap.xml` and `dist/robots.txt` (using `siteUrl`) and adds a hidden plain-text block (site name, tagline, links to every page and every open release)
