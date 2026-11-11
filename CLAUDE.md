@@ -63,6 +63,11 @@ window, and on a computer the content sits in a centered column (max 820px). The
 `@media (min-width: 0px)`, and the `<style id="desk">` block just before the app script centers the column. To change the column
 width, edit that block. The sidebar code in `renderChrome` is still there but hidden.
 
+## Missing audio files (found Nov 11, 2026)
+A scripted check of the public link (`prepareAudio` for each song's main version) found 119 of 256 public songs whose audio file is NOT in Nick's Drive any more ("No item with the given ID could be found"; the Drive connector as nurrenaissance@gmail.com cannot find them either).
+Releases with no playable song: The Birdhouse, Mayhem, Standing Ovation, Summer Break EP, SHADOW WORK, Paradise EP, Before the Mayhem EP, A Love Letter to Cali EP; mostly missing: soulSEARCHING, JAMBO JACQUE TESPHAYE!!, soulLESS, saturn.RETURN. Fix = re-attach the audio files in the Vault (or hide those songs/releases); the app now says "isn't available right now" and skips them (`songMissing`).
+Re-run the check any time with the loop in `tools/` history (Nov 11) or by opening each release as a fan.
+
 ## Access model (important)
 - Owner: open `https://soulnicolas.com/?k=<owner key>` once; key is saved in that device's localStorage and removed from the URL.
 - Fans with a link: `/?s=<share token>` (unchanged).
