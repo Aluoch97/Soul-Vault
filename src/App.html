@@ -6344,6 +6344,19 @@ async function explainFailure(url, v, reason) {
   if (!OWNER) return '';
   return (reason && !url ? reason : problemText(d, v)) + (probe ? " From Google's side: " + probe.summary : '');
 }
+// The song's audio file is gone from Drive (the server answers "No item with the given ID could be found"). That is not a connection problem:
+// say so plainly, remember it for this visit, and go on to the next song that can play (the queue never stops on a missing file).
+const isMissingFile = e => /No item with the given ID/i.test(String((e && e.message) || e || ''));
+function songMissing(v) {
+  if (!S.now || S.now.v !== v) return;
+  S.gone = S.gone || {}; S.gone[v.version_id] = 1;
+  const name = (trk(v.track_id) || {}).title || 'This song';
+  logErr('Song file missing in Drive: ' + (trk(v.track_id) || {}).title + ' (' + v.version_id + ')');
+  let next = -1; for (let i = S.qi + 1; i < S.queue.length; i++) if (!S.gone[S.queue[i]]) { next = i; break; }
+  if (next > -1) { toast(`“${name}” isn't available right now. Moving on.`); msg(''); S.qi = next; play(S.queue[next]); return; }
+  setToggle(false);
+  msg(`“${name}” isn't available right now.`);
+}
 // A song that can't be played never stops the album: say so briefly and go to the next one.
 function songFailed(v, url, reason) {
   if (!S.now || S.now.v !== v) return;
@@ -6446,9 +6459,10 @@ async function play(vid) {
           if (wait) await new Promise(r2 => setTimeout(r2, wait));
           if (S.now.v !== v) return;
           try { src = await sourceFor(f, direct, force); if (S.now.v !== v) return; audio.src = src.stream; await audio.play(); played = true; break; }
-          catch (e2) { lastErr = e2; if (e2 && e2.name === 'NotAllowedError') break; }
+          catch (e2) { lastErr = e2; if (e2 && e2.name === 'NotAllowedError') break; if (isMissingFile(e2)) break; }
         }
         S.directTry = false;
+        if (!played && isMissingFile(lastErr)) return songMissing(v);
         if (!played) {
           if (lastErr && lastErr.name === 'NotAllowedError') { msg('Tap play to start.'); setToggle(false); return; }
           if (await rescue(v, fid, 0)) played = true;      // whole song into memory, then MP3 on the phone
@@ -6466,7 +6480,7 @@ async function play(vid) {
       if (S.now.v === v) { S.now.dl = dl || ''; updateNowUI(); }
     }
   } catch (e) {
-    if (S.now && S.now.v === v) songFailed(v, '', e && e.message);
+    if (S.now && S.now.v === v) { if (isMissingFile(e)) songMissing(v); else songFailed(v, '', e && e.message); }
   }
 }
 
