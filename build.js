@@ -34,10 +34,10 @@ const iconLinks = '<link rel="icon" href="/favicon.ico" sizes="48x48">\n<link re
 const shareTags = '<meta name="description" content="' + attr(cfg.description) + '">\n<meta property="og:type" content="website">\n'
   + '<meta property="og:site_name" content="' + attr(cfg.siteName) + '">\n<meta property="og:title" content="' + attr(cfg.shareTitle || cfg.siteName) + '">\n'
   + '<meta property="og:description" content="' + attr(cfg.description) + '">\n<meta property="og:url" content="' + siteUrl + '/">\n'
-  + '<meta property="og:image" content="' + siteUrl + '/og-image.jpg">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
+  + '<meta property="og:image" content="' + siteUrl + '/og-image.png">\n<meta property="og:image:type" content="image/png">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
   + '<meta property="og:image:alt" content="' + attr(cfg.siteName) + ' logo">\n<meta name="twitter:card" content="summary_large_image">\n'
   + '<meta name="twitter:title" content="' + attr(cfg.shareTitle || cfg.siteName) + '">\n<meta name="twitter:description" content="' + attr(cfg.description) + '">\n'
-  + '<meta name="twitter:image" content="' + siteUrl + '/og-image.jpg">';
+  + '<meta name="twitter:image" content="' + siteUrl + '/og-image.png">';
 // Open the connection to Google early: the library comes from there, and the handshake is otherwise paid after the app code loads.
 const preload = homeBaked.single && /^\/home-covers\/[A-Za-z0-9_.-]+$/.test(homeBaked.single.src) ? '<link rel="preload" as="image" href="' + homeBaked.single.src + '" fetchpriority="high">\n' : '';
 const preconnect = preload + '<link rel="preconnect" href="https://script.google.com" crossorigin>\n<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>';
@@ -67,7 +67,7 @@ for (const f of fs.readdirSync('dist')) {
 }
 // Big files that rarely change are kept by the browser for a week (fonts, 30 days); app.js stays at 5 minutes so updates show up quickly. If you replace a picture or video, give it a new file name.
 fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n'
-  + ['/home-bg-hd.mp4', '/home-bg-hd-poster.jpg', '/press-img/*', '/photos/*', '/og-image.jpg', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
+  + ['/home-bg-hd.mp4', '/home-bg-hd-poster.jpg', '/press-img/*', '/photos/*', '/og-image.png', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
   + '/fonts/*\n  Cache-Control: public, max-age=2592000\n'
   + '/home-covers/*\n  Cache-Control: public, max-age=31536000, immutable\n'
   + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Strict-Transport-Security: max-age=15552000\n');
