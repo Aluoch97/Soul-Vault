@@ -14,7 +14,7 @@ const VAULT_DL = 'https://drive.google.com/uc?export=download&id=';
 
 /* ───────────────────────── Page ───────────────────────── */
 
-const SV_BUILD = '68';
+const SV_BUILD = '69';
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -142,12 +142,16 @@ function tables_() {
   return { releases: readTable_('Releases'), tracks: readTable_('Tracks'), versions: readTable_('Versions') };
 }
 
+// `url` is the streaming copy kept on our own storage (Settings > media_base + the version's media_key column). Empty = play from Drive as before.
 function slimVersions_(vs) {
+  const base = String(setting_('media_base') || '').trim().replace(/\/*$/, '/');
   return vs.map(function (v) {
+    const k = String(v.media_key || '').trim().replace(/^\/+/, '');
     return {
       version_id: v.version_id, track_id: v.track_id, label: v.label, is_primary: v.is_primary === true,
       audio: v.audio_file_id, preview: v.preview_file_id || '', format: v.format,
-      duration: v.duration, specs: v.specs, size_mb: v.size_mb, hidden: v.hidden === true
+      duration: v.duration, specs: v.specs, size_mb: v.size_mb, hidden: v.hidden === true,
+      url: base.length > 1 && k ? base + k.split('/').map(encodeURIComponent).join('/') : ''
     };
   });
 }
