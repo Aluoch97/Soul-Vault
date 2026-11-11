@@ -41,6 +41,10 @@ No loading screen: `<main id="main">` starts empty (build.js adds the hidden cra
 YouTube videos on Home and Press play inside the page (`wireYt`: the picture turns into the youtube-nocookie player on tap). The privacy policy says so.
 The Road to 100 page (`public/roadto100shows.html`) adds `html.embedded` when it is inside the Tour tab and keeps 96 px free at the bottom so the tab bar never covers its end; the Tour tab keeps `--tabh` in step with the tab bar (ResizeObserver).
 
+The Soul Tribe card on Home opens the sign-up form in place (`wireTribe`: `/join?embed=1` in an iframe inside the card, sized to its content; the page adds `html.embedded` so it blends in and hides its back link). `/join` on its own still works.
+The app never redraws a page that is already showing when the library arrives (`show()` skips Tour/Press, `refreshView()` skips Home while `#tribe.open`), so a form being filled in or a playing playlist is not wiped.
+The Road to 100 page has a "Watch the voyage" panel: the YouTube playlist `PLdjhXdodmUqM` ("ROAD TO 100 SHOWS"), picture first, `youtube-nocookie` player only after a tap.
+
 ## Tab addresses and old links
 Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
 `/vault/<release>` (release id without `rel_`, `_` becomes `-`, e.g. `/vault/2019-soulless`), `/tour`, `/tour/road-to-100`, `/press`, `/press/video`, `/lore`.
