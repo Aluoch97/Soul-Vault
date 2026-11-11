@@ -996,7 +996,7 @@
     var m = document.getElementById('main');
     if (m) m.innerHTML = '<div class="status"><p>Soul Vault could not download its app code from Google.</p>' +
       '<p style="opacity:.75">Check your internet connection. If it keeps happening, make sure the app_url row in the Settings tab is your web app address ending in /exec.</p>' +
-      '<p style="opacity:.5">SV build 68</p></div>';
+      '<p style="opacity:.5">SV build 69</p></div>';
     window.SV_ERRORS.push('download failed');
   };
   window.addEventListener('error', function (e) {
@@ -1006,7 +1006,7 @@
       if (m) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault could not start on this browser.</p>' +
         '<p style="opacity:.8">' + svClean((e && e.message) || 'Unknown error') + '</p>' +
         '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
-        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 68</p></div>';
+        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 69</p></div>';
     }
   });
   setTimeout(function () {
@@ -1014,7 +1014,7 @@
     var m = document.getElementById('main');
     if (m && !window.SV_ERRORS.length) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault did not start. Its code never ran on this browser.</p>' +
       '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
-      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 68 / ' + svClean(navigator.userAgent) + '</p></div>';
+      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 69 / ' + svClean(navigator.userAgent) + '</p></div>';
   }, 15000);
 </script>
 <script>window.SV_BOOT = __SV_BOOT__;</script>
@@ -2197,12 +2197,16 @@ function warmRelease(relId) {
   if (!relId || S.warm[relId]) return;
   const r = rel(relId); if (!r || (!OWNER && r.locked)) return;
   S.warm[relId] = true;
+  const vs = S.lib.versions.filter(x => { const t = trk(x.track_id); return t && t.release_id === relId; });
+  if (vs.length && vs.every(x => x.url)) return;   // all on our own storage: nothing to ready in Drive
   run('prepareRelease', BOOT.key, BOOT.token, relId)
     .then(o => { (o.ready || []).forEach(id => (S.pub[id] = true)); if (o.key) S.streamKey = o.key; preloadNext(); })
     .catch(() => { delete S.warm[relId]; });
 }
 // Starts fetching the next song in the queue so skipping ahead is near-instant.
 async function sourceFor(fid, allowDirect, force) {
+  const own = !force && S.urlByFile && S.urlByFile[fid];   // our own storage first; Drive stays as the spare (force = the retry, and a copy that failed once is not tried again)
+  if (own && !(S.badFile && S.badFile[fid])) return { stream: own, download: own, viaApi: false, direct: false, own: true };
   const d = allowDirect ? directUrl(fid) : '';
   if (d) return { stream: d, download: 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(fid), viaApi: true, direct: true };
   const src = await run('prepareAudio', fid, BOOT.key, BOOT.token, !!force);
@@ -2764,7 +2768,7 @@ audio.addEventListener('waiting', () => {
   S.stallT = setTimeout(async () => {
     if (S.now !== n || audio.paused || audio.readyState >= 3 || (n.stalls = (n.stalls || 0) + 1) > 2) return;
     const at = audio.currentTime, fid = songFile(n.v);
-    try { delete S.pub[fid]; const src = await sourceFor(fid, false, true); if (S.now !== n) return;
+    try { delete S.pub[fid]; const src = await sourceFor(fid, false, !(S.urlByFile && S.urlByFile[fid] && !(S.badFile && S.badFile[fid]))); if (S.now !== n) return;
       S.resumeAt = { vid: n.v.version_id, t: at }; audio.src = src.stream; await audio.play(); } catch (e) {}
   }, 9000);
 });
@@ -4845,6 +4849,7 @@ function normalizeLib(lib) {
   (lib.releases || []).forEach(r => str(r, ['title', 'artist_name', 'world_tagline', 'world_story', 'recorded_at', 'series_name', 'series_part', 'genre', 'album_credits', 'world_mood']));
   (lib.tracks || []).forEach(t => str(t, ['title', 'artist', 'features', 'producer', 'engineer', 'chapter', 'number_label', 'genre', 'lyrics', 'notes', 'key', 'bpm']));
   (lib.versions || []).forEach(v => str(v, ['label', 'duration']));
+  S.urlByFile = {}; (lib.versions || []).forEach(v => { if (v.url) { if (v.audio) S.urlByFile[v.audio] = v.url; if (v.preview) S.urlByFile[v.preview] = v.url; } });   // songs with a streaming copy on our own storage
   (lib.extras || []).forEach(x => str(x, ['title', 'url']));
   return lib;
 }
@@ -6290,7 +6295,7 @@ async function checkPlayback(btn) {
    If a song still can't be played the album moves on to the next one instead of stopping. The next song is
    fetched into memory ahead of time, and a stalled or dropped song is recovered from where it stopped. */
 const songFile = v => (v && (v.audio || v.preview)) || '';   // an old MP3 copy is only ever a spare
-const mimeOf = v => FORMAT_MIME[String((v && v.format) || 'WAV').toUpperCase()] || 'audio/wav';
+const mimeOf = v => (v && v.url && !(S.badFile && S.badFile[songFile(v)])) ? 'audio/mp4' : (FORMAT_MIME[String((v && v.format) || 'WAV').toUpperCase()] || 'audio/wav');
 S.failStreak = 0; S.skipped = []; S.mem = {}; S.memUrl = ''; S.pre = null; S.rescuing = false; S.rescues = {};
 async function fetchBlob(url, mime, onProgress) {
   const res = await fetch(url, { credentials: 'omit', cache: 'no-store' });
@@ -6451,6 +6456,7 @@ async function play(vid) {
       catch (e) {
         if (e && e.name === 'NotAllowedError') { msg('Tap play to start.'); setToggle(false); return; }
         // Don't give up: fresh re-share of this file → the spare copy, if there is one → one more try after a moment.
+        if (src && src.own) { (S.badFile = S.badFile || {})[fid] = 1; logErr('Own-storage copy failed, using Drive: ' + (t.title || vid)); }
         delete S.pub[fid];
         const alt = fid === v.preview ? v.audio : (v.preview && fid !== v.preview ? v.preview : '');
         const attempts = [[fid, false, true], ...(alt ? [[alt, true, false], [alt, false, true]] : []), [fid, false, true, 1200]];

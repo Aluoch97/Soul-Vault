@@ -63,6 +63,15 @@ window, and on a computer the content sits in a centered column (max 820px). The
 `@media (min-width: 0px)`, and the `<style id="desk">` block just before the app script centers the column. To change the column
 width, edit that block. The sidebar code in `renderChrome` is still there but hidden.
 
+## Own music storage (Cloudflare R2, set up Nov 11, 2026)
+Streaming copies (AAC 256 kbps `.m4a`, made on Nick's Mac with `afconvert` from his WAV masters) live in the R2 bucket `soulvault-media`, public at `https://media.soulnicolas.com/<release-slug>/<NN>-<song-slug>.m4a`
+(custom domain on the bucket, CORS allows GET/HEAD from soulnicolas.com, www and app; the r2.dev address is OFF). The WAV masters stay on Nick's drive only (never put masters on the public address).
+The Sheet has `Versions!media_key` (the path after the domain) and `Settings!media_base`; `slimVersions_` (Vault.gs build 69) turns them into `url` on each version; the app (`S.urlByFile`, `sourceFor`) plays `url` first and falls back to Drive
+(`S.badFile` remembers a copy that failed this visit). Songs with no `media_key` play from Drive as before. 186 songs were linked on Nov 11 (all verified reachable, sizes match the song lengths); 21 extra files
+(alternate versions, EP songs not linked to Vault songs) are not uploaded. Not found on any drive: Dreams of L.A. [Prologue], WHAT ARE YOU STANDING ON?, Elsa Flow, #TONGUEOUTEMOJI, Maybe Someday.
+To add a song: convert it, upload to the bucket under `<release-slug>/`, put the path in `Versions!media_key`. Keep sealed releases (e.g. A Love Letter to Kenya) OFF the public bucket until they unlock.
+Keep new file names for replaced audio (browsers and Cloudflare cache them).
+
 ## Missing audio files (found Nov 11, 2026)
 A scripted check of the public link (`prepareAudio` for each song's main version) found 119 of 256 public songs whose audio file is NOT in Nick's Drive any more ("No item with the given ID could be found"; the Drive connector as nurrenaissance@gmail.com cannot find them either).
 Releases with no playable song: The Birdhouse, Mayhem, Standing Ovation, Summer Break EP, SHADOW WORK, Paradise EP, Before the Mayhem EP, A Love Letter to Cali EP; mostly missing: soulSEARCHING, JAMBO JACQUE TESPHAYE!!, soulLESS, saturn.RETURN. Fix = re-attach the audio files in the Vault (or hide those songs/releases); the app now says "isn't available right now" and skips them (`songMissing`).
