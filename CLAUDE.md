@@ -46,6 +46,9 @@ The app never redraws a page that is already showing when the library arrives (`
 The Road to 100 page has a "Watch the voyage" panel: the YouTube playlist `PLdjhXdodmUqM` ("ROAD TO 100 SHOWS", 41 videos on Nov 11, 2026). The full list is shown under the player (thumbnail + title rows); tapping a row plays it in the same player (`youtube-nocookie`, only after a tap).
 The list is read live from the YouTube API with the page's website-only key (`YT_API_KEY`, up to 200 videos, private/deleted skipped); if that fails the saved copy in the page (`SAVED`) is shown. Refresh `SAVED` occasionally.
 
+Background video: one `#sitebg` element (made by `syncSiteBg()` in `renderChrome`, outside `#main`) sits behind Home, Vault, Tour, Press and Lore, so the video keeps playing when you change tabs (it pauses on release pages, which use their own `#pagebg`). The Tour tab's Shows page is transparent inside the app (`html.embedded`); the Road to 100 page keeps its own paper look on purpose.
+Lore has no title; each photo opens a full-screen viewer (`openLorePhoto`): rotate, download, next/previous, close.
+
 ## Tab addresses and old links
 Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
 `/vault/<release>` (release id without `rel_`, `_` becomes `-`, e.g. `/vault/2019-soulless`), `/tour`, `/tour/road-to-100`, `/press`, `/press/video`, `/lore`.

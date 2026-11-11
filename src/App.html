@@ -320,9 +320,10 @@
   .homepg .tribe .pill { justify-content: center; min-height: 48px; }
   .homepg .ctrack .cap { text-align: left; }
   /* moving background: the Home page only (the video sits behind everything, with a dark veil so text stays readable) */
-  .homebg { position: fixed; inset: 0; z-index: 0; background: #0A0A0B url(/home-bg-hd-poster.jpg) center / cover no-repeat; overflow: hidden; pointer-events: none; }
-  .homebg video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .9; }
-  .homebg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,11,.35), rgba(10,10,11,.72) 55%, rgba(10,10,11,.88)); }
+  #sitebg { position: fixed; inset: 0; z-index: -1; background: #0A0A0B url(/home-bg-hd-poster.jpg) center / cover no-repeat; overflow: hidden; pointer-events: none; display: none; }
+  body.vbg #sitebg { display: block; }
+  #sitebg video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .9; }
+  #sitebg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,11,.35), rgba(10,10,11,.72) 55%, rgba(10,10,11,.88)); }
   .homepg { position: relative; z-index: 1; }
   .homepg .herot, .homepg .herop, .homepg .eyebrow { text-shadow: 0 2px 18px rgba(0,0,0,.55); }
   /* Support button */
@@ -345,7 +346,7 @@
   @media (prefers-reduced-motion: reduce) { .latcover.skel { animation: none; } }
   .lattitle { font-size: 14px; line-height: 1.35; color: rgba(246,243,239,.9); max-width: 560px; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
   .latlabel { font: 800 clamp(24px, 7vw, 34px)/1 var(--sans, inherit); letter-spacing: .22em; text-indent: .22em; text-transform: uppercase; text-shadow: 0 3px 18px rgba(0,0,0,.65); }
-  @media (prefers-reduced-motion: reduce) { .homebg video { display: none; } }
+  @media (prefers-reduced-motion: reduce) { #sitebg video { display: none; } }
   .sitepg p a { color: var(--green-hi); }
   .linkgrid { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 18px; }
   .soc { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: var(--ink, #f6f3ef); background: rgba(255,255,255,.07);
@@ -357,7 +358,18 @@
   .presspg .pcards { margin-top: 12px; }
   /* Lore photo wall */
   .lorephotos { columns: 2; column-gap: 10px; margin: 6px 0 22px; }
-  .lorephotos img { display: block; width: 100%; height: auto; margin: 0 0 10px; border-radius: 8px; break-inside: avoid; background: #111; }
+  .lorephotos .lph1 { display: block; width: 100%; padding: 0; margin: 0 0 10px; border: 0; background: none; cursor: zoom-in; break-inside: avoid; }
+  .lorephotos img { display: block; width: 100%; height: auto; border-radius: 8px; background: #111; }
+  .modal.lbmodal { padding: 0; place-items: stretch; background: #000; backdrop-filter: none; }
+  .lbview { width: 100%; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); background: #000; padding-bottom: env(safe-area-inset-bottom); }
+  .lbtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: max(8px, env(safe-area-inset-top)) 10px 8px; }
+  .lbtop .acts { display: flex; gap: 6px; }
+  .lbtop .cs { white-space: nowrap; }
+  .lbtop .ib { display: grid; place-items: center; color: #fff; width: 44px; height: 44px; text-decoration: none; font-size: 20px; }
+  .lbstage { position: relative; display: grid; place-items: center; overflow: hidden; min-height: 0; }
+  .lbstage img { display: block; object-fit: contain; transition: transform .25s; }
+  .lbstage .ssnav { position: absolute; top: 50%; transform: translateY(-50%); }
+  .lbstage .ssnav.prev { left: 8px; } .lbstage .ssnav.next { right: 8px; }
   @media (min-width: 761px) { .lorephotos { columns: 4; } }
   /* Press article cards: picture on top, headline, blurb, publication (like a link preview) */
   .pcards { display: grid; gap: 18px; margin: 10px 0 26px; max-width: 560px; }
@@ -387,7 +399,7 @@
   .tourseg { flex: none; display: flex; gap: 6px; justify-content: center; padding: 10px 12px 8px; background: #0A0A0B; }
   .tourseg button { min-height: 38px; padding: 0 18px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--dim); background: rgba(255,255,255,.07); }
   .tourseg button[aria-selected="true"] { color: #fff; background: var(--red); }
-  .tourframe { display: block; flex: 1; min-height: 0; width: 100%; border: 0; background: #0A0A0B; }
+  .tourframe { display: block; flex: 1; min-height: 0; width: 100%; border: 0; background: transparent; }
   @media (min-width: 0px) {
     .tabs button { min-width: 0; flex: 1; padding: 4px 2px; }
     .tabs button[aria-current="page"] { color: var(--red-hi); }
@@ -1382,8 +1394,18 @@ function routeTo(r) {
 window.addEventListener('popstate', () => { if (S.lib || ['tour', 'press'].indexOf(parseRoute().v) > -1) routeTo(parseRoute()); });
 
 function paintSkeleton() { $('#main').innerHTML = '<div class="wrap skelpg" aria-busy="true"><i class="skelhead"></i><div class="skelgrid">' + '<i></i>'.repeat(8) + '</div></div>'; }
+// One moving background behind Home, Vault, Tour, Press and Lore. It lives outside #main, so the video keeps playing when you change tabs.
+function syncSiteBg() {
+  const on = ['home', 'library', 'tour', 'press', 'lore'].indexOf(S.view) > -1;
+  let el = $('#sitebg');
+  if (on && !el) { el = Object.assign(document.createElement('div'), { id: 'sitebg' }); el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<video muted loop playsinline preload="none" poster="/home-bg-hd-poster.jpg"></video>'; document.body.prepend(el); }
+  document.body.classList.toggle('vbg', on);
+  const vv = el && $('video', el); if (vv && vv.dataset.started) { if (on) { const q = vv.play(); if (q && q.catch) q.catch(() => {}); } else vv.pause(); }   // no hidden video eating battery on release pages
+  if (on) startHomeVideo($('#sitebg video'), S.lib || S.view !== 'home' ? 1500 : 8000);   // 8 s fallback on Home while the library is slow
+}
 function renderChrome(noUrl) {
   const v = S.view;
+  syncSiteBg();
   const cur = ['home', 'tour', 'press', 'lore'].indexOf(v) > -1 ? v : (['shares', 'vault'].indexOf(v) > -1 ? v : 'library');
   const years = [...new Set(((S.lib && S.lib.releases) || []).map(r => r.year))].sort((a, b) => b - a);
   const cc = n => n === cur ? 'aria-current="page"' : '';
@@ -1491,7 +1513,7 @@ function fillHomeLatest() {
     const el = $('.homepg [data-slot="' + slot + '"]'); if (el) el.outerHTML = homeCover(r, label, slot);
   });
   $$('[data-home-cover]').forEach(img => setCover(img, img.dataset.homeCover, true));
-  startHomeVideo($('.homebg video'), 1200);   // the covers have the connection now; the video can follow
+  startHomeVideo($('#sitebg video'), 1200);   // the covers have the connection now; the video can follow
 }
 // The background video starts only after the page has settled, and not at all for reduced motion, data saver or a very slow connection.
 // It waits `delay` ms (so the library and covers get the connection first); calling it again with a shorter delay moves the start earlier.
@@ -1509,14 +1531,12 @@ function paintHomeShell() { S.homeShell = true; renderHome(); }
 function renderHome() {
   clearPageBg(); S.view = 'home'; renderChrome();
   if (S.lib && S.homeShell && $('.homepg')) { S.homeShell = false; fillHomeLatest(); return; }
-  const oldBg = $('.homebg');   // from the first paint: keep it, so the video does not restart
   const { single, project } = homePicks();
   const join = JOIN_URL();
   const yt = (v, label) => `<figure class="lat"><button class="latvid" data-yt="${esc(v[0])}" aria-label="Play ${esc(v[1])}">
       <img src="https://i.ytimg.com/vi/${esc(v[0])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></button>
       <div class="lattitle">${esc(v[1])}</div><figcaption class="latlabel">${label}</figcaption></figure>`;
-  $('#main').innerHTML = `<div class="homebg" aria-hidden="true"><video muted loop playsinline preload="none" poster="/home-bg-hd-poster.jpg"></video></div>
-  <div class="wrap sitepg homepg">
+  $('#main').innerHTML = `<div class="wrap sitepg homepg">
     <section class="sitehero">
       <h1 class="herot">Nicólas <span>Soul</span></h1>
       <p class="herop">${esc(SITE.tagline)}</p>
@@ -1536,9 +1556,7 @@ function renderHome() {
   // (a still image instead if the person asked for less motion or is saving data).
   $$('[data-home-cover]').forEach(img => setCover(img, img.dataset.homeCover, true));
   wireYt(); wireTribe();
-  if (oldBg) { const nb = $('.homebg'); if (nb) nb.replaceWith(oldBg); }   // put the already-running video back (same task, so it keeps playing)
-  startHomeVideo($('.homebg video'), S.lib ? 1500 : 8000);   // 8 s fallback if the library is slow
-  if (!oldBg) window.scrollTo(0, 0);
+  window.scrollTo(0, 0);
 }
 
 // The Soul Tribe card opens the sign-up form right on Home (the /join page shown inside the card); Close puts the card back as it was.
@@ -4922,9 +4940,8 @@ function renderLore() {
   clearPageBg(); S.view = 'lore'; renderChrome();
   const L = buildLore(), t = L.totals;
   $('#main').innerHTML = `<div class="wrap lore">
-    <h1 class="page-h" style="padding-left:0"><b>Lore</b></h1>
-    ${OWNER ? '<p class="cs" style="margin-top:0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>' : ''}
-    <section class="lorephotos" aria-label="Photos">${SITE.photos.map(f => `<img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.remove()">`).join('')}</section>
+    ${OWNER ? '<p class="cs" style="margin:6px 0 0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>' : ''}
+    <section class="lorephotos" aria-label="Photos">${SITE.photos.map((f, i) => `<button type="button" class="lph1" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</section>
     <div class="lorestats">
       <div class="kpi"><b>${t.releases}</b><span>Releases</span></div><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
       <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.to && t.to !== t.from ? '–' + t.to : ''}</b><span>Years active</span></div></div>
@@ -4945,7 +4962,39 @@ function renderLore() {
     <h2 class="sh"><span><b>Where</b> it was made</span></h2>${indexList(L.idx.places, 'recording locations')}
     <h2 class="sh"><span><b>Photographers</b></span></h2>${indexList(L.idx.photographers, 'photo credits')}
   </div>`;
+  $$('[data-lphoto]').forEach(b => b.addEventListener('click', () => openLorePhoto(+b.dataset.lphoto)));
   window.scrollTo(0, 0);
+}
+// Lore photo viewer: full screen; rotate, download, next/previous. (Pinch to zoom works as on any page.)
+function openLorePhoto(i) {
+  const list = [...$$('[data-lphoto] img')].map(x => x.getAttribute('src')).filter(Boolean);
+  if (!list.length) return;
+  let at = Math.max(0, Math.min(i, list.length - 1)), rot = 0;
+  const m = $('#modal'); m.className = 'modal lbmodal';
+  m.innerHTML = `<div class="lbview" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <div class="lbtop"><span class="cs" id="lbCount"></span><span class="acts">
+      <button class="ib" id="lbRot" aria-label="Rotate the photo">↻</button>
+      <a class="ib" id="lbDl" download aria-label="Download the photo">⬇</a>
+      <button class="ib" id="lbX" aria-label="Close">${I.x}</button></span></div>
+    <div class="lbstage" id="lbStage"><img id="lbImg" alt="Nicólas Soul">
+      <button class="ssnav prev" id="lbPrev" aria-label="Previous photo">${I.back}</button><button class="ssnav next" id="lbNext" aria-label="Next photo">${I.back}</button></div></div>`;
+  m.hidden = false;
+  const img = $('#lbImg'), stage = $('#lbStage');
+  const fit = () => {
+    const odd = rot % 180 !== 0, w = stage.clientWidth, h = stage.clientHeight;
+    img.style.maxWidth = (odd ? h : w) + 'px'; img.style.maxHeight = (odd ? w : h) + 'px';
+    img.style.transform = 'rotate(' + rot + 'deg)';
+  };
+  const show = n => {
+    at = (n + list.length) % list.length; rot = 0; img.src = list[at]; fit();
+    $('#lbCount').textContent = (at + 1) + ' of ' + list.length;
+    const dl = $('#lbDl'); dl.href = list[at]; dl.setAttribute('download', 'nicolas-soul-' + String(at + 1).padStart(2, '0') + '.jpg');
+  };
+  $('#lbRot').addEventListener('click', () => { rot = (rot + 90) % 360; fit(); });
+  $('#lbX').addEventListener('click', closeModal);
+  $('#lbPrev').addEventListener('click', () => show(at - 1)); $('#lbNext').addEventListener('click', () => show(at + 1));
+  stage.addEventListener('click', e => { if (e.target === stage) closeModal(); });
+  show(at);
 }
 function loreText() {
   const L = buildLore(), t = L.totals, lines = [];
@@ -6126,7 +6175,7 @@ function toggleSsCredits(btn) {
   c.hidden = !c.hidden; btn.setAttribute('aria-expanded', String(!c.hidden)); btn.textContent = c.hidden ? 'Credits' : 'Hide credits';
 }
 const __closeModal2 = closeModal;
-closeModal = function () { $('#modal').classList.remove('ssmodal'); __closeModal2.apply(this, arguments); };
+closeModal = function () { $('#modal').classList.remove('ssmodal', 'lbmodal'); __closeModal2.apply(this, arguments); };
 
 /* ── edit a video after it's added: title, link and type in one place ── */
 function openVideoType(i) {
