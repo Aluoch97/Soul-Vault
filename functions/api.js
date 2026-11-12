@@ -8,6 +8,7 @@ import { makeRecord, checkPassword, PW_MIN, MAX_TRIES, LOGIN_LOCK_MS, failKey } 
 import { loadNative, saveNative, mergeNative, newRelease, newTrack, newVersion, relSlug, slug, MEDIA_BASE } from './_lib/native.js';
 import * as OW from './_lib/owned.js';
 import * as CT from './_lib/catalog.js';
+import * as AC from './_lib/activity.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
@@ -49,7 +50,9 @@ async function library(ctx) {
   let lib = await loadLib(env.DB);
   const ov = normOverlay(await loadOverlay(env.DB));
   if (!lib) { if (env.OWNER_KEY) ctx.waitUntil(syncMirror(env).catch(() => {})); return null; }
-  mem.lib = OW.applyOwned(mergeNative(lib, await loadNative(env.DB), ov), await OW.loadOwned(env.DB)); mem.ov = ov; mem.at = now;
+  const own = await OW.loadOwned(env.DB);
+  mem.lib = OW.applyOwned(mergeNative(lib, await loadNative(env.DB), ov), own); mem.ov = ov; mem.at = now;
+  if (own.domains.activity) { const sh = await AC.loadShares(env.DB); if (sh) mem.lib.shares = sh; }   // share links live in the D1 table once "activity" is switched over
   lib = mem.lib;
   ctx.waitUntil(readMeta(env.DB).then(m => { if (m && now - m.synced_at > FRESH_MS && env.OWNER_KEY) return syncMirror(env); }).catch(() => {}));
   return lib;
@@ -279,6 +282,7 @@ async function adoptDomain(ctx, a, on) {
   if (name === 'playlists') { ow.playlists = all.playlists || []; count = ow.playlists.length; }
   if (name === 'extras') { ow.extras = all.extras || []; count = ow.extras.length; }
   if (name === 'settings') { ow.letter = all.letter || null; ow.bio = all.artist_bio || ''; ow.artist_links = all.artist_links || {}; count = Object.keys(ow.artist_links).length + (ow.letter ? 1 : 0) + (ow.bio ? 1 : 0); }
+  if (name === 'activity') { count = await AC.importShares(env.DB, all.shares || []); }   // share links, plays, comments and error reports move to real D1 tables
   if (name === 'catalog') {
     const cl = x => JSON.parse(JSON.stringify(x));
     ow.releases = all.releases.map(cl); ow.tracks = all.tracks.map(cl); ow.versions = all.versions.map(cl);
@@ -288,6 +292,31 @@ async function adoptDomain(ctx, a, on) {
   }
   ow.domains[name] = true; await OW.saveOwned(env.DB, ow); mem.lib = null; await forgetCached(all);
   return { area: name, owned: true, copied: count };
+}
+// Share links, plays, comments and error reports once "activity" is switched over. Returns undefined while they are still the Sheet's.
+const SITE = String(cfg.siteUrl || 'https://' + cfg.domain).replace(/\/$/, '');
+async function activityCall(ctx, fn, a) {
+  const { env } = ctx, db = env.DB;
+  const ow = await OW.loadOwned(db); if (!ow.domains.activity) return undefined;
+  await AC.ensureTables(db);
+  const lib = await library(ctx), owner = isOwner(env, a[0]);
+  const need = () => { if (!owner) throw new Error('This link is missing its owner key. Open the app from your owner link.'); };
+  const changed = async () => { mem.lib = null; await forgetCached(lib); };
+  switch (fn) {
+    case 'createShare': need(); { const r = await AC.createShare(db, a[1], SITE); await changed(); return r; }
+    case 'setShareActive': need(); { const r = await AC.setShareActive(db, a[1], a[2]); await changed(); return r; }
+    case 'quickShare': need(); { const r = await AC.quickShare(db, { targetType: a[1], targetId: a[2] }, SITE); await changed(); return r; }
+    case 'recordPlay': return AC.recordPlay(db, lib, a[0]);
+    case 'logListens': return AC.logListens(db, lib, owner, a[1], a[2], a[3]);
+    case 'getInsights': need(); return AC.getInsights(db, lib, a[1], a[2]);
+    case 'getComments': return AC.getComments(db, lib, owner, a[1], a[2]);
+    case 'addComment': return AC.addComment(db, lib, owner, ow.ownerName, a[1], a[2], a[3], a[4], a[5]);   // (no e-mail alert yet)
+    case 'resolveComment': need(); return AC.resolveComment(db, a[1], a[2]);
+    case 'deleteComment': need(); return AC.deleteComment(db, a[1]);
+    case 'logClientError': return AC.logClientError(db, a[0], a[1]);
+    case 'errorSummary': need(); return AC.errorSummary(db);
+  }
+  return undefined;
 }
 // Returns undefined when this call is not ours to answer (the area is still the Sheet's), so it goes on to Apps Script.
 async function ownedCall(ctx, fn, a) {
@@ -345,6 +374,9 @@ export async function onRequestPost(ctx) {
     } else if (fn === 'adoptDomain' || fn === 'releaseDomain') {
       try { return json({ ok: true, result: await adoptDomain(ctx, args, fn === 'adoptDomain') }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
+    } else if (env.DB && AC.ACTIVITY_FNS.indexOf(fn) > -1) {
+      try { const r = await activityCall(ctx, fn, args); if (r !== undefined) return json({ ok: true, result: r }); }
+      catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (env.DB && (OW.OWNED_FNS[fn] || Object.values(OW.BLOCKED_AFTER).some(l => l.indexOf(fn) > -1))) {
       try { const r = await ownedCall(ctx, fn, args); if (r !== undefined) return json({ ok: true, result: r }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
@@ -353,7 +385,9 @@ export async function onRequestPost(ctx) {
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'getLibrary' && env.DB && args[0]) {
       const res = await proxy(env, text), j = await res.clone().json().catch(() => null);
-      if (j && j.ok && j.result) { const ov = normOverlay(await loadOverlay(env.DB)); j.result = OW.applyOwned(mergeNative(j.result, await loadNative(env.DB), ov), await OW.loadOwned(env.DB)); return json(j); }
+      if (j && j.ok && j.result) { const ov = normOverlay(await loadOverlay(env.DB)); const own = await OW.loadOwned(env.DB); j.result = OW.applyOwned(mergeNative(j.result, await loadNative(env.DB), ov), own);
+        if (own.domains.activity) { const sh = await AC.loadShares(env.DB); if (sh) j.result.shares = sh; j.result.commentCounts = await AC.commentCounts(env.DB); }
+        return json(j); }
       return res;
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });

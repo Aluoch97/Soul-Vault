@@ -2167,7 +2167,7 @@ function drawStudio() {
 }
 
 /* ── Move areas off the Sheet: each one is switched over on its own, and can be switched back ── */
-const AREAS = [['catalog', 'Releases, songs and versions', 'The big one: titles, order, credits, lyrics, covers, deleting. Old Google Drive actions (song covers, page background, voice notes, YouTube songs) stop working; use Studio for covers and backgrounds.'], ['playlists', 'Playlists', 'Your playlists and which ones fans can see.'], ['extras', 'Extras', 'Reviews, apps, videos, links, audio notes and photos on release pages.'], ['settings', 'Letter, bio and artist links', 'Your letter to fans, the bio, and links for other artists.']];
+const AREAS = [['activity', 'Share links, plays and comments', 'Fan links, listening insights, comments and problem reports. Comment e-mail alerts are not sent yet.'], ['catalog', 'Releases, songs and versions', 'The big one: titles, order, credits, lyrics, covers, deleting. Old Google Drive actions (song covers, page background, voice notes, YouTube songs) stop working; use Studio for covers and backgrounds.'], ['playlists', 'Playlists', 'Your playlists and which ones fans can see.'], ['extras', 'Extras', 'Reviews, apps, videos, links, audio notes and photos on release pages.'], ['settings', 'Letter, bio and artist links', 'Your letter to fans, the bio, and links for other artists.']];
 async function openAreas() {
   const m = $('#modal'); m.className = 'modal';
   m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Move off the Sheet"><h2>Move off the Sheet</h2><p class="cs" id="arSt">Checking…</p><div id="arList" style="display:grid;gap:10px"></div>

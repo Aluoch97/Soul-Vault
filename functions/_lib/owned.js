@@ -3,8 +3,9 @@
 //   playlists  -> playlists
 //   extras     -> reviews, apps, videos, links, audio notes and photos on a release page
 //   settings   -> the letter, the bio, links for other artists
+//   activity   -> share links, listening history (insights), comments and error reports (real D1 tables, functions/_lib/activity.js)
 //   catalog    -> releases, songs and versions themselves (titles, order, credits, lyrics, covers, deleting...)
-export const DOMAINS = ['playlists', 'extras', 'settings', 'catalog'];
+export const DOMAINS = ['playlists', 'extras', 'settings', 'catalog', 'activity'];
 export const emptyOwned = () => ({ domains: {}, playlists: [], extras: [], letter: null, bio: '', artist_links: {}, releases: [], tracks: [], versions: [], birth_date: '' });
 export const normOwned = o => Object.assign(emptyOwned(), o || {}, { domains: Object.assign({}, (o && o.domains) || {}) });
 
