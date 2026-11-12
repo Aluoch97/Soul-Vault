@@ -366,9 +366,9 @@
   .pseg { position: sticky; top: 0; z-index: 3; margin: 0 calc(-1 * var(--padx, 16px)) 6px; padding-left: var(--padx, 16px); padding-right: var(--padx, 16px); }
   .presspg .pcards { margin-top: 12px; }
   /* Lore photo wall */
-  .lorephotos { columns: 2; column-gap: 10px; margin: 6px 0 22px; }
-  .lorephotos .lph1 { display: block; width: 100%; padding: 0; margin: 0 0 10px; border: 0; background: none; cursor: zoom-in; break-inside: avoid; }
-  .lorephotos img { display: block; width: 100%; height: auto; border-radius: 8px; background: #111; }
+  .lorephotos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 6px 0 16px; }
+  .lorephotos .lph1 { display: block; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; padding: 0; margin: 0; border: 0; background: #111; cursor: zoom-in; }
+  .lorephotos img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
   .modal.lbmodal { padding: 0; place-items: stretch; background: #000; backdrop-filter: none; }
   .lbview { width: 100%; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); background: #000; padding-bottom: env(safe-area-inset-bottom); }
   .lbtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: max(8px, env(safe-area-inset-top)) 10px 8px; }
@@ -379,7 +379,7 @@
   .lbstage img { display: block; object-fit: contain; transition: transform .25s; }
   .lbstage .ssnav { position: absolute; top: 50%; transform: translateY(-50%); }
   .lbstage .ssnav.prev { left: 8px; } .lbstage .ssnav.next { right: 8px; }
-  @media (min-width: 761px) { .lorephotos { columns: 4; } }
+  @media (min-width: 761px) { .lorephotos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   /* Press article cards: picture on top, headline, blurb, publication (like a link preview) */
   .pcards { display: grid; gap: 18px; margin: 10px 0 26px; max-width: 560px; }
   .pcard { display: block; background: #000; border: 1px solid rgba(255,255,255,.16); color: inherit; text-decoration: none; overflow: hidden; border-radius: 4px; }
@@ -5324,18 +5324,18 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .lorelist li { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid var(--line); }
   .lorelist li b { display: block; }
   .lorelist li .cs { font-size: 13px; }
-  @media (min-width: 0px) { .lorestats { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; } .lorestats .kpi { padding: 10px 4px; text-align: center; } .lorestats .kpi b { font-size: 16px; white-space: nowrap; } .lorestats .kpi span { font-size: 10px; letter-spacing: .04em; } }
+  @media (min-width: 0px) { .lorestats { grid-template-columns: 1fr 1fr 1fr 1.55fr; gap: 6px; } .lorestats .kpi { min-width: 0; } .lorestats .kpi { padding: 10px 4px; text-align: center; } .lorestats .kpi b { font-size: 17px; white-space: nowrap; } .lorestats .kpi span { font-size: 10px; letter-spacing: .04em; } }
   .lorephotos .extra { display: none; } .lorephotos.all .extra { display: block; }
   .lormore { display: block; margin: -8px auto 20px; }
   .lorehi { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; margin: 0 0 8px; }
   .lorehi .hi { padding: 10px; border-radius: 14px; background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.02)); border: 1px solid var(--line); display: grid; gap: 2px; align-content: start; min-width: 0; }
-  .lorehi .hi b { font: 800 15px/1.2 var(--serif); overflow-wrap: anywhere; } .lorehi .hi .cs { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .lorehi .hi b { font: 800 15px/1.2 var(--serif); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.4em; } .lorehi .hi .cs { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
   .loreeras { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 16px; padding: 4px 16px 14px; margin: 0 -16px; scrollbar-width: none; }
   .loreeras::-webkit-scrollbar { display: none; }
-  .loreera { flex: 0 0 148px; scroll-snap-align: start; display: grid; gap: 3px; align-content: start; text-align: left; padding: 0; background: none; border: 0; color: inherit; cursor: pointer; }
+  .loreera { flex: 0 0 148px; align-content: start; grid-auto-rows: min-content; scroll-snap-align: start; display: grid; gap: 3px; align-content: start; text-align: left; padding: 0; background: none; border: 0; color: inherit; cursor: pointer; }
   .loreera .lc { display: block; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #1a1a1c; margin-bottom: 4px; }
   .loreera .lc img { display: block; width: 100%; height: 100%; object-fit: cover; } .loreera .lc img:not([src]) { visibility: hidden; }
-  .loreera b { font: 700 14px/1.25 var(--serif); } .loreera .cs { font-size: 12px; }
+  .loreera b { font: 700 14px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; } .loreera .cs { font-size: 12px; }
   .agechip { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--raise); color: var(--dim); }
   .lorecats button i { font-style: normal; opacity: .6; margin-left: 2px; }
   .lchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
