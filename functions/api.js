@@ -10,6 +10,10 @@ import { cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
 const FRESH_MS = 5 * 60 * 1000;      // refresh the copy when it is older than this
 const LOCK_MS = 90 * 1000;           // one refresh at a time
+// Calls that change the library in Apps Script: after one succeeds, the copy here is refreshed within seconds instead of waiting for the next 5-minute refresh.
+const LIB_WRITES = new Set(['saveTracklist', 'uploadCover', 'saveTrackDetails', 'updateVersion', 'registerUpload', 'setPreview', 'saveWorld', 'addExtra', 'addPhoto', 'deleteExtra', 'setAnimatedCover', 'saveLetter', 'saveUnlock', 'setVoiceNote',
+  'createRelease', 'setDuration', 'saveLyrics', 'saveVideosMeta', 'saveArtistLinks', 'saveBio', 'addYoutubeSong', 'savePlaylist', 'deletePlaylist', 'uploadCleanCover', 'quickShare', 'createShare', 'setShareActive', 'deleteTrack', 'deleteVersion',
+  'deleteRelease', 'addAudioNote', 'addYoutubePlaylistVideos', 'createReleaseFromYoutube', 'addCover', 'removeCover', 'setMainCover', 'updateExtra', 'refreshYoutubeTitles', 'setTrackCover', 'setReleaseBg']);
 const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json;charset=utf-8', 'cache-control': 'no-store' } });
 
 async function proxy(env, text) {
@@ -18,10 +22,10 @@ async function proxy(env, text) {
 }
 
 // Refresh the copy from Apps Script (its getLibrary, using the owner key kept as a secret here).
-export async function syncMirror(env, force) {
+export async function syncMirror(env, force, gapMs) {
   if (!env.DB || !env.OWNER_KEY) throw new Error('Not set up (needs the DB binding and the OWNER_KEY secret).');
   const meta = await readMeta(env.DB);
-  if (!force && meta && meta.lock && Date.now() - meta.lock < LOCK_MS) return meta;
+  if (!force && meta && meta.lock && Date.now() - meta.lock < (gapMs || LOCK_MS)) return meta;
   if (meta) await env.DB.prepare("INSERT OR REPLACE INTO kv (k, v) VALUES ('meta', ?)").bind(JSON.stringify(Object.assign({}, meta, { lock: Date.now() }))).run().catch(() => {});
   const r = await fetch(appsUrl(env), { method: 'POST', body: JSON.stringify({ fn: 'getLibrary', args: [env.OWNER_KEY] }), headers: { 'content-type': 'text/plain;charset=utf-8' }, redirect: 'follow' });
   const j = await r.json();
@@ -29,7 +33,10 @@ export async function syncMirror(env, force) {
   const lib = j.result;
   if (!lib || !Array.isArray(lib.releases) || !lib.releases.length || !Array.isArray(lib.tracks) || !lib.tracks.length) throw new Error('The library looked empty; keeping the old copy.');
   // Not needed to answer fans, and not worth keeping: the birthday, comment counts, backup state.
-  return saveLib(env.DB, lib, { source: 'apps-script-getLibrary', build: lib.build || '' });
+  const saved = await saveLib(env.DB, lib, { source: 'apps-script-getLibrary', build: lib.build || '' });
+  mem.lib = null;
+  try { await forgetCached(lib); } catch (e) {}
+  return saved;
 }
 
 const mem = { at: 0, lib: null, ov: null };   // kept for a minute inside a warm instance
@@ -195,6 +202,13 @@ export async function onRequestPost(ctx) {
     if (fn === 'edgeSync') return json({ ok: false, error: String((e && e.message) || e) });
     // anything else: fall through to Apps Script
   }
-  try { return await proxy(env, text); }
+  try {
+    const res = await proxy(env, text);
+    if (LIB_WRITES.has(fn) && env.DB && env.OWNER_KEY) {
+      const ok = await res.clone().json().then(j => j && j.ok === true).catch(() => false);
+      if (ok) ctx.waitUntil(syncMirror(env, false, 8000).catch(() => {}));
+    }
+    return res;
+  }
   catch (e) { return json({ ok: false, error: 'Could not reach Soul Vault. Check your internet connection.' }, 502); }
 }
