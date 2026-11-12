@@ -5338,9 +5338,10 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .loreera b { font: 700 14px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; } .loreera .cs { font-size: 12px; }
   .agechip { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--raise); color: var(--dim); }
   .lorecats button i { font-style: normal; opacity: .6; margin-left: 2px; }
-  .lchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-  .lchip { padding: 8px 14px; border-radius: 99px; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
-  .lchip i { font-style: normal; font-size: 11px; margin-left: 7px; padding: 1px 6px; border-radius: 99px; background: var(--raise); color: var(--dim); }
+  .lchips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+  @media (min-width: 761px) { .lchips { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .lchip { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 8px 12px; border-radius: 14px; text-align: left; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: inherit; font-weight: 600; font-size: 14px; line-height: 1.2; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+  .lchip i { flex: none; font-style: normal; font-size: 11px; margin-left: auto; padding: 1px 6px; border-radius: 99px; background: var(--raise); color: var(--dim); }
   .lchip[aria-expanded="true"] { background: var(--text); color: var(--bg); } .lchip[aria-expanded="true"] i { background: rgba(0,0,0,.12); color: inherit; }
   .lpdetail { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.04); display: grid; gap: 6px; }
   .lprel { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
@@ -5534,6 +5535,7 @@ function renderLore() {
       if (open) { d.hidden = true; return; }
       b.setAttribute('aria-expanded', 'true'); d.hidden = false;
       d.innerHTML = `<b>${linkName(e.name)}</b><div class="lprel">${[...e.releases].map(tt => { const er = L.eras.find(x => x.r.title === tt); return er ? `<button type="button" class="linkish" data-rel="${esc(er.r.release_id)}">${esc(tt)}</button>` : `<span>${esc(tt)}</span>`; }).join('')}</div>`;
+      d.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }));
   };
   $$('[data-lcat]').forEach(b => b.addEventListener('click', () => { cat = b.dataset.lcat; S.loreCat = cat; S.lorePeopleAll = false; $$('[data-lcat]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawPeople(); }));
