@@ -5421,7 +5421,6 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .lorelist li b { display: block; }
   .lorelist li .cs { font-size: 13px; }
   @media (min-width: 0px) { .lorestats { grid-template-columns: 1fr 1fr 1fr 1.55fr; gap: 6px; } .lorestats .kpi { min-width: 0; } .lorestats .kpi { padding: 10px 4px; text-align: center; } .lorestats .kpi b { font-size: 17px; white-space: nowrap; } .lorestats .kpi span { font-size: 10px; letter-spacing: .04em; } }
-  .loreinstall { display: flex; margin: 0 auto 14px; }
   .lorephotos .extra { display: none; } .lorephotos.all .extra { display: block; }
   .lormore { display: block; margin: -8px auto 20px; }
   .lorehi { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; margin: 0 0 8px; }
@@ -5597,7 +5596,6 @@ function renderLore() {
   let cat = cats.some(c => c[0] === S.loreCat) ? S.loreCat : (cats.find(c => c[2].size) || cats[0])[0];
   $('#main').innerHTML = `<div class="wrap lore">
     ${OWNER ? '<p class="cs" style="margin:6px 0 0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>' : ''}
-    ${(window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true ? '' : `<button type="button" class="pill soft loreinstall" data-install>${I.plus}Add to Home Screen</button>`}
     <section class="lorephotos${S.loreAll ? ' all' : ''}" aria-label="Photos">${SITE.photos.map((f, i) => `<button type="button" class="lph1${i >= 6 ? ' extra' : ''}" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</section>
     ${SITE.photos.length > 6 ? `<button type="button" class="pill soft lormore" data-lore-all>${S.loreAll ? 'Show fewer photos' : 'See all ' + SITE.photos.length + ' photos'}</button>` : ''}
     <div class="lorestats">
