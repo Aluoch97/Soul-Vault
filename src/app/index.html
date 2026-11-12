@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<title>Soul Vault</title>
+<style>
+@@include css/01-base.css
+@@include css/02-site-pages.css
+@@include css/03-mobile.css
+@@include css/04-theme.css
+@@include css/05-fan-club-and-fan-experience.css
+@@include css/06-new-release-eras-and-shelf.css
+</style>
+</head>
+<body>
+<aside class="side" id="side"></aside>
+<main id="main"></main>
+<nav class="tabs" id="tabs" aria-label="Sections"></nav>
+
+<div class="mini" id="mini" hidden>
+  <button class="open" id="openNp" aria-label="Open now playing">
+    <img class="art" id="mArt" alt="">
+    <span style="min-width:0"><span class="mt" id="mT" style="display:block"></span><span class="ms" id="mS" style="display:block"></span></span>
+  </button>
+  <div class="ctl">
+    <button class="ib prev" data-ctl="prev" aria-label="Previous"></button>
+    <button class="pp" data-ctl="toggle" aria-label="Pause"></button>
+    <button class="ib next" data-ctl="next" aria-label="Next"></button>
+  </div>
+  <div class="scrub"><span data-cur>0:00</span><input type="range" min="0" max="1000" value="0" data-seek aria-label="Position in song"><span data-dur>0:00</span></div>
+  <div class="msg" id="msg" role="status" aria-live="polite" hidden></div>
+  <div class="mprog" aria-hidden="true"><i></i></div>
+</div>
+
+<div class="np" id="np" hidden role="dialog" aria-modal="true" aria-label="Now playing">
+  <div class="np-bg" id="npBg"></div>
+  <div class="np-in">
+    <div class="np-top"><button class="ib" data-ctl="close" aria-label="Close now playing"></button></div>
+    <div class="np-body">
+      <div class="npmedia"><span class="spot" aria-hidden="true"></span>
+        <div class="npmode" id="npMode" role="group" aria-label="Song or video" hidden>
+          <button data-mode="song" aria-pressed="true">Song</button><button data-mode="video" aria-pressed="false">Video</button>
+        </div>
+        <img class="art" id="npArt" alt="">
+        <div class="npvid" id="npVid" hidden></div>
+        <div class="lyhead" id="lyHead"></div>
+        <div class="nplyr" id="npLyr" hidden aria-live="off"></div>
+        <div class="lynote" id="lyNote" hidden></div>
+      </div>
+      <div>
+        <h2 class="np-t" id="npT"></h2>
+        <p class="np-s" id="npS"></p>
+        <p class="exclt" id="npExcl" hidden>★ Vault exclusive</p>
+        <div class="scrub"><span data-cur>0:00</span><input type="range" min="0" max="1000" value="0" data-seek aria-label="Position in song"><span data-dur>0:00</span><div class="marks" id="npMarks" aria-hidden="true"></div></div>
+        <div class="ctl npctl">
+          <button class="tog" data-ctl="shuffle" aria-pressed="false" aria-label="Shuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+          <button class="ib" data-ctl="prev" aria-label="Previous"></button>
+          <button class="pp" data-ctl="toggle" aria-label="Pause"></button>
+          <button class="ib" data-ctl="next" aria-label="Next"></button>
+          <button class="tog" data-ctl="repeat" aria-pressed="false" aria-label="Repeat: off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="one" hidden>1</span></button>
+        </div>
+        <div class="npvol"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/></svg></span><input type="range" min="0" max="100" value="100" data-vol aria-label="Volume"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></span></div>
+        <div class="npx"><button class="pill soft" data-np-lyrics aria-pressed="false" hidden>Lyrics</button><button class="pill soft" data-np-details>Credits</button></div>
+        <div id="npVers"></div>
+        <a class="dl" id="npDl" target="_blank" rel="noopener" hidden></a>
+        <div id="npVoice"></div>
+        <div id="npLyrics"></div>
+        <div id="npCredits"></div>
+        <div id="npNext"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden></div>
+<audio id="audio" preload="metadata"></audio>
+<input type="file" id="coverFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+<div class="job" id="job" hidden role="status" aria-live="polite"><div class="jt"><span id="jobT"></span><span id="jobN"></span></div><div class="bar"><i id="jobBar"></i></div></div>
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+<div class="voicebar" id="voicebar" hidden role="region" aria-label="Voice note from Nicólas">
+  <span class="vbic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+  <div style="min-width:0"><strong>Voice note from Nicólas</strong><span class="cs" id="vbT"></span></div>
+  <button class="ib" data-vn-toggle aria-label="Play or pause the voice note"></button>
+  <button class="ib" data-vn-close aria-label="Close voice note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" width="20" height="20"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div class="bar"><i id="vnBar"></i></div>
+</div>
+
+<script>
+  // Safety net: runs before the app. If the app never starts, say why on screen.
+  window.SV_STARTED = false;
+  window.SV_ERRORS = [];
+  function svClean(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function svDiagnose(e) {
+    var info = [];
+    info.push('App code downloaded: ' + (window.SV_APP_LOADED ? 'yes' : 'no'));
+    info.push('App code complete: ' + (window.SV_APP_COMPLETE ? 'yes' : 'no'));
+    if (e && e.lineno) info.push('Error at app line ' + e.lineno + (e.colno ? ', column ' + e.colno : ''));
+    if (e && e.filename) info.push('In: ' + String(e.filename).replace(/[?].*$/, ''));
+    return info.join('\n');
+  }
+  window.svAppFailed = function () {
+    var m = document.getElementById('main');
+    if (m) m.innerHTML = '<div class="status"><p>Soul Vault could not download its app code from Google.</p>' +
+      '<p style="opacity:.75">Check your internet connection. If it keeps happening, make sure the app_url row in the Settings tab is your web app address ending in /exec.</p>' +
+      '<p style="opacity:.5">SV build 69</p></div>';
+    window.SV_ERRORS.push('download failed');
+  };
+  window.addEventListener('error', function (e) {
+    window.SV_ERRORS.push((e && e.message) || 'Unknown error');
+    if (!window.SV_STARTED) {
+      var m = document.getElementById('main');
+      if (m) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault could not start on this browser.</p>' +
+        '<p style="opacity:.8">' + svClean((e && e.message) || 'Unknown error') + '</p>' +
+        '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
+        svClean(svDiagnose(e)) + '</pre><p style="opacity:.5">SV build 69</p></div>';
+    }
+  });
+  setTimeout(function () {
+    if (window.SV_STARTED) return;
+    var m = document.getElementById('main');
+    if (m && !window.SV_ERRORS.length) m.innerHTML = '<div class="status" style="max-width:none"><p>Soul Vault did not start. Its code never ran on this browser.</p>' +
+      '<pre style="white-space:pre-wrap;font-size:11px;line-height:1.4;opacity:.75;background:rgba(255,255,255,.06);padding:10px;border-radius:8px">' +
+      svClean(svDiagnose(null)) + '</pre><p style="opacity:.5">SV build 69 / ' + svClean(navigator.userAgent) + '</p></div>';
+  }, 15000);
+</script>
+<script>window.SV_BOOT = __SV_BOOT__;</script>
+<style id="desk">
+/* Phone layout at every width, like the Certified and NuDirectory apps: the tab bar runs along the bottom of the whole window
+   and the pages fill the window (shelves run edge to edge). Home keeps its centered column. */
+:root { --padx: 16px; }
+@media (min-width: 761px) {
+  :root { --padx: clamp(24px, 4vw, 72px); }
+  .wrap { max-width: none; margin-left: 0; margin-right: 0; padding-left: var(--padx); padding-right: var(--padx); }
+  .wrap.homepg { max-width: 760px; margin-left: auto; margin-right: auto; }
+  .ctrack { margin-left: calc(-1 * var(--padx)); margin-right: calc(-1 * var(--padx)); padding-left: var(--padx); padding-right: var(--padx); scroll-padding-left: var(--padx); }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .ctrack .slide { flex: 0 0 clamp(320px, 34vw, 640px); }
+  .ctrack.homeone .slide { flex: none; }
+  .pcards { max-width: none; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .mini, .job, .voicebar { left: max(12px, calc((100vw - 900px) / 2)); right: max(12px, calc((100vw - 900px) / 2)); }
+  .sheet { width: min(820px, 100%); margin: 0 auto; }
+  .np-body .art { width: min(380px, 40vh); }
+  .tabs button { font-size: 12px; }
+  .tabs svg { width: 24px; height: 24px; }
+}
+/* Vault on a computer: every shelf is an even grid that lines up with the page edges (no half-cut cards, no sideways scrolling). */
+@media (min-width: 900px) {
+  #main .shelfbar { display: none; }
+  #main .shelf .ctrack { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 18px; overflow: visible; margin: 0; padding: 0; }
+  #main .shelf .ctrack .slide { flex: none; width: auto; aspect-ratio: 4 / 5; border-radius: 18px; }
+  #main .shelf .slide .ttl { font-size: clamp(17px, 1.45vw, 23px); }
+  #main .shelf .slide .cap { left: 14px; right: 62px; bottom: 14px; }
+  #main .shelf .slide .go { width: 40px; height: 40px; right: 12px; bottom: 12px; }
+  #main .hrow { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; overflow: visible; }
+  #main .hrow .scard, #main .hrow .plcard, #main .hrow .drop { flex: none; width: auto; min-width: 0; }
+  #main .hrow.recent { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  #main .recent .rc { flex: none; }
+  #main .recent .rc .art { width: 100%; height: auto; aspect-ratio: 1; }
+}
+@media (min-width: 1700px) { .wrap:has(#libBody) { max-width: 1640px; margin-left: auto; margin-right: auto; } }
+</style>
+<script id="sv-app">
+@@include js/01-boot-and-helpers.js
+@@include js/02-init-routing-chrome.js
+@@include js/03-home-tour-press.js
+@@include js/04-library-shelves.js
+@@include js/05-vault-and-studio.js
+@@include js/06-owner-tools-and-release-page.js
+@@include js/07-covers-player-and-details.js
+@@include js/08-comments-upload-now-playing.js
+@@include js/09-club-letters-new-release.js
+@@include js/10-release-extras-and-song-covers.js
+@@include js/11-chapters-lyrics-and-sync.js
+@@include js/12-series-backup-and-listens.js
+@@include js/13-editors-and-genres.js
+@@include js/14-library-data-and-lore.js
+@@include js/15-playlists-and-sections.js
+@@include js/16-deleting-notes-and-extra-covers.js
+@@include js/17-youtube-video-queue-and-diagnosis.js
+@@include js/18-play-and-startup.js
+</script>
+</body>
+</html>

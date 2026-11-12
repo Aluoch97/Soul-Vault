@@ -2,7 +2,7 @@
 // Reads the PUBLIC link only (site.config.json). Skips sealed releases and releases with nothing playable. Commit the result.
 const fs = require('fs'), path = require('path');
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'site.config.json'), 'utf8'));
-const slug = id => String(id || '').replace(/^rel_/, '').replace(/_/g, '-');   // same rule as relSlug() in src/App.html
+const slug = id => String(id || '').replace(/^rel_/, '').replace(/_/g, '-');   // same rule as relSlug() in src/app/js/02-init-routing-chrome.js
 // The two Home covers (newest single and project) are saved as files in public/home-covers/ and listed in home.json, so Home can draw them at once.
 async function bakeHome() {
   const r = await fetch(cfg.api, { method: 'POST', body: JSON.stringify({ fn: 'getHome', args: [cfg.publicToken] }), redirect: 'follow' });
