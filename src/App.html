@@ -1944,6 +1944,111 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .studio .scard h3 { margin: 0; font-size: 15px; } .studio .scard h3 span { color: var(--dim); font-weight: 600; margin-right: 6px; }
   .studio .save { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .studio .st { font-size: 13px; color: var(--dim); }
 ` }));
+/* ═════════ Uploads straight to our own storage (no Google Drive) ═════════ */
+const EDGE_UPLOADS = () => !!BOOT.api && BOOT.api !== BOOT.gas;   // true once the Cloudflare backend is on
+function putFile(key, blob, type, onProg) {
+  return new Promise((res, rej) => {
+    const x = new XMLHttpRequest(); x.open('PUT', '/upload?key=' + encodeURIComponent(key));
+    x.setRequestHeader('content-type', type); x.setRequestHeader('x-owner-key', BOOT.key);
+    x.upload.onprogress = e => { if (e.lengthComputable && onProg) onProg(e.loaded / e.total); };
+    x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} x.status === 200 && j.ok ? res(j) : rej(new Error(j.error || 'The upload failed (' + x.status + ').')); };
+    x.onerror = () => rej(new Error('The upload was interrupted. Check your connection and try again.'));
+    x.send(blob);
+  });
+}
+const newImgId = prefix => prefix + Array.from(crypto.getRandomValues(new Uint8Array(10))).map(b => b.toString(16).padStart(2, '0')).join('');
+async function resizeJpeg(file, w) {
+  let bmp; try { bmp = await createImageBitmap(file); } catch (e) { throw new Error('That picture could not be read. Use a JPG or PNG.'); }
+  const sc = Math.min(1, w / bmp.width), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(bmp.width * sc)); c.height = Math.max(1, Math.round(bmp.height * sc));
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise((res, rej) => c.toBlob(b => (b ? res(b) : rej(new Error('That picture could not be prepared.'))), 'image/jpeg', 0.88));
+}
+// Makes the sizes the app asks for and uploads them under img/<id>/<size>. covers: t + 1200; photos: 160 + 400 + 1600.
+async function uploadPicture(file, id, sizes, onProg) {
+  const px = { t: 400, 160: 160, 400: 400, 1200: 1200, 1600: 1600 };
+  for (let i = 0; i < sizes.length; i++) await putFile('img/' + id + '/' + sizes[i], await resizeJpeg(file, px[sizes[i]]), 'image/jpeg', p => onProg && onProg((i + p) / sizes.length));
+}
+async function uploadSongToEdge(file, relId, tid, title, label, primary, stat, bar) {
+  const ext0 = (file.name.match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase();
+  let blob = file, ext = ext0, type, seconds = await audioDuration(file);
+  if (['mp3', 'm4a', 'aac', 'ogg'].indexOf(ext0) < 0) {   // WAV, AIFF, FLAC and the like: make a 256 kbps MP3 for streaming (your master stays on your own drive)
+    stat('Making a streaming copy…');
+    const out = await toMp3(await file.arrayBuffer(), p => bar(p * 0.45), 256); blob = out.blob; ext = 'mp3'; seconds = seconds || out.duration;
+  }
+  type = ext === 'mp3' ? 'audio/mpeg' : ext === 'ogg' ? 'audio/ogg' : 'audio/mp4';
+  if (blob.size > 90 * 1048576) throw new Error('That file is over 90 MB. Use an MP3 or AAC copy.');
+  stat('Uploading…');
+  const plan = await run('studioPlanUpload', BOOT.key, { relId, trackId: tid || undefined, title, label, ext });
+  await putFile(plan.key, blob, type, p => bar(0.45 + p * 0.5));
+  stat('Adding it to your library…');
+  return run('studioAddSong', BOOT.key, { relId, trackId: tid || undefined, title, label, primary, seconds, key: plan.key, ext });
+}
+
+// Studio: the buttons for adding things to a release, and a New release form.
+function stuAddSection(rid, isOwnerEdge) {
+  return `<details class="stu" open><summary>Add to this release</summary><div class="stubody">
+    <p class="cs" style="margin:0">Songs and pictures go straight to your own storage. A WAV or AIFF is turned into a 256 kbps MP3 first; your master files stay on your computer.</p>
+    <div class="save"><button type="button" class="pill main" id="stuAddSong">${I.plus}Add a song</button><button type="button" class="pill soft" id="stuAddPhotos">${I.img}Add photos</button><button type="button" class="pill soft" id="stuCover">${I.img}Change cover</button></div>
+    <input type="file" id="stuPhotoFiles" accept="image/*" multiple hidden><input type="file" id="stuCoverFile" accept="image/*" hidden>
+    <p class="st" id="stuAddSt" role="status"></p></div></details>`;
+}
+function wireStuAdd(rid) {
+  const say = (t, bad) => { const e = $('#stuAddSt'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--red, #ff6b6b)' : ''; } };
+  $('#stuAddSong').addEventListener('click', () => openUpload(rid));
+  $('#stuAddPhotos').addEventListener('click', () => $('#stuPhotoFiles').click());
+  $('#stuCover').addEventListener('click', () => $('#stuCoverFile').click());
+  $('#stuPhotoFiles').addEventListener('change', async e => {
+    const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+    let n = 0;
+    try {
+      for (const f of files) {
+        say('Uploading photo ' + (n + 1) + ' of ' + files.length + '…');
+        const id = newImgId('p'); await uploadPicture(f, id, ['160', '400', '1600']);
+        const x = await run('studioAddPhoto', BOOT.key, { relId: rid, fileId: id, caption: f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 80) });
+        (S.lib.extras = S.lib.extras || []).push(x); n++;
+      }
+      say(n + (n === 1 ? ' photo' : ' photos') + ' added.'); toast('Photos added');
+    } catch (er) { say((n ? n + ' added, then: ' : '') + (er.message || 'Could not upload.'), true); }
+  });
+  $('#stuCoverFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      say('Uploading the cover…'); const id = newImgId('c'); await uploadPicture(f, id, ['t', '1200']);
+      await run('studioSetCover', BOOT.key, { relId: rid, coverId: id });
+      const mine = rel(rid); if (mine) { mine.cover_file_id = id; mine.cover_thumb = ''; }
+      say('Cover changed.'); toast('Cover changed');
+    } catch (er) { say(er.message || 'Could not upload the cover.', true); }
+  });
+}
+function openStudioNewRelease() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="New release">
+    <h2>New release</h2>
+    <label class="sf" style="display:grid;gap:5px;margin-bottom:10px">Title<input class="field" id="nrT" maxlength="120"></label>
+    <div class="sf2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <label class="sf" style="display:grid;gap:5px">Type<select class="field" id="nrType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'].map(t => `<option ${t === 'Single' ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label class="sf" style="display:grid;gap:5px">Year<input class="field" id="nrY" inputmode="numeric" maxlength="4" value="${new Date().getFullYear()}"></label></div>
+    <div class="sf2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <label class="sf" style="display:grid;gap:5px">Release date<input class="field" id="nrD" type="date"></label>
+      <label class="sf" style="display:grid;gap:5px">Artist (only if not Nicólas Soul)<input class="field" id="nrA" maxlength="80"></label></div>
+    <label class="sf" style="display:grid;gap:5px">Cover picture<input class="field" id="nrC" type="file" accept="image/*"></label>
+    <p class="cs" style="margin:8px 0 0">It starts hidden from fans. Add songs, then un-hide it under Release info when it's ready.</p>
+    <p class="cs" id="nrErr" role="alert" style="color:#ff8a8a;margin:8px 0 0" hidden></p>
+    <div class="end"><button class="pill soft" data-close>Cancel</button><button class="pill main" id="nrGo">Create release</button></div></div>`;
+  m.hidden = false; $('#nrT').focus();
+  $('#nrGo').addEventListener('click', async e => {
+    const btn = e.currentTarget, err = $('#nrErr'), bad = t => { err.hidden = false; err.textContent = t; btn.disabled = false; btn.textContent = 'Create release'; };
+    const title = $('#nrT').value.trim(); if (!title) return bad('Give the release a title.');
+    btn.disabled = true; btn.textContent = 'Working…'; err.hidden = true;
+    try {
+      let coverId = ''; const f = $('#nrC').files[0];
+      if (f) { coverId = newImgId('c'); btn.textContent = 'Uploading the cover…'; await uploadPicture(f, coverId, ['t', '1200']); }
+      const r = await run('studioNewRelease', BOOT.key, { title, type: $('#nrType').value, year: $('#nrY').value, release_date: $('#nrD').value, artist_name: $('#nrA').value, coverId });
+      (S.lib.releases = S.lib.releases || []).push(r); S.stuRel = r.release_id; closeModal(); toast('Release created (hidden)'); renderStudio();
+    } catch (er) { bad(er.message || 'Could not create the release.'); }
+  });
+}
+
 const STU_SERVICES = ['Spotify', 'Apple Music', 'YouTube Music', 'YouTube', 'Bandcamp', 'SoundCloud', 'DatPiff', 'Audiomack', 'Tidal', 'Amazon Music', 'Deezer'];
 async function renderStudio() {
   clearPageBg(); S.view = 'studio'; renderChrome();
@@ -1978,7 +2083,8 @@ function drawStudio() {
   $('#main').innerHTML = `<div class="wrap studio">
     <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>
     <p class="cs">Pick a release, change what you need, and press Save in that section. Changes show on the site within about a minute.</p>
-    <select class="field stusel" id="stuRel" aria-label="Release">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
+    <div style="display:flex;gap:8px;align-items:center;margin:6px 0 14px"><select class="field stusel" id="stuRel" aria-label="Release" style="margin:0;flex:1;min-width:0">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
+      ${EDGE_UPLOADS() ? `<button type="button" class="pill main" id="stuNewRel" style="flex:none">${I.plus}New</button>` : ''}</div>
     <details class="stu" open><summary>Release info</summary><div class="stubody" id="stuInfo">
       <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'].map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
       <div class="sf2">${f('stArtist', 'Artist name (if not Nicólas Soul)', r.artist_name)}${f('stRec', 'Recorded at', r.recorded_at)}</div>
@@ -1997,12 +2103,14 @@ function drawStudio() {
       <div class="save"><button type="button" class="pill soft" id="stuAddLink">${I.plus}Add a link</button></div>
       ${f('stFirst', 'First appeared on (DatPiff, Bandcamp…)', lk.first)}
       <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></details>
+    ${EDGE_UPLOADS() ? stuAddSection(rid) : ''}
     <details class="stu"><summary>Songs <span class="cs">${tracks.length}</span></summary><div class="stubody">${songs || '<p class="cs">No songs on this release.</p>'}</div></details>
     <p class="cs" style="margin:16px 0 0">Lyrics, covers and audio files are still edited on the release page.</p></div>`;
   window.scrollTo(0, 0);
   const say = (el, t, bad) => { if (el) { el.textContent = t; el.style.color = bad ? 'var(--red, #ff6b6b)' : ''; } };
   const guard = async (btn, st, fn) => { btn.disabled = true; say(st, 'Saving…'); try { await fn(); say(st, 'Saved'); toast('Saved'); } catch (e) { say(st, e.message || 'Could not save', true); } btn.disabled = false; };
   $('#stuRel').addEventListener('change', e => { S.stuRel = e.target.value; drawStudio(); });
+  if ($('#stuNewRel')) { $('#stuNewRel').addEventListener('click', openStudioNewRelease); wireStuAdd(rid); }
   $('#stuSaveInfo').addEventListener('click', e => guard(e.currentTarget, $('#stuInfoSt'), async () => {
     const v = id => $('#' + id).value;
     const basics = { title: v('stTitle'), type: v('stType'), hidden: $('#stHidden').checked };
@@ -2846,7 +2954,7 @@ async function driveUpload(blob, name, mime, ticket, onProg) {
 
 let lameP = null;
 // Decodes any browser-readable audio and returns a 160 kbps MP3 blob.
-async function toMp3(arrayBuffer, onProg) {
+async function toMp3(arrayBuffer, onProg, kbps) {
   const lame = await loadLame();
   const AC = window.AudioContext || window.webkitAudioContext;
   const ctx = new AC();
@@ -2855,7 +2963,7 @@ async function toMp3(arrayBuffer, onProg) {
   catch (e) { throw new Error('This browser could not read that audio file.'); }
   finally { try { ctx.close(); } catch (e) {} }
   const ch = Math.min(2, buf.numberOfChannels), L = buf.getChannelData(0), R = ch > 1 ? buf.getChannelData(1) : null;
-  const enc = new lame.Mp3Encoder(ch, buf.sampleRate, 160), out = [], block = 1152;
+  const enc = new lame.Mp3Encoder(ch, buf.sampleRate, kbps || 160), out = [], block = 1152;
   const l16 = new Int16Array(block), r16 = new Int16Array(block);
   const fill = (src, dst, i, n) => { for (let k = 0; k < n; k++) { let x = src[i + k]; x = x < -1 ? -1 : x > 1 ? 1 : x; dst[k] = x < 0 ? x * 0x8000 : x * 0x7FFF; } };
   for (let i = 0, b = 0; i < L.length; i += block, b++) {
@@ -2903,6 +3011,9 @@ async function doUpload(btn) {
   btn.disabled = true; btn.textContent = 'Working…'; err.hidden = true; $('#uProg').hidden = false;
   const stat = t => ($('#uStat').textContent = t), bar = p => $('#uBar').style.setProperty('--p', Math.round(p * 100) + '%');
   try {
+    let out;
+    if (EDGE_UPLOADS()) out = await uploadSongToEdge(file, relId, tid, title, label, tid ? $('#uPrimary').checked : true, stat, bar);   // straight to our own storage
+    else {
     const preview = null; const duration = await audioDuration(file);
     stat('Connecting to Drive…');
     const ticket = await run('getUploadTicket', BOOT.key, relId);
@@ -2915,12 +3026,14 @@ async function doUpload(btn) {
       previewId = await driveUpload(preview, file.name.replace(/\.[^.]+$/, '') + ' (preview).mp3', 'audio/mpeg', ticket, p => bar(0.9 + p * 0.05));
     }
     stat('Adding it to your library…');
-    const out = await run('registerUpload', BOOT.key, { releaseId: relId, trackId: tid, title, label, fileId, previewId, duration,
+    out = await run('registerUpload', BOOT.key, { releaseId: relId, trackId: tid, title, label, fileId, previewId, duration,
       primary: tid ? $('#uPrimary').checked : true });
+    }
     bar(1);
     if (out.track) S.lib.tracks.push(out.track);
     if (out.version.is_primary) S.lib.versions.filter(v => v.track_id === out.version.track_id).forEach(v => (v.is_primary = false));
     S.lib.versions.push(out.version);
+    if (out.version.url) (S.urlByFile = S.urlByFile || {})[out.version.audio] = out.version.url;   // plays from our own storage
     closeModal(); toast(tid ? 'Version added' : 'Song added');
     if (S.view === 'release') renderRelease(relId);
   } catch (e) { $('#uProg').hidden = true; bail(e.message || 'The upload did not finish.'); }
