@@ -9,6 +9,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/trouble-in-paradise/1762693811"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/trouble-in-paradise"
     ]
    ]
   },
@@ -21,6 +25,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/soulless/1764315490"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/soulless"
     ]
    ]
   },
@@ -33,6 +41,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/a-love-letter-to-cali-directors-cut-ep/1762694600"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/a-love-letter-to-cali-ep"
     ]
    ]
   },
@@ -45,6 +57,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/jambo-jacque-tesphaye/1762675942"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/jambo-jacque-tesphaye"
     ]
    ]
   },
@@ -53,6 +69,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/soulsearching/1762667931"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/soulsearching"
     ]
    ]
   },
@@ -69,6 +89,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/shadow-work-b-sides-ep/1771460883"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/shadow-work-b-sides"
     ]
    ]
   },
@@ -81,6 +105,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/rise-of-the-lost/1822142812"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/rise-of-the-lost"
     ]
    ]
   },
@@ -89,6 +117,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/saturn-return-ep/1887907558"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/saturn-return"
     ]
    ]
   },
@@ -101,6 +133,10 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/idk-what-u-need-single/6791386225"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/track/idk-what-u-need"
     ]
    ]
   },
@@ -113,6 +149,106 @@
     [
      "Apple Music",
      "https://music.apple.com/us/album/roadto100shows-single/6803611113"
+    ],
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/roadto100shows"
+    ]
+   ]
+  },
+  "rel_2026_break_the_cycle": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/break-the-cycle"
+    ]
+   ]
+  },
+  "rel_2024_cause_it_feels_good_ep": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/cause-it-feels-good-ep"
+    ]
+   ]
+  },
+  "rel_2018_the_birdhouse": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/the-birdhouse"
+    ]
+   ]
+  },
+  "rel_2018_nights_in_nashville_deluxe": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/nights-in-nashville-deluxe"
+    ]
+   ]
+  },
+  "rel_2017_seasons_deluxe": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/seasons-deluxe"
+    ]
+   ]
+  },
+  "rel_2017_paradise_ep": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/paradise-ep"
+    ]
+   ]
+  },
+  "rel_2016_summer_break_ep": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/summer-break-ep"
+    ]
+   ]
+  },
+  "rel_2016_mayhem_story_edition": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/mayhem-story-edition"
+    ]
+   ]
+  },
+  "rel_2015_before_the_mayhem_ep": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/before-the-mayhem-ep-2"
+    ]
+   ]
+  },
+  "rel_2015_nicolas_soul_ep": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/nic-las-soul-ep"
+    ]
+   ]
+  },
+  "rel_2014_r_e_a_l_i_t_y_deluxe": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/r-e-a-l-i-t-y-deluxe"
+    ]
+   ]
+  },
+  "rel_2012_standing_ovation_deluxe": {
+   "links": [
+    [
+     "Bandcamp",
+     "https://nrnszn.bandcamp.com/album/standing-ovation-deluxe"
     ]
    ]
   }
