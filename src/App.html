@@ -1912,6 +1912,7 @@ function renderVault() {
       <li><button data-jump="all">${I.disc}<span>Browse by year</span><span class="cs">${I.chev}</span></button></li>
       <li><button data-check-playback>${I.play}<span>Check playback setup</span><span class="cs">tests your API key</span></button></li>
       <li><button data-backup>${I.up2}<span>Back up my Sheet now</span><span class="cs">${esc(backupLine())}</span></button></li>
+      ${EDGE_UPLOADS() ? `<li><button data-areas>${I.layers}<span>Move off the Sheet</span><span class="cs">playlists, extras, letter and bio: switch to Cloudflare</span></button></li>` : ''}
       <li><button data-nav="studio">${I.edit}<span>Studio</span><span class="cs">edit titles, songs, info, links</span></button></li>
       <li><button data-install>${I.plus}<span>Add to Home Screen</span><span class="cs">put Soul Vault on your phone like an app</span></button></li>
       <li><button data-ownerpw>${I.lock}<span>Set owner password</span><span class="cs">sign in at soulnicolas.com/admin, no key needed</span></button></li>
@@ -1920,6 +1921,7 @@ function renderVault() {
     </ul>
   </div>`;
   $('[data-ownerpw]').addEventListener('click', openOwnerPw);
+  if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
   $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });
   const ok = $('[data-ownerkey]');
   if (ok) ok.addEventListener('click', async () => {   // the key is never shown on screen, only put on the clipboard
@@ -2141,6 +2143,33 @@ function drawStudio() {
       card.querySelector('h3').innerHTML = `<span>${esc(t.number_label || t.track_no)}</span>${esc(t.title)}`;
     });
   }));
+}
+
+/* ── Move areas off the Sheet: each one is switched over on its own, and can be switched back ── */
+const AREAS = [['playlists', 'Playlists', 'Your playlists and which ones fans can see.'], ['extras', 'Extras', 'Reviews, apps, videos, links, audio notes and photos on release pages.'], ['settings', 'Letter, bio and artist links', 'Your letter to fans, the bio, and links for other artists.']];
+async function openAreas() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Move off the Sheet"><h2>Move off the Sheet</h2><p class="cs" id="arSt">Checking…</p><div id="arList" style="display:grid;gap:10px"></div>
+    <p class="cs" style="margin:12px 0 0">Switching an area copies its current data to Cloudflare once. After that, edits are saved on Cloudflare, and your Sheet is left alone as a backup. Switching back returns to the Sheet's copy; edits made since are not carried back.</p>
+    <p class="cs" id="arErr" role="alert" style="color:#ff8a8a" hidden></p><div class="end"><button class="pill soft" data-close>Done</button></div></div>`;
+  m.hidden = false;
+  const draw = on => {
+    $('#arSt').textContent = 'Each area switches on its own.';
+    $('#arList').innerHTML = AREAS.map(a => `<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:10px 12px">
+      <div style="min-width:0"><b>${esc(a[1])}</b><div class="cs">${esc(a[2])}</div><div class="cs">${on[a[0]] ? 'On Cloudflare' : 'Still on the Sheet'}</div></div>
+      <button class="pill ${on[a[0]] ? 'soft' : 'main'}" data-area="${a[0]}" data-on="${on[a[0]] ? 1 : 0}">${on[a[0]] ? 'Switch back' : 'Switch'}</button></div>`).join('');
+  };
+  try { const st = await fetch(BOOT.api, { method: 'POST', body: JSON.stringify({ fn: 'edgeStatus', args: [] }) }).then(r => r.json()); draw((st.result && st.result.owned_areas) || {}); }
+  catch (e) { $('#arSt').textContent = 'Could not check. Try again.'; return; }
+  $('#arList').addEventListener('click', async e => {
+    const b = e.target.closest('[data-area]'); if (!b) return;
+    b.disabled = true; $('#arErr').hidden = true; const was = b.textContent; b.textContent = 'Working…';
+    try {
+      await run(b.dataset.on === '1' ? 'releaseDomain' : 'adoptDomain', BOOT.key, b.dataset.area);
+      const st = await fetch(BOOT.api, { method: 'POST', body: JSON.stringify({ fn: 'edgeStatus', args: [] }) }).then(r => r.json()); draw((st.result && st.result.owned_areas) || {});
+      toast('Done. Reload the app to see everything from the new place.');
+    } catch (er) { $('#arErr').hidden = false; $('#arErr').textContent = er.message || 'Could not switch.'; b.disabled = false; b.textContent = was; }
+  });
 }
 
 /* ── Owner password: sign in at /admin without the owner key ── */

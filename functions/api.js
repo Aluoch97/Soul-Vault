@@ -2,10 +2,11 @@
 // Stage 1: `getShare` (the whole library, which was the slow call) is answered here from the D1 copy and cached at the edge for 60 s.
 // Everything else is passed straight to Apps Script. If anything here fails, the call goes to Apps Script instead.
 import cfg from '../site.config.json';
-import { ERR_LINK, findShare, shareBody, bodyTtl, shareBlock, overlayFor } from './_lib/share.js';
+import { ERR_LINK, findShare, shareScope, shareBody, bodyTtl, shareBlock, overlayFor } from './_lib/share.js';
 import { loadLib, saveLib, readMeta, loadOverlay, saveOverlay } from './_lib/mirror.js';
 import { makeRecord, checkPassword, PW_MIN, MAX_TRIES, LOGIN_LOCK_MS, failKey } from './_lib/auth.js';
 import { loadNative, saveNative, mergeNative, newRelease, newTrack, newVersion, relSlug, slug, MEDIA_BASE } from './_lib/native.js';
+import * as OW from './_lib/owned.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
@@ -47,7 +48,7 @@ async function library(ctx) {
   let lib = await loadLib(env.DB);
   const ov = normOverlay(await loadOverlay(env.DB));
   if (!lib) { if (env.OWNER_KEY) ctx.waitUntil(syncMirror(env).catch(() => {})); return null; }
-  mem.lib = mergeNative(lib, await loadNative(env.DB), ov); mem.ov = ov; mem.at = now;
+  mem.lib = OW.applyOwned(mergeNative(lib, await loadNative(env.DB), ov), await OW.loadOwned(env.DB)); mem.ov = ov; mem.at = now;
   lib = mem.lib;
   ctx.waitUntil(readMeta(env.DB).then(m => { if (m && now - m.synced_at > FRESH_MS && env.OWNER_KEY) return syncMirror(env); }).catch(() => {}));
   return lib;
@@ -213,7 +214,8 @@ async function studio(ctx, fn, a) {
     if (!/^[A-Za-z0-9_-]{6,80}$/.test(fileId)) throw new Error('Bad photo.');
     if (env.MEDIA && !(await env.MEDIA.head('img/' + fileId + '/1600'))) throw new Error('The photo did not arrive. Try again.');
     const x = { extra_id: 'ext_' + Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b => b.toString(16).padStart(2, '0')).join(''), release_id: rid, kind: 'photo', url: '', title: String(o.caption || '').trim().slice(0, 200), description: '', image: '', site: '', file_id: fileId, created: new Date().toISOString(), native: true };
-    nat.extras.push(x); await saveNat();
+    const ow = await OW.loadOwned(env.DB);
+    if (ow.domains.extras) { ow.extras.push(x); await OW.saveOwned(env.DB, ow); mem.lib = null; await forgetCached(all); } else { nat.extras.push(x); await saveNat(); }
     return x;
   }
   throw new Error('Unknown action.');
@@ -252,6 +254,53 @@ async function ownerLogin(ctx, a) {
   return { key: env.OWNER_KEY };
 }
 
+// ───────── Areas that Cloudflare owns instead of the Sheet (playlists, extras, letter/bio/links) ─────────
+async function adoptDomain(ctx, a, on) {
+  const { env } = ctx, name = String(a[1] || '');
+  if (!env.DB) throw new Error('This needs the Cloudflare database.');
+  if (!isOwner(env, a[0])) throw new Error('This link is missing its owner key. Open the app from your owner link.');
+  if (OW.DOMAINS.indexOf(name) < 0) throw new Error('Unknown area.');
+  const ow = await OW.loadOwned(env.DB);
+  if (!on) { ow.domains[name] = false; await OW.saveOwned(env.DB, ow); mem.lib = null; const b = await loadLib(env.DB); if (b) await forgetCached(b); return { area: name, owned: false }; }   // back to the Sheet's copy
+  if (ow.domains[name]) return { area: name, owned: true, already: true };
+  await syncMirror(env, true);   // newest copy of the Sheet first, so nothing typed there a minute ago is lost
+  const base = await loadLib(env.DB), ov = normOverlay(await loadOverlay(env.DB)), all = mergeNative(base, await loadNative(env.DB), ov);
+  let count = 0;
+  if (name === 'playlists') { ow.playlists = all.playlists || []; count = ow.playlists.length; }
+  if (name === 'extras') { ow.extras = all.extras || []; count = ow.extras.length; }
+  if (name === 'settings') { ow.letter = all.letter || null; ow.bio = all.artist_bio || ''; ow.artist_links = all.artist_links || {}; count = Object.keys(ow.artist_links).length + (ow.letter ? 1 : 0) + (ow.bio ? 1 : 0); }
+  ow.domains[name] = true; await OW.saveOwned(env.DB, ow); mem.lib = null; await forgetCached(all);
+  return { area: name, owned: true, copied: count };
+}
+// Returns undefined when this call is not ours to answer (the area is still the Sheet's), so it goes on to Apps Script.
+async function ownedCall(ctx, fn, a) {
+  const { env } = ctx, dom = OW.OWNED_FNS[fn];
+  if (!env.DB) return undefined;
+  const ow = await OW.loadOwned(env.DB);
+  for (const d in OW.BLOCKED_AFTER) if (ow.domains[d] && OW.BLOCKED_AFTER[d].indexOf(fn) > -1) throw new Error("This isn't available yet in the new version of Soul Vault. Use Studio for photos, covers and songs.");
+  if (!dom || !ow.domains[dom]) return undefined;
+  const lib = await library(ctx), now = new Date().toISOString();
+  const guard = () => { if (!isOwner(env, a[0])) throw new Error('This link is missing its owner key. Open the app from your owner link.'); };
+  const save = async () => { await OW.saveOwned(env.DB, ow); mem.lib = null; await forgetCached(lib); };
+  if (fn === 'getPlaylists') {
+    if (isOwner(env, a[0])) return OW.playlistsAnswer(lib, ow, null);
+    const sh = findShare(lib, String(a[1] || ''), new Date()); if (!sh) return { error: 'This link has expired or been turned off.' };
+    return OW.playlistsAnswer(lib, ow, shareScope(sh, lib, new Date()));
+  }
+  guard();
+  let out;
+  if (fn === 'savePlaylist') out = OW.savePlaylist(a[1], ow, lib, now);
+  else if (fn === 'deletePlaylist') out = OW.deletePlaylist(String(a[1] || ''), ow);
+  else if (fn === 'addExtra') out = await OW.addExtra(String(a[1] || ''), a[2], ow, lib, now);
+  else if (fn === 'updateExtra') out = OW.updateExtra(String(a[1] || ''), a[2], ow);
+  else if (fn === 'deleteExtra') out = OW.deleteExtra(String(a[1] || ''), ow);
+  else if (fn === 'saveLetter') out = OW.saveLetter(a[1], a[2], ow, now);
+  else if (fn === 'saveBio') out = OW.saveBio(a[1], ow);
+  else if (fn === 'saveArtistLinks') out = OW.saveArtistLinks(a[1], ow);
+  await save();
+  return out === undefined ? null : out;
+}
+
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const text = await request.text();
@@ -261,12 +310,18 @@ export async function onRequestPost(ctx) {
     if (fn === 'getShare' && env.DB) {
       const out = await edgeShare(ctx, args);
       if (out) return json({ ok: true, result: out });
+    } else if (fn === 'adoptDomain' || fn === 'releaseDomain') {
+      try { return json({ ok: true, result: await adoptDomain(ctx, args, fn === 'adoptDomain') }); }
+      catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
+    } else if (env.DB && (OW.OWNED_FNS[fn] || Object.values(OW.BLOCKED_AFTER).some(l => l.indexOf(fn) > -1))) {
+      try { const r = await ownedCall(ctx, fn, args); if (r !== undefined) return json({ ok: true, result: r }); }
+      catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'setOwnerPassword' || fn === 'ownerLogin') {
       try { return json({ ok: true, result: fn === 'ownerLogin' ? await ownerLogin(ctx, args) : await setOwnerPassword(ctx, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'getLibrary' && env.DB && args[0]) {
       const res = await proxy(env, text), j = await res.clone().json().catch(() => null);
-      if (j && j.ok && j.result) { const ov = normOverlay(await loadOverlay(env.DB)); j.result = mergeNative(j.result, await loadNative(env.DB), ov); return json(j); }
+      if (j && j.ok && j.result) { const ov = normOverlay(await loadOverlay(env.DB)); j.result = OW.applyOwned(mergeNative(j.result, await loadNative(env.DB), ov), await OW.loadOwned(env.DB)); return json(j); }
       return res;
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
@@ -274,8 +329,8 @@ export async function onRequestPost(ctx) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {
-      const m = env.DB ? await readMeta(env.DB) : null;
-      return json({ ok: true, result: { db: !!env.DB, owner_key: !!env.OWNER_KEY, synced_at: m ? m.synced_at : null, age_s: m ? Math.round((Date.now() - m.synced_at) / 1000) : null, counts: m ? m.counts : null } });
+      const m = env.DB ? await readMeta(env.DB) : null, own = env.DB ? await OW.loadOwned(env.DB) : null;
+      return json({ ok: true, result: { db: !!env.DB, owner_key: !!env.OWNER_KEY, owned_areas: own ? own.domains : {}, synced_at: m ? m.synced_at : null, age_s: m ? Math.round((Date.now() - m.synced_at) / 1000) : null, counts: m ? m.counts : null } });
     } else if (fn === 'edgeSync') {
       if (!env.OWNER_KEY || String(args[0] || '') !== env.OWNER_KEY) return json({ ok: false, error: 'Not allowed.' });
       const m = await syncMirror(env, true); mem.lib = null;
