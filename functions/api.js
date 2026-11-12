@@ -2,8 +2,9 @@
 // Stage 1: `getShare` (the whole library, which was the slow call) is answered here from the D1 copy and cached at the edge for 60 s.
 // Everything else is passed straight to Apps Script. If anything here fails, the call goes to Apps Script instead.
 import cfg from '../site.config.json';
-import { ERR_LINK, findShare, shareBody, bodyTtl, shareBlock } from './_lib/share.js';
-import { loadLib, saveLib, readMeta } from './_lib/mirror.js';
+import { ERR_LINK, findShare, shareBody, bodyTtl, shareBlock, overlayFor } from './_lib/share.js';
+import { loadLib, saveLib, readMeta, loadOverlay, saveOverlay } from './_lib/mirror.js';
+import { cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
 const FRESH_MS = 5 * 60 * 1000;      // refresh the copy when it is older than this
@@ -30,13 +31,14 @@ export async function syncMirror(env, force) {
   return saveLib(env.DB, lib, { source: 'apps-script-getLibrary', build: lib.build || '' });
 }
 
-const mem = { at: 0, lib: null };   // kept for a minute inside a warm instance
+const mem = { at: 0, lib: null, ov: null };   // kept for a minute inside a warm instance
 async function library(ctx) {
   const { env } = ctx, now = Date.now();
   if (mem.lib && now - mem.at < 60000) return mem.lib;
   const lib = await loadLib(env.DB);
+  const ov = normOverlay(await loadOverlay(env.DB));
   if (!lib) { if (env.OWNER_KEY) ctx.waitUntil(syncMirror(env).catch(() => {})); return null; }
-  mem.lib = lib; mem.at = now;
+  mem.lib = lib; mem.ov = ov; mem.at = now;
   ctx.waitUntil(readMeta(env.DB).then(m => { if (m && now - m.synced_at > FRESH_MS && env.OWNER_KEY) return syncMirror(env); }).catch(() => {}));
   return lib;
 }
@@ -51,11 +53,83 @@ async function edgeShare(ctx, args) {
   let body, hit = await cache.match(key);
   if (hit) body = await hit.json();
   else {
-    body = shareBody(s, lib, now);
+    body = shareBody(s, lib, now, mem.ov);
+    if (!overlayIsEmpty(mem.ov)) body.overlay = overlayFor(body, mem.ov);
     const ttl = bodyTtl(body, now, 60);
     ctx.waitUntil(cache.put(key, new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + ttl } })));
   }
   return Object.assign({}, body, { share: shareBlock(s) });
+}
+
+// ───────── Studio (owner only) ─────────
+const isOwner = (env, key) => !!env.OWNER_KEY && String(key || '') === env.OWNER_KEY;
+async function callApps(env, fn, args) {
+  const r = await fetch(appsUrl(env), { method: 'POST', body: JSON.stringify({ fn, args }), headers: { 'content-type': 'text/plain;charset=utf-8' }, redirect: 'follow' });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Apps Script refused the change.');
+  return j.result;
+}
+async function forgetCached(lib) {   // drop this data centre's kept answers so the change shows at once
+  const seen = {};
+  (lib.shares || []).forEach(s => { seen[s.target_type + '/' + (s.target_id || '')] = 1; });
+  await Promise.all(Object.keys(seen).map(k => { const [t, i] = k.split('/'); return caches.default.delete(new Request('https://edge.soulnicolas.invalid/gs1/' + encodeURIComponent(t) + '/' + encodeURIComponent(i || ''))); }));
+}
+async function keepLib(ctx, lib, ov) {
+  const meta = await readMeta(ctx.env.DB);
+  await saveLib(ctx.env.DB, lib, { synced_at: meta ? meta.synced_at : Date.now() });
+  if (ov) await saveOverlay(ctx.env.DB, ov);
+  mem.lib = lib; if (ov) mem.ov = ov; mem.at = Date.now();
+  await forgetCached(lib);
+}
+async function ownerState(ctx) {
+  const lib = await loadLib(ctx.env.DB);
+  if (!lib) throw new Error('The copy of your data is not ready yet. Try again in a minute.');
+  return { lib, ov: normOverlay(await loadOverlay(ctx.env.DB)) };
+}
+async function studio(ctx, fn, a) {
+  const { env } = ctx;
+  if (!env.DB) throw new Error('Studio needs the Cloudflare database.');
+  if (!isOwner(env, a[0])) throw new Error('This link is missing its owner key. Open the app from your owner link.');
+  const { lib, ov } = await ownerState(ctx);
+  if (fn === 'studioGet') {
+    return { releases: lib.releases, versions: lib.versions.map(v => ({ version_id: v.version_id, track_id: v.track_id, label: v.label, is_primary: v.is_primary, hidden: v.hidden })),
+             tracks: lib.tracks.map(t => { const o = Object.assign({}, t); delete o.lyrics; delete o.track_cover_thumb; return o; }), overlay: ov };
+  }
+  if (fn === 'studioSaveRelease') {
+    const rid = String(a[1] || ''), f = a[2] || {};
+    if (!(lib.releases || []).some(r => r.release_id === rid)) throw new Error('Release not found.');
+    let basics = null, world = null;
+    if (f.basics) basics = cleanBasics(f.basics);
+    if (f.world) world = cleanWorld(f.world);
+    const cur = lib.releases.find(r => r.release_id === rid);
+    if (basics) await callApps(env, 'saveTracklist', [env.OWNER_KEY, rid, basics.title != null ? basics.title : cur.title, [], basics.hidden != null ? basics.hidden : cur.hidden === true, basics.type || cur.type]);
+    if (world) await callApps(env, 'saveWorld', [env.OWNER_KEY, rid, world]);
+    if (basics) patchRow(lib, 'releases', 'release_id', rid, basics);
+    if (world) patchRow(lib, 'releases', 'release_id', rid, world);
+    if (f.unreleased != null) { ov.flags.releases[rid] = !!f.unreleased; }
+    await keepLib(ctx, lib, f.unreleased != null ? ov : null);
+    return true;
+  }
+  if (fn === 'studioSaveTrack') {
+    const tid = String(a[1] || ''), f = a[2] || {};
+    if (!(lib.tracks || []).some(t => t.track_id === tid)) throw new Error('Song not found.');
+    const fields = cleanTrack(f.fields || {});
+    const sr = f.sr != null ? cleanSr(f.sr) : null;
+    if (Object.keys(fields).length) { await callApps(env, 'saveTrackDetails', [env.OWNER_KEY, tid, fields]); patchRow(lib, 'tracks', 'track_id', tid, fields); }
+    if (sr != null) { if (sr) ov.sr[tid] = sr; else delete ov.sr[tid]; }
+    if (f.unreleased != null) ov.flags.tracks[tid] = !!f.unreleased;
+    await keepLib(ctx, lib, (sr != null || f.unreleased != null) ? ov : null);
+    return true;
+  }
+  if (fn === 'studioSaveLinks') {
+    const rid = String(a[1] || '');
+    if (!(lib.releases || []).some(r => r.release_id === rid)) throw new Error('Release not found.');
+    const c = cleanLinks(a[2] || {});
+    if (c.links.length || c.first) ov.releases[rid] = c; else delete ov.releases[rid];
+    await saveOverlay(env.DB, ov); mem.ov = ov; mem.at = Date.now(); await forgetCached(lib);
+    return true;
+  }
+  throw new Error('Unknown action.');
 }
 
 export async function onRequestPost(ctx) {
@@ -67,6 +141,11 @@ export async function onRequestPost(ctx) {
     if (fn === 'getShare' && env.DB) {
       const out = await edgeShare(ctx, args);
       if (out) return json({ ok: true, result: out });
+    } else if (fn === 'getOverlay' && env.DB) {
+      return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
+    } else if (/^studio(Get|SaveRelease|SaveTrack|SaveLinks)$/.test(fn)) {
+      try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
+      catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {
       const m = env.DB ? await readMeta(env.DB) : null;
       return json({ ok: true, result: { db: !!env.DB, owner_key: !!env.OWNER_KEY, synced_at: m ? m.synced_at : null, age_s: m ? Math.round((Date.now() - m.synced_at) / 1000) : null, counts: m ? m.counts : null } });

@@ -35,3 +35,11 @@ export async function saveLib(db, lib, extraMeta) {
   await db.batch(stmts);
   return meta;
 }
+
+export async function loadOverlay(db) {
+  try { const r = await db.prepare("SELECT v FROM kv WHERE k = 'overlay'").first(); return r ? JSON.parse(r.v) : null; } catch (e) { return null; }
+}
+export async function saveOverlay(db, ov) {
+  await db.prepare(DDL).run();
+  await db.prepare("INSERT OR REPLACE INTO kv (k, v) VALUES ('overlay', ?)").bind(JSON.stringify(ov)).run();
+}
