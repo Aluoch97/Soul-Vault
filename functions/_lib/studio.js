@@ -1,6 +1,6 @@
 // Studio: what the owner may change, checked and cleaned on the server (the same limits Vault.gs uses), and applied to the copy in D1.
 const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
-export const RELEASE_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'];
+export const RELEASE_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
 const ytOk = u => /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/))[A-Za-z0-9_-]{11}|^[A-Za-z0-9_-]{11}$/.test(String(u || '').trim());
 const httpUrl = u => /^https?:\/\/[^\s]+$/i.test(String(u || '').trim());
 
