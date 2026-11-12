@@ -16,7 +16,7 @@
    "links": [
     [
      "Spotify",
-     "https://open.spotify.com/album/1sIbPa3xuu7PnzaaQGaEcS"
+     "https://open.spotify.com/album/31q76oiaITRNFuPlSthIWr"
     ],
     [
      "Apple Music",
@@ -27,6 +27,10 @@
   "rel_2020_a_love_letter_to_cali_ep": {
    "links": [
     [
+     "Spotify",
+     "https://open.spotify.com/album/1yxcY2GDgYsbmwCxlo9PfT"
+    ],
+    [
      "Apple Music",
      "https://music.apple.com/us/album/a-love-letter-to-cali-directors-cut-ep/1762694600"
     ]
@@ -34,6 +38,10 @@
   },
   "rel_2022_jambo_jacque_tesphaye": {
    "links": [
+    [
+     "Spotify",
+     "https://open.spotify.com/album/7tIAwGDxBke7K8DsQzXdzW"
+    ],
     [
      "Apple Music",
      "https://music.apple.com/us/album/jambo-jacque-tesphaye/1762675942"
@@ -67,6 +75,10 @@
   "rel_2025_rise_of_the_lost": {
    "links": [
     [
+     "Spotify",
+     "https://open.spotify.com/album/7oDY6cEmhWibQt72puObQy"
+    ],
+    [
      "Apple Music",
      "https://music.apple.com/us/album/rise-of-the-lost/1822142812"
     ]
@@ -83,8 +95,24 @@
   "rel_2026_idk_what_u_need": {
    "links": [
     [
+     "Spotify",
+     "https://open.spotify.com/album/2NCfoxfBjDYr4S9r9sFRGA"
+    ],
+    [
      "Apple Music",
      "https://music.apple.com/us/album/idk-what-u-need-single/6791386225"
+    ]
+   ]
+  },
+  "rel_2026_roadto100shows": {
+   "links": [
+    [
+     "Spotify",
+     "https://open.spotify.com/album/05DCygMjA6mZhDXXjaUKxt"
+    ],
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/roadto100shows-single/6803611113"
     ]
    ]
   }
