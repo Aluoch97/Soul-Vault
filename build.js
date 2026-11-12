@@ -68,13 +68,28 @@ for (const f of fs.readdirSync('dist')) {
   let h = fs.readFileSync('dist/' + f, 'utf8');
   if (!/rel=["']icon["']/.test(h) && h.includes('</head>')) fs.writeFileSync('dist/' + f, h.replace('</head>', iconLinks + '\n</head>'));
 }
+// Content-Security-Policy: which outside sites the pages may load from. The pages use inline scripts/styles, so 'unsafe-inline' is needed.
+// If you add a new outside service (video host, embed, API), add its address here or the browser will block it.
+// frame-ancestors is not set on purpose, so other sites can still embed pages.
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://widgetv3.bandsintown.com https://*.bandsintown.com",
+  "style-src 'self' 'unsafe-inline' https://*.bandsintown.com",
+  "font-src 'self' data: https://*.bandsintown.com",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' blob: data: https:",
+  "connect-src 'self' https://script.google.com https://script.googleusercontent.com https://docs.google.com https://*.googleusercontent.com https://www.googleapis.com https://*.bandsintown.com",
+  "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://open.spotify.com https://w.soundcloud.com https://embed.music.apple.com https://*.bandsintown.com https://bandcamp.com https://nrnszn.bandcamp.com",
+  "worker-src 'self' blob:", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'",
+  "form-action 'self' https://script.google.com https://script.googleusercontent.com",
+].join('; ');
 // Big files that rarely change are kept by the browser for a week (fonts, 30 days); app.js stays at 5 minutes so updates show up quickly. If you replace a picture or video, give it a new file name.
 fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n'
   + ['/home-bg-hd.mp4', '/home-bg-hd-poster.jpg', '/press-img/*', '/photos/*', '/og-image.png', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
   + '/links.json\n  Cache-Control: public, max-age=300\n'
   + '/fonts/*\n  Cache-Control: public, max-age=2592000\n'
   + '/home-covers/*\n  Cache-Control: public, max-age=31536000, immutable\n'
-  + '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Strict-Transport-Security: max-age=15552000\n');
+  + '/*\n  Content-Security-Policy: ' + csp + '\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()\n  Strict-Transport-Security: max-age=15552000\n');
 // Old Wix addresses -> new ones (permanent redirects). Real files in dist/ (join, shows, privacy-policy, roadto100shows) are not listed.
 const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault/2019-soulless'], ['/riseofthelost', '/vault/2025-rise-of-the-lost'],
   ['/causeitfeelsgood', '/vault/2024-cause-it-feels-good-ep'], ['/soulsearching', '/vault/2022-soulsearching'], ['/troubleinparadise', '/vault/2018-trouble-in-paradise'],
