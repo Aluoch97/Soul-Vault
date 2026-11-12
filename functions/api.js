@@ -11,6 +11,7 @@ import * as CT from './_lib/catalog.js';
 import * as AC from './_lib/activity.js';
 import * as FN from './_lib/fans.js';
 import * as MS from './_lib/missing.js';
+import * as BK from './_lib/backup.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
@@ -430,7 +431,15 @@ export async function onRequestPost(ctx) {
   const text = await request.text();
   let req; try { req = JSON.parse(text); } catch (e) { return json({ ok: false, error: 'Unknown action.' }); }
   const fn = req && req.fn, args = Array.isArray(req && req.args) ? req.args : [];
+  if (env.DB && env.BACKUPS && fn !== 'edgeStatus') ctx.waitUntil(BK.maybeBackup(env).catch(() => {}));   // a daily backup, started by normal visits
   try {
+    if (/^backup(Status|Now|Get)$/.test(fn)) {
+      if (!isOwner(env, args[0])) return json({ ok: false, error: 'Not allowed.' });
+      if (!env.BACKUPS || !env.DB) return json({ ok: false, error: 'Backups are not set up yet.' });
+      if (fn === 'backupNow') return json({ ok: true, result: await BK.runBackup(env) });
+      if (fn === 'backupGet') return json({ ok: true, result: await BK.dumpAll(env.DB) });
+      return json({ ok: true, result: { last: await BK.lastBackup(env.DB), files: await BK.listBackups(env) } });
+    }
     if (fn === 'getShare' && env.DB) {
       const out = await edgeShare(ctx, args);
       if (out) return json({ ok: true, result: out });

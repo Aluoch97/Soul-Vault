@@ -1916,6 +1916,7 @@ function renderVault() {
       <li><button data-nav="studio">${I.edit}<span>Studio</span><span class="cs">edit titles, songs, info, links</span></button></li>
       ${EDGE_UPLOADS() ? `<li><button data-fans>${I.link}<span>Soul Tribe fan list</span><span class="cs">sign-ups from /join, download as a spreadsheet</span></button></li>` : ''}
       ${EDGE_UPLOADS() ? `<li><button data-missing>${I.up2}<span>Missing files</span><span class="cs">songs and versions waiting for their audio</span></button></li>` : ''}
+      ${EDGE_UPLOADS() ? `<li><button data-backups>${I.up2}<span>Backups</span><span class="cs">a copy of everything on Cloudflare; download it</span></button></li>` : ''}
       <li><button data-install>${I.plus}<span>Add to Home Screen</span><span class="cs">put Soul Vault on your phone like an app</span></button></li>
       <li><button data-ownerpw>${I.lock}<span>Set owner password</span><span class="cs">sign in at soulnicolas.com/admin, no key needed</span></button></li>
       <li><button data-signout>${I.x}<span>Sign out on this device</span><span class="cs">you can sign back in with your password</span></button></li>
@@ -1926,6 +1927,7 @@ function renderVault() {
   if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
   if ($('[data-fans]')) $('[data-fans]').addEventListener('click', openFans);
   if ($('[data-missing]')) $('[data-missing]').addEventListener('click', openMissing);
+  if ($('[data-backups]')) $('[data-backups]').addEventListener('click', openBackups);
   $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });
   const ok = $('[data-ownerkey]');
   if (ok) ok.addEventListener('click', async () => {   // the key is never shown on screen, only put on the clipboard
@@ -2276,6 +2278,34 @@ async function openMissing() {
       } catch (er) { st.textContent = (er && er.message) || 'The upload did not finish.'; st.style.color = 'var(--red, #ff6b6b)'; up.disabled = false; bw.hidden = true; }
     };
     inp.click();
+  });
+}
+// Backups: Cloudflare copies its database into a private bucket about once a day; this screen shows that and lets you download a copy to keep.
+async function openBackups() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Backups"><h2>Backups</h2><p class="cs" id="bkSt">Loading…</p>
+    <div id="bkList" class="cs" style="display:grid;gap:4px;max-height:34vh;overflow:auto"></div>
+    <p class="cs" style="margin:10px 0 0">What is saved: releases, songs, versions, extras, playlists, letter and bio, share links, plays, comments, the fan list and the missing-files list. Not included: the music and picture files themselves (your masters stay on your own drive).</p>
+    <div class="end"><button class="pill soft" data-close>Close</button><button class="pill soft" id="bkNow">Back up now</button><button class="pill main" id="bkDl">Download a copy</button></div></div>`;
+  m.hidden = false;
+  const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  const draw = async () => {
+    try {
+      const r = await run('backupStatus', BOOT.key);
+      $('#bkSt').textContent = r.last ? 'Last automatic backup: ' + new Date(r.last.at).toLocaleString() + ' (' + kb(r.last.size) + '). ' + r.files.length + ' kept; the newest 30 are saved.' : 'No backup yet. Tap Back up now.';
+      $('#bkList').innerHTML = r.files.slice(0, 8).map(f => `<div>${esc(new Date(f.at).toLocaleString())} · ${kb(f.size)}</div>`).join('');
+    } catch (e) { $('#bkSt').textContent = (e && e.message) || 'Could not load.'; }
+  };
+  await draw();
+  $('#bkNow').addEventListener('click', async e => { const b = e.currentTarget; b.disabled = true; try { await run('backupNow', BOOT.key); toast('Backed up'); await draw(); } catch (er) { toast((er && er.message) || 'Backup failed.'); } b.disabled = false; });
+  $('#bkDl').addEventListener('click', async e => {
+    const b = e.currentTarget; b.disabled = true;
+    try {
+      const d = await run('backupGet', BOOT.key);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d)], { type: 'application/json' }));
+      a.download = 'soul-vault-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); toast('Downloaded');
+    } catch (er) { toast((er && er.message) || 'Could not download.'); }
+    b.disabled = false;
   });
 }
 async function openFans() {
