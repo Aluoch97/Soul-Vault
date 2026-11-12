@@ -78,6 +78,26 @@ async function edgeShare(ctx, args) {
   return Object.assign({}, body, { share: shareBlock(s) });
 }
 
+// The first screen of Home: newest single and newest project (same rule as Vault.gs getHome), covers from our own storage.
+// Returns null (so Apps Script answers) when a cover is not in R2 yet.
+async function edgeHome(ctx, args) {
+  const body = await edgeShare(ctx, args);
+  if (!body) return null;
+  if (body.error) return { error: body.error };
+  if (!body.share || body.share.target_type !== 'all') return { picks: {} };
+  const today = new Date().toISOString().slice(0, 10);
+  const key = r => { const d = String(r.release_date || ''); return /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : String(r.year || 0) + '-00-00'; };
+  const kind = r => ['Deluxe', 'B-Sides'].indexOf(r.type) > -1 || !r.type ? 'Album' : r.type;
+  const list = (body.releases || []).filter(r => !r.locked && !r.hidden && !(r.unreleased === true || String(r.unreleased) === 'true') && key(r) <= today)
+    .sort((a, b) => key(b).localeCompare(key(a)) || String(a.title).localeCompare(String(b.title)));
+  const pick = async r => {
+    if (!r) return null;
+    if (!r.cover_file_id || !ctx.env.MEDIA || !(await ctx.env.MEDIA.head('img/' + r.cover_file_id + '/400'))) throw new Error('cover not in R2');
+    return { release_id: r.release_id, title: r.title, cover_file_id: r.cover_file_id, src: MEDIA_BASE + 'img/' + r.cover_file_id + '/400', img: '', thumb: '' };
+  };
+  return { picks: { single: await pick(list.filter(r => kind(r) === 'Single')[0]), project: await pick(list.filter(r => kind(r) !== 'Single')[0]) } };
+}
+
 // ───────── Studio (owner only) ─────────
 const isOwner = (env, key) => !!env.OWNER_KEY && String(key || '') === env.OWNER_KEY;
 async function callApps(env, fn, args) {
@@ -372,6 +392,9 @@ export async function onRequestPost(ctx) {
   try {
     if (fn === 'getShare' && env.DB) {
       const out = await edgeShare(ctx, args);
+      if (out) return json({ ok: true, result: out });
+    } else if (fn === 'getHome' && env.DB) {
+      const out = await edgeHome(ctx, args);
       if (out) return json({ ok: true, result: out });
     } else if (fn === 'adoptDomain' || fn === 'releaseDomain') {
       try { return json({ ok: true, result: await adoptDomain(ctx, args, fn === 'adoptDomain') }); }
