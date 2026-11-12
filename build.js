@@ -30,7 +30,7 @@ const siteUrl = String(cfg.siteUrl || 'https://' + cfg.domain).replace(/\/$/, ''
 const attr = s => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 const iconLinks = '<link rel="icon" href="/favicon.ico" sizes="48x48">\n<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">\n'
   + '<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">\n<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">\n'
-  + '<link rel="apple-touch-icon" href="/apple-touch-icon.png">';
+  + '<link rel="apple-touch-icon" href="/apple-touch-icon.png">\n<link rel="manifest" href="/manifest.webmanifest">';
 const shareTags = '<meta name="description" content="' + attr(cfg.description) + '">\n<meta property="og:type" content="website">\n'
   + '<meta property="og:site_name" content="' + attr(cfg.siteName) + '">\n<meta property="og:title" content="' + attr(cfg.shareTitle || cfg.siteName) + '">\n'
   + '<meta property="og:description" content="' + attr(cfg.description) + '">\n<meta property="og:url" content="' + siteUrl + '/">\n'
