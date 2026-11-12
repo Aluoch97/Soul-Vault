@@ -66,6 +66,8 @@ Never use `saveTracklist` with a song list from Studio: it renumbers songs 1..n,
 Owner password: Settings > "Set owner password" (`setOwnerPassword`, needs the owner key once) stores a salted PBKDF2 hash in D1 (`kv` key `owner_pw`, `functions/_lib/auth.js`); `soulnicolas.com/admin` (`renderAdminLogin`) calls `ownerLogin(password)`, which returns the owner key to the browser (saved as `sv_owner_key`, like `?k=`). Five wrong tries from one address lock it for 15 minutes. "Sign out on this device" removes the saved key. The key itself still exists (Apps Script and the edge use it); the password only saves Nick from handling it. Passkeys (Face ID) would be a later upgrade.
 Before pushing anything in `functions/`, run a real build (`npx wrangler pages dev dist` from a scratch folder, or `wrangler pages functions build`): `node --check` does not catch duplicate names across imports, and a broken Functions build fails the whole deploy.
 
+`build.js` puts a fingerprint of the app code in the script address (`/app.js?v=<build>-<hash>`), so each deploy is fetched at once; before this (Nov 12) browsers kept the old `app.js` for hours and new buttons did not appear without a hard refresh.
+
 ## Tab addresses and old links
 Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
 `/vault/<release>` (release id without `rel_`, `_` becomes `-`, e.g. `/vault/2019-soulless`), `/tour`, `/tour/road-to-100`, `/press`, `/press/video`, `/lore`.
