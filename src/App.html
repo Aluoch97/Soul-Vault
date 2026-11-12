@@ -1694,6 +1694,16 @@ function renderLibrary(keepScroll) {
 /* ── Listen links under each release header, and slowed + reverb videos: both come from /links.json ──
    { "releases": { "<release_id>": { "first": "DatPiff", "links": [["Spotify", "https://..."], ["Apple Music", "https://..."]] } },
      "sr": { "<track_id>": "<YouTube link or id>" } }   (edited by hand in public/links.json) */
+// Links per release: Studio's entry wins, but where Studio has no links for a release (only "first appeared on", say) the links from /links.json still show.
+function mergeRelLinks(fb, ov) {
+  const out = Object.assign({}, fb || {});
+  Object.keys(ov || {}).forEach(id => {
+    const o = ov[id] || {}, f = (fb || {})[id] || {};
+    out[id] = Object.assign({}, f, o);
+    if (!(Array.isArray(o.links) && o.links.length) && Array.isArray(f.links)) out[id].links = f.links;
+  });
+  return out;
+}
 function loadLinks() {
   if (S.linksP) return S.linksP;
   // The owner reads the Studio extras from the edge; everyone else gets them with the library (lib.overlay), or from the small /links.json file as a fallback.
@@ -1703,7 +1713,7 @@ function loadLinks() {
     fb = (fb && typeof fb === 'object') ? fb : {};
     const base = OWNER ? (ov && typeof ov === 'object' ? ov : {}) : (S.links || {});
     S.links = Object.assign({}, fb, base);
-    S.links.releases = Object.assign({}, fb.releases || {}, base.releases || {});
+    S.links.releases = mergeRelLinks(fb.releases, base.releases);
     S.links.sr = Object.assign({}, fb.sr || {}, base.sr || {});
     applyFlags(S.lib);
     const el = $('#listenRow'); if (el && S.releaseId) el.innerHTML = listenRow(rel(S.releaseId)); const fr = $('#firstRow'); if (fr && S.releaseId) fr.innerHTML = firstRow(rel(S.releaseId));
@@ -5445,7 +5455,7 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
 
 /* ── every name/title is text (Sheets turns "1995" into a number) ── */
 function normalizeLib(lib) {
-  if (lib.overlay) { const prev = S.links || {}; S.links = Object.assign({}, prev, lib.overlay); S.links.releases = Object.assign({}, prev.releases || {}, lib.overlay.releases || {}); S.links.sr = Object.assign({}, prev.sr || {}, lib.overlay.sr || {}); }   // Studio's links per release win; other releases keep the ones from /links.json
+  if (lib.overlay) { const prev = S.links || {}; S.links = Object.assign({}, prev, lib.overlay); S.links.releases = mergeRelLinks(prev.releases, lib.overlay.releases); S.links.sr = Object.assign({}, prev.sr || {}, lib.overlay.sr || {}); }   // Studio's links per release win; other releases keep the ones from /links.json
   applyFlags(lib);
   const str = (o, keys) => o && keys.forEach(k => { if (o[k] != null && typeof o[k] !== 'string') o[k] = String(o[k]); });
   (lib.releases || []).forEach(r => str(r, ['title', 'artist_name', 'world_tagline', 'world_story', 'recorded_at', 'series_name', 'series_part', 'genre', 'album_credits', 'world_mood']));
