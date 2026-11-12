@@ -4,6 +4,7 @@
 import cfg from '../site.config.json';
 import { ERR_LINK, findShare, shareBody, bodyTtl, shareBlock, overlayFor } from './_lib/share.js';
 import { loadLib, saveLib, readMeta, loadOverlay, saveOverlay } from './_lib/mirror.js';
+import { makeRecord, checkPassword, PW_MIN, MAX_TRIES, LOGIN_LOCK_MS, failKey } from './_lib/auth.js';
 import { cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
@@ -132,6 +133,39 @@ async function studio(ctx, fn, a) {
   throw new Error('Unknown action.');
 }
 
+// ───────── Owner password ─────────
+async function kvGet(db, k) { try { const r = await db.prepare('SELECT v FROM kv WHERE k = ?').bind(k).first(); return r ? JSON.parse(r.v) : null; } catch (e) { return null; } }
+async function kvSet(db, k, v) { await db.prepare('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)').run(); await db.prepare('INSERT OR REPLACE INTO kv (k, v) VALUES (?, ?)').bind(k, JSON.stringify(v)).run(); }
+async function setOwnerPassword(ctx, a) {
+  const { env } = ctx;
+  if (!env.DB) throw new Error('This needs the Cloudflare database.');
+  if (!isOwner(env, a[0])) throw new Error('This link is missing its owner key. Open the app from your owner link.');
+  const pw = String(a[1] || '');
+  if (pw.length < PW_MIN) throw new Error('Use at least ' + PW_MIN + ' characters. A few random words works well.');
+  if (pw.length > 200) throw new Error('That password is too long.');
+  await kvSet(env.DB, 'owner_pw', await makeRecord(pw));
+  return true;
+}
+async function ownerLogin(ctx, a) {
+  const { env, request } = ctx;
+  if (!env.DB || !env.OWNER_KEY) throw new Error('Login is not set up yet.');
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown', fk = failKey(ip), now = Date.now();
+  const f = (await kvGet(env.DB, fk)) || { n: 0, until: 0 };
+  if (f.until > now) throw new Error('Too many wrong tries. Try again in ' + Math.max(1, Math.ceil((f.until - now) / 60000)) + ' minutes.');
+  const rec = await kvGet(env.DB, 'owner_pw');
+  if (!rec) throw new Error('No owner password is set yet. Sign in once with your owner link, then set it in Settings.');
+  const ok = await checkPassword(String(a[0] || '').slice(0, 200), rec);
+  if (!ok) {
+    f.n = (f.until && f.until <= now ? 0 : f.n) + 1;
+    if (f.n >= MAX_TRIES) { f.until = now + LOGIN_LOCK_MS; f.n = 0; }
+    await kvSet(env.DB, fk, f);
+    await new Promise(r => setTimeout(r, 700));
+    throw new Error('That password is not right.');
+  }
+  if (f.n || f.until) await kvSet(env.DB, fk, { n: 0, until: 0 });
+  return { key: env.OWNER_KEY };
+}
+
 export async function onRequestPost(ctx) {
   const { request, env } = ctx;
   const text = await request.text();
@@ -141,6 +175,9 @@ export async function onRequestPost(ctx) {
     if (fn === 'getShare' && env.DB) {
       const out = await edgeShare(ctx, args);
       if (out) return json({ ok: true, result: out });
+    } else if (fn === 'setOwnerPassword' || fn === 'ownerLogin') {
+      try { return json({ ok: true, result: fn === 'ownerLogin' ? await ownerLogin(ctx, args) : await setOwnerPassword(ctx, args) }); }
+      catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
     } else if (/^studio(Get|SaveRelease|SaveTrack|SaveLinks)$/.test(fn)) {

@@ -1296,6 +1296,7 @@ async function init() {
   setToggle(false);
   watchStall();
   setRobots(parseRoute().unknown);
+  if (/^\/admin\/?$/.test(location.pathname)) { if (OWNER) { history.replaceState(null, '', '/vault'); } else { renderAdminLogin(); return; } }
   if (BOOT.pub && BOOT.home && (BOOT.home.single || BOOT.home.project)) { S.homeLite = BOOT.home; primeHomeCover(BOOT.home.single); primeHomeCover(BOOT.home.project); }   // covers saved with the site: Home can draw them before anything is fetched
   try {
     if (BOOT.token) {
@@ -1900,9 +1901,13 @@ function renderVault() {
       <li><button data-check-playback>${I.play}<span>Check playback setup</span><span class="cs">tests your API key</span></button></li>
       <li><button data-backup>${I.up2}<span>Back up my Sheet now</span><span class="cs">${esc(backupLine())}</span></button></li>
       <li><button data-nav="studio">${I.edit}<span>Studio</span><span class="cs">edit titles, songs, info, links</span></button></li>
+      <li><button data-ownerpw>${I.lock}<span>Set owner password</span><span class="cs">sign in at soulnicolas.com/admin, no key needed</span></button></li>
+      <li><button data-signout>${I.x}<span>Sign out on this device</span><span class="cs">you can sign back in with your password</span></button></li>
       <li><button data-ownerkey>${I.link}<span>Copy owner key</span><span class="cs">for setting up Cloudflare; keep it private</span></button></li>
     </ul>
   </div>`;
+  $('[data-ownerpw]').addEventListener('click', openOwnerPw);
+  $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });
   const ok = $('[data-ownerkey]');
   if (ok) ok.addEventListener('click', async () => {   // the key is never shown on screen, only put on the clipboard
     try { await navigator.clipboard.writeText(BOOT.key || ''); toast('Owner key copied. Paste it into Cloudflare, nowhere else.'); }
@@ -2015,6 +2020,48 @@ function drawStudio() {
       card.querySelector('h3').innerHTML = `<span>${esc(t.number_label || t.track_no)}</span>${esc(t.title)}`;
     });
   }));
+}
+
+/* ── Owner password: sign in at /admin without the owner key ── */
+function openOwnerPw() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Owner password">
+    <h2>Owner password</h2>
+    <p class="cs" style="margin:0 0 10px">Choose a password only you know (10 or more characters; a few random words works well). Then you can sign in at <b>soulnicolas.com/admin</b> on any device without the long owner key.</p>
+    <label class="sf" style="display:grid;gap:5px;margin-bottom:10px">New password<input class="field" id="pwA" type="password" autocomplete="new-password"></label>
+    <label class="sf" style="display:grid;gap:5px">Type it again<input class="field" id="pwB" type="password" autocomplete="new-password"></label>
+    <p class="cs" id="pwErr" role="alert" style="color:#ff8a8a;margin:8px 0 0" hidden></p>
+    <div class="end"><button class="pill soft" data-close>Cancel</button><button class="pill main" id="pwSave">Save password</button></div></div>`;
+  m.hidden = false; $('#pwA').focus();
+  $('#pwSave').addEventListener('click', async e => {
+    const a = $('#pwA').value, b = $('#pwB').value, err = $('#pwErr'), btn = e.currentTarget;
+    const bad = t => { err.hidden = false; err.textContent = t; };
+    if (a.length < 10) return bad('Use at least 10 characters.');
+    if (a !== b) return bad('The two passwords are different.');
+    btn.disabled = true;
+    try { await run('setOwnerPassword', BOOT.key, a); closeModal(); toast('Password saved. Sign in at soulnicolas.com/admin'); }
+    catch (er) { bad(er.message || 'Could not save the password.'); btn.disabled = false; }
+  });
+}
+function renderAdminLogin() {
+  document.body.classList.add('share-mode');
+  $('#main').innerHTML = `<div class="wrap" style="max-width:420px;margin:0 auto;padding-top:12vh">
+    <h1 class="page-h" style="padding:0"><b>Owner login</b></h1>
+    <form id="adminForm" style="display:grid;gap:12px;margin-top:14px">
+      <label class="sf" style="display:grid;gap:5px">Password<input class="field" id="adminPw" type="password" autocomplete="current-password" required autofocus></label>
+      <p class="cs" id="adminErr" role="alert" style="color:#ff8a8a;margin:0" hidden></p>
+      <button class="pill main" type="submit" id="adminGo">Sign in</button>
+    </form>
+    <p class="cs" style="margin-top:18px">Only for Nicólas. <a href="/">Back to the site</a></p></div>`;
+  $('#adminForm').addEventListener('submit', async e => {
+    e.preventDefault(); const btn = $('#adminGo'), err = $('#adminErr'); btn.disabled = true; err.hidden = true;
+    try {
+      const r = await fetch(BOOT.api, { method: 'POST', body: JSON.stringify({ fn: 'ownerLogin', args: [$('#adminPw').value] }), credentials: 'omit' }).then(x => x.json());
+      if (!r.ok) throw new Error(r.error || 'Could not sign in.');
+      try { localStorage.setItem('sv_owner_key', r.result.key); } catch (e2) { throw new Error('This browser would not save the sign-in. Turn off private browsing and try again.'); }
+      location.replace('/vault');
+    } catch (er) { err.hidden = false; err.textContent = er.message || 'Could not sign in.'; btn.disabled = false; }
+  });
 }
 
 function recentKey() { return 'sv_recent_' + (OWNER ? 'owner' : BOOT.token); }
