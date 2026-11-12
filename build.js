@@ -73,12 +73,12 @@ for (const f of fs.readdirSync('dist')) {
 // frame-ancestors is not set on purpose, so other sites can still embed pages.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://widgetv3.bandsintown.com https://*.bandsintown.com",
+  "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://static.cloudflareinsights.com https://widgetv3.bandsintown.com https://*.bandsintown.com",
   "style-src 'self' 'unsafe-inline' https://*.bandsintown.com",
   "font-src 'self' data: https://*.bandsintown.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: data: https:",
-  "connect-src 'self' https://script.google.com https://script.googleusercontent.com https://docs.google.com https://*.googleusercontent.com https://www.googleapis.com https://*.bandsintown.com",
+  "connect-src 'self' https://script.google.com https://cloudflareinsights.com https://script.googleusercontent.com https://docs.google.com https://*.googleusercontent.com https://www.googleapis.com https://*.bandsintown.com",
   "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://open.spotify.com https://w.soundcloud.com https://embed.music.apple.com https://*.bandsintown.com https://bandcamp.com https://nrnszn.bandcamp.com",
   "worker-src 'self' blob:", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'",
   "form-action 'self' https://script.google.com https://script.googleusercontent.com",
