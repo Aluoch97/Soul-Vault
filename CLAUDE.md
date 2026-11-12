@@ -164,6 +164,7 @@ Next for Nick: add soulnicolas.com in Google Search Console and submit `/sitemap
    text fallback since the app renders client-side).
 
 ## Rules
+- Tests: `npm test` (Node 22.13+, about 2 seconds, CI runs it on every push) runs the real `functions/` code against a real SQLite database (what D1 is), a fake R2 bucket and a fake Apps Script, in `tests/`. It covers what visitors can see (hidden/sealed releases, birthday), the owner-only gate on every owner call, uploads, owner login and lockout, Studio, share links, comments, sign-ups and backups. Add a test when you change `functions/`. `tests/_helpers.mjs` has the fixture library and fake services. Note: a stray 1-byte file named `test` sits in the repo root, which is why the folder is `tests/`.
 - Never edit `dist/`. Change `src/App.html` or `apps-script/*`, rebuild.
 - Backend changes: paste the changed `.gs` into Apps Script, new deployment version, bump `SV_BUILD`, update the "SV build" tag.
 - Keep text escaped with `esc()`. Run a syntax check (esbuild `--target=safari15`) and a phone-width layout check before shipping.
