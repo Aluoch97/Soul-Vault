@@ -1682,7 +1682,6 @@ function renderLibrary(keepScroll) {
         </div>
       </header>
       <label class="search big">${I.search}<input id="q" type="search" placeholder="Search songs and releases" value="${esc(S.q)}" aria-label="Search songs and releases"></label>
-      ${installHint()}
       <div id="libBody"></div>
     </div>`;
   $('#libBody').dataset.types = JSON.stringify(types);
@@ -2407,13 +2406,6 @@ function recentRow() {
     return `<button class="rc" data-track-play="${esc(t.track_id)}"><img class="art" data-cover="${esc(r.cover_file_id)}" alt="">
       <span class="ct">${esc(t.title)}</span><span class="cs">${esc(r.title)}</span></button>`;
   }).join('')}</div></section>`;
-}
-function installHint() {
-  if (!matchMedia('(max-width: 760px)').matches || ls.get('sv_install_x', false)) return '';
-  if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return '';
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  return `<div class="hint" id="hint"><span>Open Soul Vault like an app: tap ${ios ? 'the Share button, then <strong>Add to Home Screen</strong>' : 'the ⋮ menu, then <strong>Add to Home screen</strong>'}.</span>
-    <button class="ib" data-install-x aria-label="Dismiss">${I.x}</button></div>`;
 }
 
 /* ── release ── */
