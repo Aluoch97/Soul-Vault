@@ -5,7 +5,8 @@ import cfg from '../site.config.json';
 import { ERR_LINK, findShare, shareBody, bodyTtl, shareBlock, overlayFor } from './_lib/share.js';
 import { loadLib, saveLib, readMeta, loadOverlay, saveOverlay } from './_lib/mirror.js';
 import { makeRecord, checkPassword, PW_MIN, MAX_TRIES, LOGIN_LOCK_MS, failKey } from './_lib/auth.js';
-import { cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
+import { loadNative, saveNative, mergeNative, newRelease, newTrack, newVersion, relSlug, slug, MEDIA_BASE } from './_lib/native.js';
+import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
 const FRESH_MS = 5 * 60 * 1000;      // refresh the copy when it is older than this
@@ -43,10 +44,11 @@ const mem = { at: 0, lib: null, ov: null };   // kept for a minute inside a warm
 async function library(ctx) {
   const { env } = ctx, now = Date.now();
   if (mem.lib && now - mem.at < 60000) return mem.lib;
-  const lib = await loadLib(env.DB);
+  let lib = await loadLib(env.DB);
   const ov = normOverlay(await loadOverlay(env.DB));
   if (!lib) { if (env.OWNER_KEY) ctx.waitUntil(syncMirror(env).catch(() => {})); return null; }
-  mem.lib = lib; mem.ov = ov; mem.at = now;
+  mem.lib = mergeNative(lib, await loadNative(env.DB), ov); mem.ov = ov; mem.at = now;
+  lib = mem.lib;
   ctx.waitUntil(readMeta(env.DB).then(m => { if (m && now - m.synced_at > FRESH_MS && env.OWNER_KEY) return syncMirror(env); }).catch(() => {}));
   return lib;
 }
@@ -86,30 +88,39 @@ async function keepLib(ctx, lib, ov) {
   const meta = await readMeta(ctx.env.DB);
   await saveLib(ctx.env.DB, lib, { synced_at: meta ? meta.synced_at : Date.now() });
   if (ov) await saveOverlay(ctx.env.DB, ov);
-  mem.lib = lib; if (ov) mem.ov = ov; mem.at = Date.now();
+  mem.lib = null; if (ov) mem.ov = ov;
   await forgetCached(lib);
 }
 async function ownerState(ctx) {
   const lib = await loadLib(ctx.env.DB);
   if (!lib) throw new Error('The copy of your data is not ready yet. Try again in a minute.');
-  return { lib, ov: normOverlay(await loadOverlay(ctx.env.DB)) };
+  return { lib, ov: normOverlay(await loadOverlay(ctx.env.DB)), nat: await loadNative(ctx.env.DB) };
 }
+const EXTS = ['mp3', 'm4a', 'aac', 'ogg', 'wav'];
 async function studio(ctx, fn, a) {
   const { env } = ctx;
   if (!env.DB) throw new Error('Studio needs the Cloudflare database.');
   if (!isOwner(env, a[0])) throw new Error('This link is missing its owner key. Open the app from your owner link.');
-  const { lib, ov } = await ownerState(ctx);
+  const { lib, ov, nat } = await ownerState(ctx);
+  const all = mergeNative(lib, nat, ov);
+  const isNat = (name, key, id) => nat[name].some(r => r[key] === id);
+  const saveNat = async () => { await saveNative(env.DB, nat); mem.lib = null; await forgetCached(all); };
+  const relOf = id => all.releases.find(r => r.release_id === id);
   if (fn === 'studioGet') {
-    return { releases: lib.releases, versions: lib.versions.map(v => ({ version_id: v.version_id, track_id: v.track_id, label: v.label, is_primary: v.is_primary, hidden: v.hidden })),
-             tracks: lib.tracks.map(t => { const o = Object.assign({}, t); delete o.lyrics; delete o.track_cover_thumb; return o; }), overlay: ov };
+    return { releases: all.releases, versions: all.versions.map(v => ({ version_id: v.version_id, track_id: v.track_id, label: v.label, is_primary: v.is_primary, hidden: v.hidden })),
+             tracks: all.tracks.map(t => { const o = Object.assign({}, t); delete o.lyrics; delete o.track_cover_thumb; return o; }), overlay: ov };
   }
   if (fn === 'studioSaveRelease') {
     const rid = String(a[1] || ''), f = a[2] || {};
-    if (!(lib.releases || []).some(r => r.release_id === rid)) throw new Error('Release not found.');
-    let basics = null, world = null;
-    if (f.basics) basics = cleanBasics(f.basics);
-    if (f.world) world = cleanWorld(f.world);
-    const cur = lib.releases.find(r => r.release_id === rid);
+    const cur = relOf(rid); if (!cur) throw new Error('Release not found.');
+    const basics = f.basics ? cleanBasics(f.basics) : null, world = f.world ? cleanWorld(f.world) : null;
+    if (isNat('releases', 'release_id', rid)) {   // made in the new backend: it lives only here
+      if (basics) patchRow(nat, 'releases', 'release_id', rid, basics);
+      if (world) patchRow(nat, 'releases', 'release_id', rid, world);
+      if (f.unreleased != null) ov.flags.releases[rid] = !!f.unreleased;
+      await saveNat(); if (f.unreleased != null) await saveOverlay(env.DB, ov); mem.ov = ov;
+      return true;
+    }
     if (basics) await callApps(env, 'saveTracklist', [env.OWNER_KEY, rid, basics.title != null ? basics.title : cur.title, [], basics.hidden != null ? basics.hidden : cur.hidden === true, basics.type || cur.type]);
     if (world) await callApps(env, 'saveWorld', [env.OWNER_KEY, rid, world]);
     if (basics) patchRow(lib, 'releases', 'release_id', rid, basics);
@@ -120,22 +131,90 @@ async function studio(ctx, fn, a) {
   }
   if (fn === 'studioSaveTrack') {
     const tid = String(a[1] || ''), f = a[2] || {};
-    if (!(lib.tracks || []).some(t => t.track_id === tid)) throw new Error('Song not found.');
+    if (!all.tracks.some(t => t.track_id === tid)) throw new Error('Song not found.');
     const fields = cleanTrack(f.fields || {});
     const sr = f.sr != null ? cleanSr(f.sr) : null;
-    if (Object.keys(fields).length) { await callApps(env, 'saveTrackDetails', [env.OWNER_KEY, tid, fields]); patchRow(lib, 'tracks', 'track_id', tid, fields); }
     if (sr != null) { if (sr) ov.sr[tid] = sr; else delete ov.sr[tid]; }
     if (f.unreleased != null) ov.flags.tracks[tid] = !!f.unreleased;
+    if (isNat('tracks', 'track_id', tid)) {
+      if (Object.keys(fields).length) patchRow(nat, 'tracks', 'track_id', tid, fields);
+      await saveNat(); if (sr != null || f.unreleased != null) await saveOverlay(env.DB, ov); mem.ov = ov;
+      return true;
+    }
+    if (Object.keys(fields).length) { await callApps(env, 'saveTrackDetails', [env.OWNER_KEY, tid, fields]); patchRow(lib, 'tracks', 'track_id', tid, fields); }
     await keepLib(ctx, lib, (sr != null || f.unreleased != null) ? ov : null);
     return true;
   }
   if (fn === 'studioSaveLinks') {
     const rid = String(a[1] || '');
-    if (!(lib.releases || []).some(r => r.release_id === rid)) throw new Error('Release not found.');
+    if (!relOf(rid)) throw new Error('Release not found.');
     const c = cleanLinks(a[2] || {});
     if (c.links.length || c.first) ov.releases[rid] = c; else delete ov.releases[rid];
-    await saveOverlay(env.DB, ov); mem.ov = ov; mem.at = Date.now(); await forgetCached(lib);
+    await saveOverlay(env.DB, ov); mem.ov = ov; mem.at = Date.now(); await forgetCached(all);
     return true;
+  }
+  // ───── uploads: songs, releases, covers, photos (the files go to /upload; these save what they are) ─────
+  if (fn === 'studioPlanUpload') {
+    const o = a[1] || {}, rid = String(o.relId || ''), ext = String(o.ext || '').toLowerCase();
+    if (!relOf(rid)) throw new Error('Release not found.');
+    if (EXTS.indexOf(ext) < 0) throw new Error('Use an MP3, M4A, AAC, OGG or WAV file.');
+    let name;
+    if (o.trackId) {
+      const t = all.tracks.find(x => x.track_id === o.trackId && x.release_id === rid); if (!t) throw new Error('Song not found in this release.');
+      name = String(t.track_no).padStart(2, '0') + '-' + slug(t.title) + '-' + slug(o.label || 'version');
+    } else {
+      const no = Math.max(0, ...all.tracks.filter(t => t.release_id === rid).map(t => Number(t.track_no) || 0)) + 1;
+      if (!String(o.title || '').trim()) throw new Error('Give the song a title.');
+      name = String(no).padStart(2, '0') + '-' + slug(o.title);
+    }
+    return { key: relSlug(rid) + '/' + name + '-' + Array.from(crypto.getRandomValues(new Uint8Array(2))).map(b => b.toString(16).padStart(2, '0')).join('') + '.' + ext };
+  }
+  if (fn === 'studioAddSong') {
+    const o = a[1] || {}, rid = String(o.relId || ''), key = String(o.key || '');
+    const cur = relOf(rid); if (!cur) throw new Error('Release not found.');
+    if (!env.MEDIA) throw new Error('Uploads are not set up yet.');
+    if (key.indexOf(relSlug(rid) + '/') !== 0 || /\.\./.test(key)) throw new Error('That file does not belong to this release.');
+    const head = await env.MEDIA.head(key); if (!head) throw new Error('The upload did not arrive. Try again.');
+    const ext = key.split('.').pop();
+    let track = null, trackId = String(o.trackId || '');
+    if (trackId) { if (!all.tracks.some(t => t.track_id === trackId && t.release_id === rid)) throw new Error('Song not found in this release.'); }
+    else {
+      const no = Math.max(0, ...all.tracks.filter(t => t.release_id === rid).map(t => Number(t.track_no) || 0)) + 1;
+      track = newTrack(rid, no, String(o.title || '').trim().slice(0, 200)); trackId = track.track_id; nat.tracks.push(track);
+    }
+    const primary = !!track || !!o.primary;
+    const v = newVersion(trackId, String(o.label || 'Original').trim().slice(0, 60) || 'Original', primary, key, ext, head.size, o.seconds);
+    if (primary && !track) { nat.versions.forEach(x => { if (x.track_id === trackId) x.is_primary = false; }); ov.primary[trackId] = v.version_id; await saveOverlay(env.DB, ov); mem.ov = ov; }
+    nat.versions.push(v); await saveNat();
+    return { track, version: v };
+  }
+  if (fn === 'studioNewRelease') {
+    const o = a[1] || {}, title = String(o.title || '').trim().slice(0, 120);
+    if (!title) throw new Error('A release needs a title.');
+    if (RELEASE_TYPES.indexOf(o.type) < 0) throw new Error('Pick a release type from the list.');
+    const coverId = String(o.coverId || ''); if (coverId && !/^[A-Za-z0-9_-]{6,80}$/.test(coverId)) throw new Error('Bad cover.');
+    if (coverId && env.MEDIA && !(await env.MEDIA.head('img/' + coverId + '/1200'))) throw new Error('The cover did not arrive. Try again.');
+    const r = newRelease({ title, type: o.type, year: String(o.year || '').replace(/\D/g, '').slice(0, 4), release_date: /^\d{4}-\d{2}-\d{2}$/.test(o.release_date || '') ? o.release_date : '', artist_name: String(o.artist_name || '').trim().slice(0, 80), coverId });
+    nat.releases.push(r); await saveNat();
+    return r;
+  }
+  if (fn === 'studioSetCover') {
+    const o = a[1] || {}, rid = String(o.relId || ''), coverId = String(o.coverId || '');
+    if (!relOf(rid)) throw new Error('Release not found.');
+    if (!/^[A-Za-z0-9_-]{6,80}$/.test(coverId)) throw new Error('Bad cover.');
+    if (env.MEDIA && !(await env.MEDIA.head('img/' + coverId + '/1200'))) throw new Error('The cover did not arrive. Try again.');
+    if (isNat('releases', 'release_id', rid)) { patchRow(nat, 'releases', 'release_id', rid, { cover_file_id: coverId }); await saveNat(); }
+    else { ov.cover[rid] = coverId; await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; await forgetCached(all); }
+    return true;
+  }
+  if (fn === 'studioAddPhoto') {
+    const o = a[1] || {}, rid = String(o.relId || ''), fileId = String(o.fileId || '');
+    if (!relOf(rid)) throw new Error('Release not found.');
+    if (!/^[A-Za-z0-9_-]{6,80}$/.test(fileId)) throw new Error('Bad photo.');
+    if (env.MEDIA && !(await env.MEDIA.head('img/' + fileId + '/1600'))) throw new Error('The photo did not arrive. Try again.');
+    const x = { extra_id: 'ext_' + Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b => b.toString(16).padStart(2, '0')).join(''), release_id: rid, kind: 'photo', url: '', title: String(o.caption || '').trim().slice(0, 200), description: '', image: '', site: '', file_id: fileId, created: new Date().toISOString(), native: true };
+    nat.extras.push(x); await saveNat();
+    return x;
   }
   throw new Error('Unknown action.');
 }
@@ -185,9 +264,13 @@ export async function onRequestPost(ctx) {
     } else if (fn === 'setOwnerPassword' || fn === 'ownerLogin') {
       try { return json({ ok: true, result: fn === 'ownerLogin' ? await ownerLogin(ctx, args) : await setOwnerPassword(ctx, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
+    } else if (fn === 'getLibrary' && env.DB && args[0]) {
+      const res = await proxy(env, text), j = await res.clone().json().catch(() => null);
+      if (j && j.ok && j.result) { const ov = normOverlay(await loadOverlay(env.DB)); j.result = mergeNative(j.result, await loadNative(env.DB), ov); return json(j); }
+      return res;
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
-    } else if (/^studio(Get|SaveRelease|SaveTrack|SaveLinks)$/.test(fn)) {
+    } else if (/^studio(Get|SaveRelease|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|AddPhoto)$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {
