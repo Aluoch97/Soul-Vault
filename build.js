@@ -1,9 +1,9 @@
 // node build.js  ->  dist/  (index.html + app.js + lame.js + static files). Deploy dist/ to Cloudflare Pages.
 const fs = require('fs'), path = require('path');
 const cfg = JSON.parse(fs.readFileSync('site.config.json', 'utf8'));
-const raw = fs.readFileSync('src/App.html', 'utf8');
+const raw = require('./build_app.js').assembleApp();   // the app is kept in parts under src/app (see build_app.js)
 const open = '<script id="sv-app">', a = raw.indexOf(open), b = raw.indexOf('</script>', a);
-if (a < 0 || b < 0) throw new Error('src/App.html is missing its <script id="sv-app"> block');
+if (a < 0 || b < 0) throw new Error('src/app/index.html is missing its <script id="sv-app"> block');
 const build = (fs.readFileSync('apps-script/Vault.gs', 'utf8').match(/SV_BUILD = '(\d+)'/) || [, '0'])[1];
 let code = raw.slice(a + open.length, b);
 // On the website the MP3 encoder is a plain file next to the app instead of an Apps Script route.

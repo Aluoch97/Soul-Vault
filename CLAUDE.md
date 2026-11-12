@@ -5,10 +5,10 @@ the domain registration is still with Wix (keep it renewed; Wix has no email rec
 Plain language for Nick: short explanations, no jargon. Do not overstate certainty; say what is untested.
 
 ## How it fits together
-- `src/App.html` — the whole client (one file, ~6.4k lines). Single source of truth. Owner edits go here.
+- `src/app/` — the whole client, kept in labelled parts (was one 7.7k-line `src/App.html`). `index.html` is the page (head, markup, small inline scripts) with `@@include css/<file>` / `@@include js/<file>` lines; `css/NN-*.css` the main styles; `js/NN-*.js` the app script. `build_app.js` joins them in the order `index.html` lists them into the same single `<script id="sv-app">` and `<style>` as before, so every function and variable is shared. **The ORDER matters**: later code wraps earlier functions (`__renderVault`, `__closeModal`, `__updateNow`) and constants must exist before use, so add new code at the right place, not at random. A new part = create the file with the next number and add its `@@include` line; the build refuses a part nothing includes. Owner edits go here. Where things are (js): `01-boot-and-helpers` (state, transport, accessors), `02-init-routing-chrome` (`init`, routes, `renderChrome`), `03-home-tour-press`, `04-library-shelves`, `05-vault-and-studio`, `06-owner-tools-and-release-page`, `07-covers-player-and-details`, `08-comments-upload-now-playing`, `09-club-letters-new-release`, `10-release-extras-and-song-covers`, `11-chapters-lyrics-and-sync`, `12-series-backup-and-listens`, `13-editors-and-genres`, `14-library-data-and-lore`, `15-playlists-and-sections`, `16-deleting-notes-and-extra-covers`, `17-youtube-video-queue-and-diagnosis`, `18-play-and-startup`.
 - `apps-script/` — the backend, unchanged: `Vault.gs`, `MusicVaultImporter.gs`, `Lame.html`. Lives in Nick's Apps Script
   project (Sheet "Music Vault" + Drive). Deployed as a web app; the site talks to it with `fetch` POST (`doPost`, whitelisted list).
-- `build.js` — turns `src/App.html` into `dist/` (index.html, app.js, lame.js). `node build.js`. Deploy `dist/`.
+- `build.js` — turns `src/app/` (assembled by `build_app.js`) into `dist/` (index.html, app.js, lame.js). `node build.js`. Deploy `dist/`.
   `package.json` has one dev dependency, esbuild, which minifies app.js (Cloudflare runs `npm install` first; if it is missing the build still works, unminified).
   Speed notes: on a first visit to the public site Home is drawn at once from `paintHomeShell()` (no library needed) and `fillHomeLatest()` swaps
   in the single/project covers when the library arrives; the background video starts only after that (`startHomeVideo`). `SV_BOOT.pub` marks
@@ -30,7 +30,7 @@ Plain language for Nick: short explanations, no jargon. Do not overstate certain
 - The app already has a fetch transport (`runFetch`, `BOOT.api`), so the Apps Script page itself is no longer the host.
 
 ## Navigation (matches soulnicolas.com)
-Home, Vault, Tour, Press, Lore: same five on the sidebar (desktop) and bottom tab bar (phone). Inside `src/App.html`:
+Home, Vault, Tour, Press, Lore: same five on the sidebar (desktop) and bottom tab bar (phone). Inside `src/app/js` (mostly `03-home-tour-press`, `04-library-shelves`, `14-library-data-and-lore`):
 `renderHome`, `renderLibrary` (this is the Vault; internal nav id `library`), `renderTour` (iframe of `/roadto100shows.html`),
 `renderPress`, `renderLore`. Press links, social links, booking email and the fallback bio live in the `SITE` constant next to them.
 The internal nav id `vault` still means the owner's Settings screen. Strangers and fan links open on Home; the owner opens on the Vault.
@@ -99,7 +99,7 @@ Covers, song covers, page backgrounds and photos are copied from Drive into the 
 Test page behaviour from the real address (CORS allows only soulnicolas.com): serve `dist` through Playwright `page.route('https://soulnicolas.com/**')` and let `/api` through; from `localhost` every image misses and falls back.
 
 ## Tab addresses and old links
-Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
+Each page has its own URL, handled in `src/app/js/02-init-routing-chrome.js` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
 `/vault/<release>` (release id without `rel_`, `_` becomes `-`, e.g. `/vault/2019-soulless`), `/tour`, `/tour/road-to-100`, `/press`, `/press/video`, `/lore`.
 Back/Forward work and the tab title changes. Owner screens (Settings, Share links, Insights) have no address; single-release share links keep theirs.
 Cloudflare Pages serves index.html for any unknown path, which is what makes this work. Old Wix addresses are 301 redirects written to `dist/_redirects` by `build.js`
@@ -169,6 +169,6 @@ Next for Nick: add soulnicolas.com in Google Search Console and submit `/sitemap
 
 ## Rules
 - Tests: `npm test` (Node 22.13+, about 2 seconds, CI runs it on every push) runs the real `functions/` code against a real SQLite database (what D1 is), a fake R2 bucket and a fake Apps Script, in `tests/`. It covers what visitors can see (hidden/sealed releases, birthday), the owner-only gate on every owner call, uploads, owner login and lockout, Studio, share links, comments, sign-ups and backups. Add a test when you change `functions/`. `tests/_helpers.mjs` has the fixture library and fake services. Note: a stray 1-byte file named `test` sits in the repo root, which is why the folder is `tests/`.
-- Never edit `dist/`. Change `src/App.html` or `apps-script/*`, rebuild.
+- Never edit `dist/`. Change the right part in `src/app/` or `apps-script/*`, rebuild.
 - Backend changes: paste the changed `.gs` into Apps Script, new deployment version, bump `SV_BUILD`, update the "SV build" tag.
 - Keep text escaped with `esc()`. Run a syntax check (esbuild `--target=safari15`) and a phone-width layout check before shipping.
