@@ -4984,7 +4984,7 @@ function scanCredits(text, titles) {
     if (n.length < 2 || n.length > 60 || /^\d+$/.test(n) || /^(the|all|songs?|tracks?|and|n\/a|tbd)$/i.test(n)) return '';
     return n;
   };
-  const names = s => String(s || '').replace(/https?:\/\/\S+|www\.\S+/gi, '').split(/\s*(?:,|&|\+|;|\band\b)\s*/i).map(x => x.trim()).filter(Boolean);
+  const names = s => String(s || '').replace(/https?:\/\/\S+|www\.\S+/gi, '').replace(/\([^)]*\)/g, ' ').split(/\s*(?:,|&|\+|;|\band\b)\s*/i).map(x => x.trim()).filter(Boolean);
   const roleOf = s => [/produc/i.test(s) && 'producers', /\b(mix|master|engineer|record)/i.test(s) && 'engineers', /featur/i.test(s) && 'features', /photo/i.test(s) && 'photographers'].filter(Boolean);
   let sect = '', got = 0;
   String(text || '').split('\n').forEach(raw => {
