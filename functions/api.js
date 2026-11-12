@@ -10,6 +10,7 @@ import * as OW from './_lib/owned.js';
 import * as CT from './_lib/catalog.js';
 import * as AC from './_lib/activity.js';
 import * as FN from './_lib/fans.js';
+import * as MS from './_lib/missing.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
@@ -141,6 +142,43 @@ async function studio(ctx, fn, a) {
   if (fn === 'studioGet') {
     return { releases: all.releases, versions: all.versions.map(v => ({ version_id: v.version_id, track_id: v.track_id, label: v.label, is_primary: v.is_primary, hidden: v.hidden })),
              tracks: all.tracks.map(t => { const o = Object.assign({}, t); delete o.lyrics; delete o.track_cover_thumb; return o; }), overlay: ov };
+  }
+  // ───── missing files: the owner's to-do list of songs/versions that still need their audio uploaded ─────
+  if (fn === 'missingList') return await MS.loadMissing(env.DB);
+  if (fn === 'missingRemove') { const id = String(a[1] || ''); await MS.saveMissing(env.DB, (await MS.loadMissing(env.DB)).filter(x => x.id !== id)); return true; }
+  if (fn === 'missingAdd') {   // put a version (or a whole song with no file) on the list
+    const o = a[1] || {}, v = o.versionId ? all.versions.find(x => x.version_id === o.versionId) : null;
+    const t = all.tracks.find(x => x.track_id === (v ? v.track_id : o.trackId)); if (!t) throw new Error('Song not found.');
+    const r = relOf(t.release_id), list = await MS.loadMissing(env.DB), id = v ? v.version_id : t.track_id;
+    if (list.some(x => x.id === id)) return true;
+    list.push({ id, kind: v ? 'version' : 'song', relId: t.release_id, trackId: t.track_id, title: t.title, release: r ? r.title : '', label: v ? v.label : 'Original', no: Number(t.track_no) || 0,
+      oldVersionIds: v ? [v.version_id] : all.versions.filter(x => x.track_id === t.track_id).map(x => x.version_id), unhide: !v && t.hidden === true });
+    await MS.saveMissing(env.DB, list); return true;
+  }
+  if (fn === 'missingHide') {   // not needed after all (for example a duplicate master): hide the broken version for fans and take it off the list
+    const id = String(a[1] || ''), list = await MS.loadMissing(env.DB), it = list.find(x => x.id === id); if (!it) throw new Error('That item is not on the list any more.');
+    if (it.kind !== 'version') throw new Error('Only a version can be hidden from here. A song stays hidden until its file is uploaded.');
+    if (cat) { own.versions.forEach(v => { if (v.version_id === id) v.hidden = true; }); await saveNat(); }
+    else { ov.vhide[id] = true; await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; mem.at = Date.now(); await forgetCached(all); }
+    await MS.saveMissing(env.DB, list.filter(x => x.id !== id));
+    return true;
+  }
+  if (fn === 'missingResolve') {
+    // The file was uploaded with studioPlanUpload + studioAddSong (new version on the same song). This hides the broken old version, shows the song if it was hidden, and ticks the item off.
+    const id = String(a[1] || ''), newId = String(a[2] || '');
+    const list = await MS.loadMissing(env.DB), it = list.find(x => x.id === id); if (!it) throw new Error('That item is not on the list any more.');
+    if (!all.versions.some(v => v.version_id === newId && v.track_id === it.trackId)) throw new Error('The new file was not found on that song. Try the upload again.');
+    const old = (it.oldVersionIds || []).filter(x => x !== newId);
+    if (cat) {
+      own.versions.forEach(v => { if (old.indexOf(v.version_id) > -1) v.hidden = true; });
+      if (it.unhide) own.tracks.forEach(t => { if (t.track_id === it.trackId) t.hidden = false; });
+      await saveNat();
+    } else {
+      old.forEach(x => { ov.vhide[x] = true; }); if (it.unhide) ov.show[it.trackId] = true;
+      await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; mem.at = Date.now(); await forgetCached(all);
+    }
+    await MS.saveMissing(env.DB, list.filter(x => x.id !== id));
+    return true;
   }
   if (fn === 'studioSaveRelease') {
     const rid = String(a[1] || ''), f = a[2] || {};
@@ -429,7 +467,7 @@ export async function onRequestPost(ctx) {
       return res;
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
-    } else if (/^studio(Get|SaveRelease|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|AddPhoto)$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {

@@ -20,6 +20,8 @@ export function mergeNative(lib, n, ov) {
   if (ov) {   // Studio overrides for Sheet rows: a new cover, a different "plays first" version
     if (ov.cover && Object.keys(ov.cover).length) out.releases = out.releases.map(r => ov.cover[r.release_id] ? Object.assign({}, r, { cover_file_id: ov.cover[r.release_id], cover_thumb: '' }) : r);
     if (ov.primary && Object.keys(ov.primary).length) out.versions = out.versions.map(v => ov.primary[v.track_id] ? Object.assign({}, v, { is_primary: v.version_id === ov.primary[v.track_id] }) : v);
+    if (ov.vhide && Object.keys(ov.vhide).length) out.versions = out.versions.map(v => ov.vhide[v.version_id] ? Object.assign({}, v, { hidden: true }) : v);   // a broken file replaced by a new upload
+    if (ov.show && Object.keys(ov.show).length) out.tracks = out.tracks.map(t => ov.show[t.track_id] ? Object.assign({}, t, { hidden: false }) : t);   // a hidden song that now has its file
   }
   return out;
 }
