@@ -3,8 +3,9 @@
 //   playlists  -> playlists
 //   extras     -> reviews, apps, videos, links, audio notes and photos on a release page
 //   settings   -> the letter, the bio, links for other artists
-export const DOMAINS = ['playlists', 'extras', 'settings'];
-export const emptyOwned = () => ({ domains: {}, playlists: [], extras: [], letter: null, bio: '', artist_links: {} });
+//   catalog    -> releases, songs and versions themselves (titles, order, credits, lyrics, covers, deleting...)
+export const DOMAINS = ['playlists', 'extras', 'settings', 'catalog'];
+export const emptyOwned = () => ({ domains: {}, playlists: [], extras: [], letter: null, bio: '', artist_links: {}, releases: [], tracks: [], versions: [], birth_date: '' });
 export const normOwned = o => Object.assign(emptyOwned(), o || {}, { domains: Object.assign({}, (o && o.domains) || {}) });
 
 export async function loadOwned(db) {
@@ -21,12 +22,15 @@ export function applyOwned(lib, o) {
   if (d.playlists) out.playlists = o.playlists;
   if (d.extras) out.extras = o.extras;
   if (d.settings) { out.letter = o.letter; out.artist_bio = o.bio; out.artist_links = o.artist_links; }
+  if (d.catalog) { out.releases = o.releases; out.tracks = o.tracks; out.versions = o.versions; }
   return out;
 }
 // Which calls an adopted area takes over (they never reach Apps Script), and which Apps Script calls would now write into the Sheet's copy and are refused.
 export const OWNED_FNS = { savePlaylist: 'playlists', deletePlaylist: 'playlists', getPlaylists: 'playlists',
-  addExtra: 'extras', updateExtra: 'extras', deleteExtra: 'extras', saveLetter: 'settings', saveBio: 'settings', saveArtistLinks: 'settings' };
-export const BLOCKED_AFTER = { extras: ['addPhoto', 'addAudioNote', 'addYoutubePlaylistVideos', 'createReleaseFromYoutube', 'addYoutubeSong', 'refreshYoutubeTitles', 'youtubeTitleStatus'] };
+  addExtra: 'extras', updateExtra: 'extras', deleteExtra: 'extras', saveLetter: 'settings', saveBio: 'settings', saveArtistLinks: 'settings',
+  saveTracklist: 'catalog', saveTrackDetails: 'catalog', saveWorld: 'catalog', saveLyrics: 'catalog', saveUnlock: 'catalog', saveVideosMeta: 'catalog', updateVersion: 'catalog', setDuration: 'catalog', deleteTrack: 'catalog', deleteVersion: 'catalog', deleteRelease: 'catalog' };
+export const BLOCKED_AFTER = { extras: ['addPhoto', 'addAudioNote', 'addYoutubePlaylistVideos', 'createReleaseFromYoutube', 'addYoutubeSong', 'refreshYoutubeTitles', 'youtubeTitleStatus'],
+  catalog: ['uploadCover', 'registerUpload', 'setPreview', 'setVoiceNote', 'createRelease', 'setAnimatedCover', 'setTrackCover', 'setReleaseBg', 'uploadCleanCover', 'addCover', 'removeCover', 'setMainCover', 'addYoutubeSong', 'addYoutubePlaylistVideos', 'createReleaseFromYoutube', 'getUploadTicket', 'addAudioNote', 'addPhoto', 'refreshYoutubeTitles', 'youtubeTitleStatus'] };
 
 const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
 const hex = n => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');

@@ -3,7 +3,7 @@
 
 const CHUNK = 200000;   // characters per row
 const ARRAYS = ['releases', 'tracks', 'versions', 'shares', 'extras', 'playlists'];
-const OBJECTS = ['letter', 'newsletter', 'artist_links', 'artist_bio', 'stream_key'];
+const OBJECTS = ['letter', 'newsletter', 'artist_links', 'artist_bio', 'stream_key', 'birth_date'];   // birth_date is used only to work out ages; shareBody never sends it
 export const DDL = 'CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)';
 
 export async function readMeta(db) {

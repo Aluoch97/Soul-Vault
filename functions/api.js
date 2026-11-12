@@ -7,6 +7,7 @@ import { loadLib, saveLib, readMeta, loadOverlay, saveOverlay } from './_lib/mir
 import { makeRecord, checkPassword, PW_MIN, MAX_TRIES, LOGIN_LOCK_MS, failKey } from './_lib/auth.js';
 import { loadNative, saveNative, mergeNative, newRelease, newTrack, newVersion, relSlug, slug, MEDIA_BASE } from './_lib/native.js';
 import * as OW from './_lib/owned.js';
+import * as CT from './_lib/catalog.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
@@ -103,9 +104,11 @@ async function studio(ctx, fn, a) {
   if (!env.DB) throw new Error('Studio needs the Cloudflare database.');
   if (!isOwner(env, a[0])) throw new Error('This link is missing its owner key. Open the app from your owner link.');
   const { lib, ov, nat } = await ownerState(ctx);
-  const all = mergeNative(lib, nat, ov);
-  const isNat = (name, key, id) => nat[name].some(r => r[key] === id);
-  const saveNat = async () => { await saveNative(env.DB, nat); mem.lib = null; await forgetCached(all); };
+  const own = await OW.loadOwned(env.DB), cat = !!own.domains.catalog;
+  const all = OW.applyOwned(mergeNative(lib, nat, ov), own);
+  const store = cat ? own : nat;   // where releases, songs and versions made or edited here live (owned data once the catalog is switched over)
+  const isNat = (name, key, id) => store[name].some(r => r[key] === id);
+  const saveNat = async () => { if (cat) await OW.saveOwned(env.DB, own); else await saveNative(env.DB, nat); mem.lib = null; await forgetCached(all); };
   const relOf = id => all.releases.find(r => r.release_id === id);
   if (fn === 'studioGet') {
     return { releases: all.releases, versions: all.versions.map(v => ({ version_id: v.version_id, track_id: v.track_id, label: v.label, is_primary: v.is_primary, hidden: v.hidden })),
@@ -116,8 +119,8 @@ async function studio(ctx, fn, a) {
     const cur = relOf(rid); if (!cur) throw new Error('Release not found.');
     const basics = f.basics ? cleanBasics(f.basics) : null, world = f.world ? cleanWorld(f.world) : null;
     if (isNat('releases', 'release_id', rid)) {   // made in the new backend: it lives only here
-      if (basics) patchRow(nat, 'releases', 'release_id', rid, basics);
-      if (world) patchRow(nat, 'releases', 'release_id', rid, world);
+      if (basics) patchRow(store, 'releases', 'release_id', rid, basics);
+      if (world) patchRow(store, 'releases', 'release_id', rid, world);
       if (f.unreleased != null) ov.flags.releases[rid] = !!f.unreleased;
       await saveNat(); if (f.unreleased != null) await saveOverlay(env.DB, ov); mem.ov = ov;
       return true;
@@ -138,7 +141,7 @@ async function studio(ctx, fn, a) {
     if (sr != null) { if (sr) ov.sr[tid] = sr; else delete ov.sr[tid]; }
     if (f.unreleased != null) ov.flags.tracks[tid] = !!f.unreleased;
     if (isNat('tracks', 'track_id', tid)) {
-      if (Object.keys(fields).length) patchRow(nat, 'tracks', 'track_id', tid, fields);
+      if (Object.keys(fields).length) patchRow(store, 'tracks', 'track_id', tid, fields);
       await saveNat(); if (sr != null || f.unreleased != null) await saveOverlay(env.DB, ov); mem.ov = ov;
       return true;
     }
@@ -181,12 +184,12 @@ async function studio(ctx, fn, a) {
     if (trackId) { if (!all.tracks.some(t => t.track_id === trackId && t.release_id === rid)) throw new Error('Song not found in this release.'); }
     else {
       const no = Math.max(0, ...all.tracks.filter(t => t.release_id === rid).map(t => Number(t.track_no) || 0)) + 1;
-      track = newTrack(rid, no, String(o.title || '').trim().slice(0, 200)); trackId = track.track_id; nat.tracks.push(track);
+      track = newTrack(rid, no, String(o.title || '').trim().slice(0, 200)); trackId = track.track_id; store.tracks.push(track);
     }
     const primary = !!track || !!o.primary;
     const v = newVersion(trackId, String(o.label || 'Original').trim().slice(0, 60) || 'Original', primary, key, ext, head.size, o.seconds);
-    if (primary && !track) { nat.versions.forEach(x => { if (x.track_id === trackId) x.is_primary = false; }); ov.primary[trackId] = v.version_id; await saveOverlay(env.DB, ov); mem.ov = ov; }
-    nat.versions.push(v); await saveNat();
+    if (primary && !track) { store.versions.forEach(x => { if (x.track_id === trackId) x.is_primary = false; }); if (!cat) { ov.primary[trackId] = v.version_id; await saveOverlay(env.DB, ov); mem.ov = ov; } }
+    store.versions.push(v); await saveNat();
     return { track, version: v };
   }
   if (fn === 'studioNewRelease') {
@@ -196,15 +199,23 @@ async function studio(ctx, fn, a) {
     const coverId = String(o.coverId || ''); if (coverId && !/^[A-Za-z0-9_-]{6,80}$/.test(coverId)) throw new Error('Bad cover.');
     if (coverId && env.MEDIA && !(await env.MEDIA.head('img/' + coverId + '/1200'))) throw new Error('The cover did not arrive. Try again.');
     const r = newRelease({ title, type: o.type, year: String(o.year || '').replace(/\D/g, '').slice(0, 4), release_date: /^\d{4}-\d{2}-\d{2}$/.test(o.release_date || '') ? o.release_date : '', artist_name: String(o.artist_name || '').trim().slice(0, 80), coverId });
-    nat.releases.push(r); await saveNat();
+    store.releases.push(r); await saveNat();
     return r;
   }
   if (fn === 'studioSetCover') {
     const o = a[1] || {}, rid = String(o.relId || ''), coverId = String(o.coverId || '');
     if (!relOf(rid)) throw new Error('Release not found.');
     if (!/^[A-Za-z0-9_-]{6,80}$/.test(coverId)) throw new Error('Bad cover.');
-    if (env.MEDIA && !(await env.MEDIA.head('img/' + coverId + '/1200'))) throw new Error('The cover did not arrive. Try again.');
-    if (isNat('releases', 'release_id', rid)) { patchRow(nat, 'releases', 'release_id', rid, { cover_file_id: coverId }); await saveNat(); }
+    const kind = String(o.kind || 'cover');
+    if (['cover', 'bg', 'clean', 'song'].indexOf(kind) < 0) throw new Error('Unknown picture type.');
+    if (env.MEDIA && !(await env.MEDIA.head('img/' + coverId + '/' + (kind === 'bg' ? '1600' : '1200')))) throw new Error('The picture did not arrive. Try again.');
+    if (kind !== 'cover') {   // page background, clean cover, song cover: stored on the row, so they need the catalog to be on Cloudflare
+      if (!cat) throw new Error('Switch the catalog to Cloudflare first (Settings, then Move off the Sheet).');
+      if (kind === 'song') { const tid = String(o.trackId || ''); if (!all.tracks.some(t => t.track_id === tid && t.release_id === rid)) throw new Error('Song not found in this release.'); patchRow(store, 'tracks', 'track_id', tid, { track_cover: coverId }); }
+      else patchRow(store, 'releases', 'release_id', rid, kind === 'bg' ? { bg_file_id: coverId } : { clean_cover_file_id: coverId, clean_cover_thumb: '' });
+      await saveNat(); return true;
+    }
+    if (isNat('releases', 'release_id', rid)) { patchRow(store, 'releases', 'release_id', rid, { cover_file_id: coverId }); await saveNat(); }
     else { ov.cover[rid] = coverId; await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; await forgetCached(all); }
     return true;
   }
@@ -214,8 +225,7 @@ async function studio(ctx, fn, a) {
     if (!/^[A-Za-z0-9_-]{6,80}$/.test(fileId)) throw new Error('Bad photo.');
     if (env.MEDIA && !(await env.MEDIA.head('img/' + fileId + '/1600'))) throw new Error('The photo did not arrive. Try again.');
     const x = { extra_id: 'ext_' + Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b => b.toString(16).padStart(2, '0')).join(''), release_id: rid, kind: 'photo', url: '', title: String(o.caption || '').trim().slice(0, 200), description: '', image: '', site: '', file_id: fileId, created: new Date().toISOString(), native: true };
-    const ow = await OW.loadOwned(env.DB);
-    if (ow.domains.extras) { ow.extras.push(x); await OW.saveOwned(env.DB, ow); mem.lib = null; await forgetCached(all); } else { nat.extras.push(x); await saveNat(); }
+    if (own.domains.extras) { own.extras.push(x); await OW.saveOwned(env.DB, own); mem.lib = null; await forgetCached(all); } else { nat.extras.push(x); await saveNative(env.DB, nat); mem.lib = null; await forgetCached(all); }
     return x;
   }
   throw new Error('Unknown action.');
@@ -269,6 +279,13 @@ async function adoptDomain(ctx, a, on) {
   if (name === 'playlists') { ow.playlists = all.playlists || []; count = ow.playlists.length; }
   if (name === 'extras') { ow.extras = all.extras || []; count = ow.extras.length; }
   if (name === 'settings') { ow.letter = all.letter || null; ow.bio = all.artist_bio || ''; ow.artist_links = all.artist_links || {}; count = Object.keys(ow.artist_links).length + (ow.letter ? 1 : 0) + (ow.bio ? 1 : 0); }
+  if (name === 'catalog') {
+    const cl = x => JSON.parse(JSON.stringify(x));
+    ow.releases = all.releases.map(cl); ow.tracks = all.tracks.map(cl); ow.versions = all.versions.map(cl);
+    ow.releases.forEach(r => { if (r.release_id in ov.flags.releases) r.unreleased = !!ov.flags.releases[r.release_id]; });   // Studio's unreleased flags become part of the rows
+    ow.tracks.forEach(t => { if (t.track_id in ov.flags.tracks) t.unreleased = !!ov.flags.tracks[t.track_id]; });
+    ow.birth_date = String((base && base.birth_date) || ''); count = ow.tracks.length;
+  }
   ow.domains[name] = true; await OW.saveOwned(env.DB, ow); mem.lib = null; await forgetCached(all);
   return { area: name, owned: true, copied: count };
 }
@@ -297,6 +314,21 @@ async function ownedCall(ctx, fn, a) {
   else if (fn === 'saveLetter') out = OW.saveLetter(a[1], a[2], ow, now);
   else if (fn === 'saveBio') out = OW.saveBio(a[1], ow);
   else if (fn === 'saveArtistLinks') out = OW.saveArtistLinks(a[1], ow);
+  else if (fn === 'saveTracklist') out = CT.saveTracklist(ow, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8]);
+  else if (fn === 'saveTrackDetails') out = CT.saveTrackDetails(ow, a[1], a[2]);
+  else if (fn === 'saveWorld') {
+    const f = a[2] || {};
+    if (f.birth_date != null) { const b = String(f.birth_date).trim(); if (b && !/^\d{4}-\d{2}-\d{2}$/.test(b)) throw new Error('Birthday should be a real date.'); ow.birth_date = b; }
+    out = CT.saveWorld(ow, a[1], f, ow.birth_date, ow.domains.playlists ? ow.playlists : lib.playlists);
+  }
+  else if (fn === 'saveLyrics') out = CT.saveLyrics(ow, a[1], a[2]);
+  else if (fn === 'saveUnlock') out = CT.saveUnlock(ow, a[1], a[2]);
+  else if (fn === 'saveVideosMeta') out = CT.saveVideosMeta(ow, a[1], a[2]);
+  else if (fn === 'updateVersion') out = CT.updateVersion(ow, a[1], a[2]);
+  else if (fn === 'setDuration') out = CT.setDuration(ow, a[1], a[2]);
+  else if (fn === 'deleteTrack') out = CT.deleteTrack(ow, a[1]);
+  else if (fn === 'deleteVersion') out = CT.deleteVersion(ow, a[1]);
+  else if (fn === 'deleteRelease') out = CT.deleteRelease(ow, a[1], a[2]);
   await save();
   return out === undefined ? null : out;
 }
