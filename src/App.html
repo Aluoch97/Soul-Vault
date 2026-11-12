@@ -1915,6 +1915,7 @@ function renderVault() {
       ${EDGE_UPLOADS() ? `<li><button data-areas>${I.layers}<span>Move off the Sheet</span><span class="cs">playlists, extras, letter and bio: switch to Cloudflare</span></button></li>` : ''}
       <li><button data-nav="studio">${I.edit}<span>Studio</span><span class="cs">edit titles, songs, info, links</span></button></li>
       ${EDGE_UPLOADS() ? `<li><button data-fans>${I.link}<span>Soul Tribe fan list</span><span class="cs">sign-ups from /join, download as a spreadsheet</span></button></li>` : ''}
+      ${EDGE_UPLOADS() ? `<li><button data-missing>${I.up2}<span>Missing files</span><span class="cs">songs and versions waiting for their audio</span></button></li>` : ''}
       <li><button data-install>${I.plus}<span>Add to Home Screen</span><span class="cs">put Soul Vault on your phone like an app</span></button></li>
       <li><button data-ownerpw>${I.lock}<span>Set owner password</span><span class="cs">sign in at soulnicolas.com/admin, no key needed</span></button></li>
       <li><button data-signout>${I.x}<span>Sign out on this device</span><span class="cs">you can sign back in with your password</span></button></li>
@@ -1924,6 +1925,7 @@ function renderVault() {
   $('[data-ownerpw]').addEventListener('click', openOwnerPw);
   if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
   if ($('[data-fans]')) $('[data-fans]').addEventListener('click', openFans);
+  if ($('[data-missing]')) $('[data-missing]').addEventListener('click', openMissing);
   $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });
   const ok = $('[data-ownerkey]');
   if (ok) ok.addEventListener('click', async () => {   // the key is never shown on screen, only put on the clipboard
@@ -2228,6 +2230,52 @@ function openInstall() {
     ev.prompt();
     try { await ev.userChoice; } catch (e) {}
     closeModal();
+  });
+}
+// Missing files: the to-do list of songs and versions that need their audio. Pick a file next to one and it goes live right away.
+async function openMissing() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Missing files"><h2>Missing files</h2><p class="cs" id="msSt">Loading…</p>
+    <div id="msList" style="display:grid;gap:14px;max-height:62vh;overflow:auto"></div><div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
+  m.hidden = false;
+  let items = [];
+  const draw = () => {
+    $('#msSt').textContent = items.length ? items.length + ' still to upload. Tap Upload next to one and pick the file. It goes live for everyone as soon as it finishes. A WAV or AIFF is turned into a 256 kbps MP3 first; your master stays on your computer.' : 'Nothing is missing.';
+    const by = {}; items.forEach(it => (by[it.release] = by[it.release] || []).push(it));
+    $('#msList').innerHTML = Object.keys(by).map(r => `<div><b>${esc(r)}</b>${by[r].sort((a, b) => (a.no || 0) - (b.no || 0) || String(a.label).localeCompare(b.label)).map(it => `
+      <div class="msrow" data-ms="${esc(it.id)}" style="display:grid;gap:6px;padding:10px 0;border-top:1px solid var(--line)">
+        <div><span>${it.no ? '#' + esc(it.no) + ' ' : ''}${esc(it.title)}</span> <span class="cs">· ${esc(it.label)}${it.kind === 'song' ? ' · never added' : ''}</span></div>
+        <div class="cs msst" role="status"></div><div class="msbar" hidden style="height:4px;border-radius:4px;background:var(--raise);overflow:hidden"><i style="display:block;height:100%;width:0;background:var(--text)"></i></div>
+        <div style="display:flex;gap:8px"><button class="pill main" data-ms-up="${esc(it.id)}">Upload file</button>${it.kind === 'version' ? `<button class="pill soft" data-ms-hide="${esc(it.id)}">Hide it</button>` : ''}</div></div>`).join('')}</div>`).join('');
+  };
+  const rowOf = id => $$('#msList [data-ms]').find(x => x.dataset.ms === id);
+  try { items = await run('missingList', BOOT.key); draw(); } catch (e) { $('#msSt').textContent = (e && e.message) || 'Could not load the list.'; return; }
+  $('#msList').addEventListener('click', e => {
+    const up = e.target.closest('[data-ms-up]'), hide = e.target.closest('[data-ms-hide]');
+    if (hide) {
+      const id = hide.dataset.msHide; hide.disabled = true;
+      run('missingHide', BOOT.key, id).then(() => { const it = items.find(x => x.id === id); (S.lib.versions || []).forEach(v => { if (v.version_id === id) v.hidden = true; }); items = items.filter(x => x.id !== id); draw(); toast('Hidden for fans'); }).catch(er => { hide.disabled = false; toast((er && er.message) || 'Could not hide it.'); });
+      return;
+    }
+    if (!up) return;
+    const it = items.find(x => x.id === up.dataset.msUp); if (!it) return;
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg';
+    inp.onchange = async () => {
+      const f = inp.files[0]; if (!f) return;
+      const row = rowOf(it.id), st = row.querySelector('.msst'), bw = row.querySelector('.msbar'), bi = bw.firstElementChild; up.disabled = true; bw.hidden = false;
+      try {
+        const out = await uploadSongToEdge(f, it.relId, it.trackId, it.title, it.label, it.kind === 'song', t => { st.textContent = t; }, p => { bi.style.width = Math.round(p * 100) + '%'; });
+        st.textContent = 'Going live…';
+        await run('missingResolve', BOOT.key, it.id, out.version.version_id);
+        const v = out.version; if (v.is_primary) S.lib.versions.filter(x => x.track_id === v.track_id).forEach(x => (x.is_primary = false));
+        S.lib.versions.forEach(x => { if ((it.oldVersionIds || []).indexOf(x.version_id) > -1) x.hidden = true; }); S.lib.versions.push(v);
+        if (v.url) (S.urlByFile = S.urlByFile || {})[v.audio] = v.url;
+        const t = S.lib.tracks.find(x => x.track_id === it.trackId); if (t && it.unhide) t.hidden = false;
+        items = items.filter(x => x.id !== it.id); draw(); toast('Live now: ' + it.title);
+        if (S.view === 'release') renderRelease(it.relId);
+      } catch (er) { st.textContent = (er && er.message) || 'The upload did not finish.'; st.style.color = 'var(--red, #ff6b6b)'; up.disabled = false; bw.hidden = true; }
+    };
+    inp.click();
   });
 }
 async function openFans() {

@@ -46,9 +46,9 @@ export function cleanSr(v) {
   return v;
 }
 
-export const emptyOverlay = () => ({ releases: {}, sr: {}, flags: { releases: {}, tracks: {} }, cover: {}, primary: {} });
-export const normOverlay = ov => { const o = Object.assign(emptyOverlay(), ov || {}); o.cover = o.cover || {}; o.primary = o.primary || {}; o.flags = Object.assign({ releases: {}, tracks: {} }, o.flags || {}); return o; };
-export const overlayIsEmpty = ov => !Object.keys(ov.cover || {}).length && !Object.keys(ov.primary || {}).length && !Object.keys(ov.releases).length && !Object.keys(ov.sr).length && !Object.keys(ov.flags.releases).length && !Object.keys(ov.flags.tracks).length;
+export const emptyOverlay = () => ({ releases: {}, sr: {}, flags: { releases: {}, tracks: {} }, cover: {}, primary: {}, vhide: {}, show: {} });
+export const normOverlay = ov => { const o = Object.assign(emptyOverlay(), ov || {}); o.cover = o.cover || {}; o.primary = o.primary || {}; o.vhide = o.vhide || {}; o.show = o.show || {}; o.flags = Object.assign({ releases: {}, tracks: {} }, o.flags || {}); return o; };
+export const overlayIsEmpty = ov => !Object.keys(ov.cover || {}).length && !Object.keys(ov.primary || {}).length && !Object.keys(ov.vhide || {}).length && !Object.keys(ov.show || {}).length && !Object.keys(ov.releases).length && !Object.keys(ov.sr).length && !Object.keys(ov.flags.releases).length && !Object.keys(ov.flags.tracks).length;
 
 // Apply a saved change to the in-memory copy (the Sheet already has it).
 export function patchRow(lib, table, idKey, id, fields) {
