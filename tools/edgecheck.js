@@ -3,7 +3,7 @@
 // With an owner key it also asks the edge to refresh its copy first.
 const cfg = require('../site.config.json');
 const base = (process.argv[2] || 'http://localhost:8788').replace(/\/$/, ''), key = process.argv[3] || '';
-const post = (url, fn, args) => fetch(url, { method: 'POST', body: JSON.stringify({ fn, args }), redirect: 'follow' }).then(r => r.json());
+const post = (url, fn, args) => fetch(url, { method: 'POST', body: JSON.stringify({ fn, args }), redirect: 'follow', headers: { 'user-agent': 'Mozilla/5.0 (edgecheck)' } }).then(r => r.json());
 const same = (a, b, path, out) => {
   if (a === b) return;
   if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object') { out.push(path + ': ' + JSON.stringify(a).slice(0, 80) + ' vs ' + JSON.stringify(b).slice(0, 80)); return; }
