@@ -4909,10 +4909,68 @@ function creditsFrom(text, re) {
   String(text || '').split('\n').forEach(line => { const m = /^\s*([^:]{2,40}):\s*(.+)$/.exec(line); if (m && re.test(m[1])) out.push(...splitNames(m[2])); });
   return out;
 }
+// Reads a release's free-text album credits (any layout) and returns who produced, engineered, featured, and where it was recorded.
+const foldName = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+function scanCredits(text, titles) {
+  const out = { producers: [], engineers: [], features: [], places: [], photographers: [] };
+  const tl = new Set([].concat(...(titles || []).map(t => [foldName(t), foldName(String(t).replace(/\([^)]*\)|\[[^\]]*\]/g, ''))])));
+  const put = (k, name) => { name = cleanCreditName(name); if (name && !out[k].some(n => foldName(n).replace(/^the /, '') === foldName(name).replace(/^the /, ''))) out[k].push(name); };
+  const cleanCreditName = n => {
+    n = String(n || '').replace(/https?:\/\/\S+|www\.\S+/gi, '').replace(/\bfor\s+NuRenaissance.*$/i, '').replace(/\([^)]*\)/g, '').replace(/^["'“”‘’\s\-•*]+|^\d+[.)]\s+|["“”\s.:;]+$/g, '').trim();
+    if (n.length < 2 || n.length > 60 || /^\d+$/.test(n) || /^(the|all|songs?|tracks?|and|n\/a|tbd)$/i.test(n)) return '';
+    return n;
+  };
+  const names = s => String(s || '').replace(/https?:\/\/\S+|www\.\S+/gi, '').split(/\s*(?:,|&|\+|;|\band\b)\s*/i).map(x => x.trim()).filter(Boolean);
+  const roleOf = s => [/produc/i.test(s) && 'producers', /\b(mix|master|engineer|record)/i.test(s) && 'engineers', /featur/i.test(s) && 'features', /photo/i.test(s) && 'photographers'].filter(Boolean);
+  let sect = '', got = 0;
+  String(text || '').split('\n').forEach(raw => {
+    const line = raw.replace(/^[\s•*]+/, '').trim();
+    if (!line) { if (got) { sect = ''; got = 0; } return; }
+    if (/^https?:|^www\./i.test(line)) return;
+    const head = /^(producers?|production|engineers?|mixing|mastering|featured artists?|features?|photograph\w*)\s*:?\s*$/i.exec(line);
+    if (head) { sect = roleOf(head[1])[0] || ''; got = 0; return; }
+    let m;
+    if ((m = /^recorded\s+(?:at|in)\s+(.+)$/i.exec(line))) { put('places', m[1].replace(/^(the\s+)+/i, 'The ')); return; }
+    if ((m = /^(.*?)\bby\b\s*:?\s*(.+)$/i.exec(line)) && !/^\d+\.\s*["“]/.test(line)) {   // "Written, Produced, & Mixed by Name", "Mixing by A & B", "Tracks 1-5 produced by X."
+      const kind = roleOf(m[1]);
+      if (kind.length) { names(m[2]).forEach(n => kind.forEach(k => put(k, n))); return; }
+      if (/\b(written|demo|additional|vocals|directed|cover)\b/i.test(m[1])) return;
+    }
+    if ((m = /^([^:]{2,40}):\s*(.+)$/.exec(line))) {   // "Produced by: X" / "Cover photo: X"
+      const kind = roleOf(m[1]); if (kind.length) { names(m[2]).forEach(n => kind.forEach(k => put(k, n))); return; }
+    }
+    if ((m = /^(.+?)\s*[-–]\s+(.+)$/.exec(line))) {   // "Name - producer", "Name - featured artist", "Name - instagram url"
+      const rest = m[2];
+      if (/^(https?:|www\.|instagram|@)/i.test(rest)) { if (sect) { put(sect, m[1]); got++; } return; }
+      const kind = roleOf(rest); if (kind.length) { kind.forEach(k => put(k, m[1])); return; }
+    }
+    if (sect) {   // list items under a "Producers" style heading
+      const item = line.replace(/^(\d+[.)]|-|–)\s*/, '');
+      const pm = /^(.*?)\s*\(([^()]*)\)\s*$/.exec(item);
+      let name = item;
+      if (pm && tl.has(foldName(pm[1]))) name = pm[2];   // "Song Title (Producer)"
+      else if (pm) name = pm[1];                          // "Producer (song, song)"
+      names(name).forEach(n => put(sect, n)); got++;
+    }
+  });
+  return out;
+}
+// Photo credits are often just a name ("Julia Schaffer"), or "Photos by X".
+function scanPhotoCredits(text) {
+  const out = [];
+  String(text || '').split('\n').forEach(raw => {
+    let l = raw.replace(/^[\s•*\-]+/, '').trim(); if (!l || /https?:|www\./i.test(l)) return;
+    const m = /^(?:[^:]{2,40}:|(?:photos?|photography|photographed|shot|captured)(?:\s+\w+)?\s+by)\s*(.+)$/i.exec(l);
+    (m ? m[1] : l).split(/\s*(?:,|&|\band\b|\+|;)\s*/i).forEach(n => { n = n.replace(/\([^)]*\)/g, '').replace(/^["\s]+|["\s.]+$/g, ''); if (n.length > 1 && n.length < 60 && !/\d{3,}/.test(n) && !out.some(x => foldName(x) === foldName(n))) out.push(n); });
+  });
+  return out;
+}
 function buildLore() {
   const rs = S.lib.releases.slice().sort((a, b) => relDateKey(a).localeCompare(relDateKey(b)));
   const idx = { producers: new Map(), engineers: new Map(), features: new Map(), places: new Map(), photographers: new Map() };
-  const add = (map, name, rTitle) => { const k = name.toLowerCase(); const e = map.get(k) || { name, releases: new Set(), n: 0 }; e.releases.add(rTitle); e.n++; map.set(k, e); };
+  const add = (map, name, rTitle) => { const k = foldName(name).replace(/^the /, ''); const e = map.get(k) || { name, releases: new Set(), n: 0 };
+    if (/[^\x00-\x7f]/.test(name) && !/[^\x00-\x7f]/.test(e.name)) e.name = name;   // keep the accented spelling (Nicólas) when both exist
+    e.releases.add(rTitle); e.n++; map.set(k, e); };
   const eras = rs.map(r => {
     const ts = tracksOf(r.release_id, true), vids = eraVideos(r, ts), meta = videosMeta(r);
     const vcount = {}; vids.forEach(v => { const t = meta.types[vKey(v)] || 'music'; vcount[t] = (vcount[t] || 0) + 1; });
@@ -4920,7 +4978,14 @@ function buildLore() {
     ts.forEach(t => { splitNames(creditVal(t, 'producer')).forEach(n => { prod.add(n); add(idx.producers, n, r.title); });
       splitNames(creditVal(t, 'engineer')).forEach(n => { eng.add(n); add(idx.engineers, n, r.title); });
       splitNames(creditVal(t, 'features')).forEach(n => { feat.add(n); add(idx.features, n, r.title); }); });
-    creditsFrom(photosMeta(r).credits, /photo|shot|camera|director of photography/i).forEach(n => add(idx.photographers, n, r.title));
+    // Credits typed as free text on the release page (any layout): producers, mix/master, features, places, photographers.
+    const sc = scanCredits(r.album_credits, ts.map(t => t.title));
+    const mergeNames = (set, list) => list.forEach(n => { if (![...set].some(x => foldName(x) === foldName(n))) set.add(n); });
+    mergeNames(prod, sc.producers); mergeNames(eng, sc.engineers); mergeNames(feat, sc.features);
+    sc.producers.forEach(n => add(idx.producers, n, r.title)); sc.engineers.forEach(n => add(idx.engineers, n, r.title)); sc.features.forEach(n => add(idx.features, n, r.title));
+    sc.places.forEach(n => add(idx.places, n, r.title));
+    const photoNames = [...new Set(creditsFrom(photosMeta(r).credits, /photo|shot|camera|director of photography/i).concat(scanPhotoCredits(photosMeta(r).credits), sc.photographers))];
+    photoNames.filter((n, i) => photoNames.findIndex(x => foldName(x) === foldName(n)) === i).forEach(n => add(idx.photographers, n, r.title));
     if (String(r.recorded_at || '').trim()) add(idx.places, r.recorded_at.trim(), r.title);
     return { r, songs: ts.length, runtime: runtimeOf(ts), prod: [...prod], eng: [...eng], feat: [...feat], vcount, photos: extrasOf(r.release_id, 'photo').length,
              as: relArtist(r), ages: agesOf(r) };

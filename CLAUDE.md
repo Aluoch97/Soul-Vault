@@ -48,6 +48,7 @@ The list is read live from the YouTube API with the page's website-only key (`YT
 
 Background video: one `#sitebg` element (made by `syncSiteBg()` in `renderChrome`, outside `#main`) sits behind Home, Vault, Tour, Press and Lore, so the video keeps playing when you change tabs (it pauses on release pages, which use their own `#pagebg`). The Tour tab's Shows page is transparent inside the app (`html.embedded`); the Road to 100 page keeps its own paper look on purpose.
 Lore has no title; each photo opens a full-screen viewer (`openLorePhoto`): rotate, download, next/previous, close.
+Lore reads each release's free-text album credits with `scanCredits` (any layout: "Produced by X", "Name - producer", a "Producers" list, "Recorded at") and photo credits with `scanPhotoCredits`, on top of the per-song credit fields. Releases with no credits typed on their page (The Birdhouse, soulLESS, Cali EP, saturn.RETURN, the singles) add nothing.
 
 ## Tab addresses and old links
 Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
