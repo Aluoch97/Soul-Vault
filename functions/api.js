@@ -368,6 +368,7 @@ async function activityCall(ctx, fn, a) {
   const changed = async () => { mem.lib = null; await forgetCached(lib); };
   switch (fn) {
     case 'createShare': need(); { const r = await AC.createShare(db, a[1], SITE); await changed(); return r; }
+    case 'deleteShare': need(); { const r = await AC.deleteShare(db, a[1], cfg.publicToken); await changed(); return r; }
     case 'setShareActive': need(); { const r = await AC.setShareActive(db, a[1], a[2]); await changed(); return r; }
     case 'quickShare': need(); { const r = await AC.quickShare(db, { targetType: a[1], targetId: a[2] }, SITE); await changed(); return r; }
     case 'recordPlay': return AC.recordPlay(db, lib, a[0]);
