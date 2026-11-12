@@ -384,14 +384,30 @@
   .pcards { display: grid; gap: 18px; margin: 10px 0 26px; max-width: 560px; }
   .pcard { display: block; background: #000; border: 1px solid rgba(255,255,255,.16); color: inherit; text-decoration: none; overflow: hidden; border-radius: 4px; }
   .pcard img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #111; }
+  .bklist { display: grid; gap: 6px; max-height: 34vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+  .bkfields { display: grid; gap: 10px; } .bkf { display: grid; gap: 6px; }
   .viewrow { display: flex; justify-content: flex-end; margin: 4px 0 10px; }
-  .allgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; margin: 6px 0 22px; }
+  .viewwrap { position: relative; }
+  .viewbtn { gap: 8px; } .viewbtn svg { width: 18px; height: 18px; }
+  .viewmenu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 230px; padding: 6px; border-radius: 14px; background: #26262a; border: 1px solid var(--line); box-shadow: 0 14px 40px rgba(0,0,0,.55); }
+  .viewmenu[hidden] { display: none; }
+  .viewmenu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border-radius: 10px; background: none; border: 0; color: var(--text); font-size: 15px; text-align: left; cursor: pointer; }
+  .viewmenu button:hover { background: rgba(255,255,255,.08); }
+  .viewmenu .vdot { width: 12px; font-style: normal; color: var(--text); text-align: center; flex: none; }
+  .viewmenu svg { width: 20px; height: 20px; flex: none; color: var(--dim); }
+  .allgrid { display: grid; gap: 14px 10px; margin: 6px 0 22px; }
+  .allgrid.large { grid-template-columns: repeat(2, minmax(0, 1fr)); } .allgrid.small { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; }
   .agc { display: grid; gap: 4px; align-content: start; text-align: left; padding: 0; background: none; border: 0; color: inherit; cursor: pointer; min-width: 0; }
   .agc img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: #1a1a1c; }
   .agc .agt { font: 700 13px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
   .agc .cs { font-size: 11px; }
-  @media (min-width: 761px) { .allgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  .vcard { position: relative; } .vshare { position: absolute; top: 6px; right: 6px; z-index: 2; width: 36px; height: 36px; background: rgba(0,0,0,.55); border-radius: 50%; color: #fff; display: grid; place-items: center; }
+  .allgrid.small .agt { font-size: 11px; } .allgrid.small .cs { display: none; }
+  .alllist { display: grid; gap: 4px; margin: 6px 0 22px; }
+  .alr { display: flex; align-items: center; gap: 12px; padding: 6px; border-radius: 12px; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
+  .alr:hover { background: rgba(255,255,255,.06); }
+  .alr img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: #1a1a1c; flex: none; }
+  .alr .alt { display: grid; gap: 2px; min-width: 0; } .alr .alt b { font: 700 15px/1.25 var(--serif); }
+  @media (min-width: 761px) { .allgrid.large { grid-template-columns: repeat(4, minmax(0, 1fr)); } .allgrid.small { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
   .pimg { position: relative; aspect-ratio: 1.91 / 1; background: linear-gradient(135deg, #3a1d27, #141417); }
   .pimg img { position: absolute; inset: 0; height: 100%; }
   .pfall { position: absolute; inset: 0; display: grid; place-items: center; padding: 14px; text-align: center; font: 800 clamp(18px, 5vw, 24px)/1.15 var(--serif); color: rgba(255,255,255,.88); }
@@ -1754,15 +1770,33 @@ function shelfOrder(rs) {
   const key = r => (/^\d{4}-\d{2}-\d{2}/.test(String(r.release_date || '')) ? String(r.release_date).slice(0, 10) : String(r.year || 0) + '-00-00');
   return rs.slice().sort((a, b) => key(b).localeCompare(key(a)) || String(a.title).localeCompare(String(b.title)));
 }
-// "View all": every release at once, in rows of covers (newest first).
-function allGrid(rs) {
-  return `<section class="allgrid" aria-label="All releases">${rs.map(r => `<button class="agc" data-rel="${esc(r.release_id)}" aria-label="Open ${esc(r.title)}">
+// The View menu on the Music tab: how the releases are laid out.
+const VSVG = {
+  scroll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="5" width="10" height="14" rx="2"/><path d="M3 12h1M20 12h1"/></svg>',
+  large: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>',
+  small: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>',
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'
+};
+const VIEWS = [['scroll', 'Scrolling shelf'], ['large', 'Large covers'], ['small', 'Small covers'], ['list', 'List']];
+function viewMenu(cur) {
+  return `<div class="viewrow"><div class="viewwrap"><button type="button" class="pill soft viewbtn" data-libmenu aria-haspopup="menu" aria-expanded="false">${VSVG.list}<span>View</span><span aria-hidden="true">&#9662;</span></button>
+    <div class="viewmenu" role="menu" aria-label="View" hidden>${VIEWS.map(v => `<button type="button" role="menuitemradio" aria-checked="${v[0] === cur}" data-libview="${v[0]}"><i class="vdot">${v[0] === cur ? '&bull;' : ''}</i>${VSVG[v[0]]}<span>${v[1]}</span></button>`).join('')}</div></div></div>`;
+}
+// Every release at once, in rows (newest first): large covers, small covers or a plain list.
+function allGrid(rs, view) {
+  if (view === 'list') return `<section class="alllist" aria-label="All releases">${rs.map(r => `<button class="alr" data-rel="${esc(r.release_id)}" aria-label="Open ${esc(r.title)}">
+    <img class="art" data-cover="${esc(r.cover_file_id)}" alt=""><span class="alt"><b>${esc(r.title)}</b><span class="cs">${esc([r.year, typeOf(r), songs(tracksOf(r.release_id).filter(t => !hidden(t)).length)].filter(Boolean).join(' · '))}</span></span></button>`).join('')}</section>`;
+  return `<section class="allgrid ${view === 'small' ? 'small' : 'large'}" aria-label="All releases">${rs.map(r => `<button class="agc" data-rel="${esc(r.release_id)}" aria-label="Open ${esc(r.title)}">
     <img class="art" data-cover="${esc(r.cover_file_id)}" alt=""><span class="agt">${esc(r.title)}</span><span class="cs">${esc([r.year, typeOf(r)].filter(Boolean).join(' · '))}</span></button>`).join('')}</section>`;
 }
 document.addEventListener('click', e => {
-  const b = e.target.closest && e.target.closest('[data-libview]'); if (!b) return;
-  S.libAll = !S.libAll; renderLibBody(); window.scrollTo(0, 0);
+  const m = e.target.closest && e.target.closest('[data-libmenu]');
+  if (m) { const menu = m.nextElementSibling, open = menu.hidden; menu.hidden = !open; m.setAttribute('aria-expanded', String(open)); return; }
+  const o = e.target.closest && e.target.closest('[data-libview]');
+  if (o) { S.libView = o.dataset.libview; ls.set('sv_libview', S.libView); renderLibBody(); return; }
+  $$('.viewmenu').forEach(x => { x.hidden = true; if (x.previousElementSibling) x.previousElementSibling.setAttribute('aria-expanded', 'false'); });   // a tap anywhere else closes it
 });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $$('.viewmenu').forEach(x => { x.hidden = true; }); });
 // Sharing out: the phone's own share sheet when there is one (Instagram, TikTok, Messages, WhatsApp...), else a small sheet with links.
 const siteBase = () => String((window.SV_BOOT && SV_BOOT.site) || location.origin).replace(/\/$/, '');
 const relShareUrl = id => siteBase() + '/vault/' + relSlug(id);
@@ -1872,9 +1906,10 @@ function renderLibBody() {
     <ol class="tracks">${songHits.map(t => trackRow(t, true)).join('')}</ol>` : '';
   const chips = `<div class="seg" role="group" aria-label="Filter by type">${types.map(t => `<button data-filter="${esc(t)}" aria-pressed="${t === S.filter}">${esc(t)}</button>`).join('')}</div>`;
   const empty = `<p class="status" style="padding-left:0">${q ? `Nothing matches "${esc(S.q)}". Try part of a song or release title.` : 'Nothing matches this filter yet.'}</p>`;
-  const allMode = !!S.libAll && !q;
-  const viewBtn = q ? '' : `<div class="viewrow"><button class="pill soft" data-libview aria-pressed="${allMode}">${allMode ? 'Back to browsing' : 'View all releases'}</button></div>`;
-  $('#libBody').innerHTML = (!q ? resumeCard() : '') + chips + viewBtn + (rs.length ? (allMode ? allGrid(rs) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
+  const view = S.libView = S.libView || ls.get('sv_libview', 'scroll');
+  const allMode = view !== 'scroll' && !q;
+  const viewBtn = q ? '' : viewMenu(view);
+  $('#libBody').innerHTML = (!q ? resumeCard() : '') + chips + viewBtn + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
     (!q && !allMode ? seriesRow() + playlistsRow() + dropsRow() + unreleasedSection() + recentRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
@@ -2192,9 +2227,27 @@ function drawStudio() {
     <p class="cs">Pick a release, change what you need, and press Save in that section. Changes show on the site within about a minute.</p>
     <div style="display:flex;gap:8px;align-items:center;margin:6px 0 14px"><select class="field stusel" id="stuRel" aria-label="Release" style="margin:0;flex:1;min-width:0">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
       ${EDGE_UPLOADS() ? `<button type="button" class="pill main" id="stuNewRel" style="flex:none">${I.plus}New</button>` : ''}</div>
+    <details class="stu" id="stuBulk"><summary>Edit several releases at once</summary><div class="stubody">
+      <p class="cs" style="margin:0">Tick the releases, tick each field you want to change and type the new value, then Apply. Anything you leave unticked stays exactly as it is.</p>
+      <div class="save"><button type="button" class="pill soft" data-bk-all>Select all</button><button type="button" class="pill soft" data-bk-none>None</button><span class="st" id="bkCount">0 selected</span></div>
+      <div class="bklist">${rels.map(x => `<label class="chk"><input type="checkbox" data-bk-rel="${esc(x.release_id)}"> ${esc(x.title)} <span class="cs">${esc([x.year, typeOf(x)].filter(Boolean).join(' · '))}</span></label>`).join('')}</div>
+      <datalist id="bkGenres">${knownGenres().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+      <div class="bkfields">
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="genre"> Genre</label><input class="field" data-bk-val="genre" list="bkGenres" placeholder="Hip Hop, R&B"></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="type"> Type</label><select class="field" data-bk-val="type">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'].map(t => `<option>${t}</option>`).join('')}</select></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="artist_name"> Artist name</label><input class="field" data-bk-val="artist_name" maxlength="80" placeholder="(blank = Nicólas Soul)"></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="recorded_at"> Recorded at</label><input class="field" data-bk-val="recorded_at" maxlength="140" placeholder="Nashville, TN"></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="series_name"> Series name</label><input class="field" data-bk-val="series_name" maxlength="80"></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="world_mood"> Mood words</label><input class="field" data-bk-val="world_mood" placeholder="calm, honest"></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="world_color"> Theme color</label><input class="field" data-bk-val="world_color" placeholder="#D21034"></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="hidden"> Visibility</label><select class="field" data-bk-val="hidden"><option value="true">Hide from fans</option><option value="false">Show to fans</option></select></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="unreleased"> Unreleased</label><select class="field" data-bk-val="unreleased"><option value="true">Mark as unreleased</option><option value="false">Not unreleased</option></select></div>
+      </div>
+      <div class="save"><button type="button" class="pill main" id="bkApply">Apply to the ticked releases</button><span class="st" id="bkSt" role="status"></span></div></div></details>
     <details class="stu" open><summary>Release info</summary><div class="stubody" id="stuInfo">
       <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'].map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
       <div class="sf2">${f('stArtist', 'Artist name (if not Nicólas Soul)', r.artist_name)}${f('stRec', 'Recorded at', r.recorded_at)}</div>
+      ${f('stGenre', 'Genre (comma separated, up to 6)', r.genre, 'list="stuGenres"')}<datalist id="stuGenres">${knownGenres().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
       ${f('stTag', 'Tagline', r.world_tagline, 'maxlength="140"')}
       ${ta('stStory', 'Story', r.world_story, 6)}
       <div class="sf2">${f('stMood', 'Mood words (comma separated)', r.world_mood)}${f('stColor', 'Theme color (like #D21034)', r.world_color)}</div>
@@ -2218,10 +2271,43 @@ function drawStudio() {
   const guard = async (btn, st, fn) => { btn.disabled = true; say(st, 'Saving…'); try { await fn(); say(st, 'Saved'); toast('Saved'); } catch (e) { say(st, e.message || 'Could not save', true); } btn.disabled = false; };
   $('#stuRel').addEventListener('change', e => { S.stuRel = e.target.value; drawStudio(); });
   if ($('#stuNewRel')) { $('#stuNewRel').addEventListener('click', openStudioNewRelease); wireStuAdd(rid); }
+  // Edit several releases at once: each ticked release is saved the same way as the single form, with only the ticked fields changed.
+  const bkCount = () => { $('#bkCount').textContent = [...$$('[data-bk-rel]')].filter(x => x.checked).length + ' selected'; };
+  $$('[data-bk-rel]').forEach(c => c.addEventListener('change', bkCount));
+  $('[data-bk-all]').addEventListener('click', () => { $$('[data-bk-rel]').forEach(c => { c.checked = true; }); bkCount(); });
+  $('[data-bk-none]').addEventListener('click', () => { $$('[data-bk-rel]').forEach(c => { c.checked = false; }); bkCount(); });
+  $('#bkApply').addEventListener('click', async e => {
+    const btn = e.currentTarget, st = $('#bkSt'), ids = [...$$('[data-bk-rel]')].filter(x => x.checked).map(x => x.dataset.bkRel), on = {};
+    $$('[data-bk-on]').forEach(c => { if (c.checked) on[c.dataset.bkOn] = $('[data-bk-val="' + c.dataset.bkOn + '"]').value; });
+    if (!ids.length) return say(st, 'Tick at least one release.', true);
+    if (!Object.keys(on).length) return say(st, 'Tick at least one field to change.', true);
+    const names = { genre: 'genre', type: 'type', artist_name: 'artist name', recorded_at: 'recorded at', series_name: 'series name', world_mood: 'mood words', world_color: 'theme color', hidden: 'visibility', unreleased: 'unreleased' };
+    if (!confirm('Change ' + Object.keys(on).map(k => names[k]).join(', ') + ' on ' + ids.length + (ids.length === 1 ? ' release' : ' releases') + '?\n\nThis saves right away.')) return;
+    btn.disabled = true; let done = 0; const failed = [];
+    for (const id of ids) {
+      const x = g.releases.find(q => q.release_id === id); if (!x) continue;
+      say(st, 'Saving ' + (done + failed.length + 1) + ' of ' + ids.length + '…');
+      try {
+        const curUn = id in fl.releases ? fl.releases[id] : (x.unreleased === true || String(x.unreleased) === 'true');
+        const basics = { title: x.title, type: 'type' in on ? on.type : (x.type || 'Album'), hidden: 'hidden' in on ? on.hidden === 'true' : x.hidden === true };
+        const world = { world_tagline: x.world_tagline, world_story: x.world_story, world_color: 'world_color' in on ? on.world_color : x.world_color, world_mood: 'world_mood' in on ? on.world_mood : x.world_mood, album_credits: x.album_credits,
+          recorded_at: 'recorded_at' in on ? on.recorded_at : x.recorded_at, artist_name: 'artist_name' in on ? on.artist_name : x.artist_name, series_name: 'series_name' in on ? on.series_name : x.series_name,
+          series_part: String(x.series_part || '').replace(/^'/, ''), genre: 'genre' in on ? on.genre : x.genre };
+        const un = 'unreleased' in on ? on.unreleased === 'true' : curUn;
+        await run('studioSaveRelease', BOOT.key, id, { basics, world, unreleased: un });
+        Object.assign(x, basics, world); (g.overlay.flags = g.overlay.flags || { releases: {}, tracks: {} }).releases[id] = un; fl.releases[id] = un;
+        const mine = rel(id); if (mine) Object.assign(mine, basics, world, { unreleased: un });
+        done++;
+      } catch (er) { failed.push((x.title || id) + ': ' + (er.message || 'could not save')); }
+    }
+    btn.disabled = false;
+    say(st, failed.length ? done + ' saved. Not saved: ' + failed.join('; ') : done + (done === 1 ? ' release' : ' releases') + ' saved.', !!failed.length);
+    if (done) toast(done + ' saved');
+  });
   $('#stuSaveInfo').addEventListener('click', e => guard(e.currentTarget, $('#stuInfoSt'), async () => {
     const v = id => $('#' + id).value;
     const basics = { title: v('stTitle'), type: v('stType'), hidden: $('#stHidden').checked };
-    const world = { world_tagline: v('stTag'), world_story: v('stStory'), world_color: v('stColor'), world_mood: v('stMood'), album_credits: v('stCredits'), recorded_at: v('stRec'), artist_name: v('stArtist'), series_name: v('stSeries'), series_part: v('stPart') };
+    const world = { world_tagline: v('stTag'), world_story: v('stStory'), world_color: v('stColor'), world_mood: v('stMood'), album_credits: v('stCredits'), recorded_at: v('stRec'), artist_name: v('stArtist'), series_name: v('stSeries'), series_part: v('stPart'), genre: v('stGenre') };
     await run('studioSaveRelease', BOOT.key, rid, { basics, world, unreleased: $('#stUnrel').checked });
     Object.assign(r, basics, world); (g.overlay.flags = g.overlay.flags || { releases: {}, tracks: {} }).releases[rid] = $('#stUnrel').checked;
     const mine = rel(rid); if (mine) { Object.assign(mine, basics, world, { unreleased: $('#stUnrel').checked }); }
@@ -2491,7 +2577,7 @@ function renderRelease(id) {
           ${metaLine(r, ts)}
           <div class="acts">
             ${editing ? '' : `<button class="pill main" data-playall>${I.play}Play</button>
-                              <button class="pill soft" data-shuffleall>${I.shuf}Shuffle</button>${!isLocked(r) && !isUnrel(r) ? `<button class="pill soft" data-share-out="release" aria-label="Share ${esc(r.title)}">${I.share}Share</button>` : ''}`}
+                              <button class="pill soft" data-shuffleall>${I.shuf}Shuffle</button>${!isLocked(r) && !isUnrel(r) ? `<button class="pill soft" data-share-out="release" aria-label="Share ${esc(r.title)}">${I.share}Share</button>` : ''}<button class="pill soft" data-queue-rel aria-label="Add ${esc(r.title)} to the queue">${I.queue}Add to queue</button>`}
           </div>
           ${OWNER && !editing ? `<div class="tools" role="group" aria-label="Release tools">
             <button class="pill soft" data-share="release" data-id="${esc(id)}">${I.share}<span>Share</span></button>
@@ -2921,6 +3007,14 @@ function playNext(tid) {
   if (!S.now) return playQueue([vid], 0);
   S.queue.splice(S.qi + 1, 0, vid); updateNowUI(); toast('Plays next');
 }
+// "Add to queue" on a release or playlist page: every song goes to the end of the Now Playing list.
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-queue-rel],[data-pl-queue]'); if (!b) return;
+  const list = b.hasAttribute('data-queue-rel') ? releaseQueue(S.releaseId) : (plOf(S.plId) ? plQueue(plOf(S.plId)) : []);
+  if (!list.length) return toast('Nothing to add');
+  if (!S.now) { playQueue(list.slice(), 0); return toast('Playing'); }
+  S.queue.push(...list); updateNowUI(); toast(list.length + (list.length === 1 ? ' song' : ' songs') + ' added to the queue');
+});
 function addToQueue(tid) {
   const vid = primaryOf(trk(tid)).version_id;
   if (!S.now) return playQueue([vid], 0);
@@ -5905,7 +5999,7 @@ function renderPlaylist(id) {
     <header class="plhead">${mosaic(ts)}<div><div class="kick">Playlist${OWNER ? ' · ' + (p.fans ? 'shared with the fan club' : 'private') : ''}</div>
       <h1>${esc(p.title)}</h1>${p.description ? `<p class="cs" style="margin:0 0 4px;white-space:pre-line">${esc(p.description)}</p>` : ''}
       <div class="cs">${songs(ts.length)}${fmtRuntime(runtimeOf(ts)) ? ' · ' + fmtRuntime(runtimeOf(ts)) : ''}</div>
-      <div class="acts">${ts.length ? `<button class="pill main" data-pl-play>${I.play}Play</button><button class="pill soft" data-pl-shuffle>${I.shuffle || ''}Shuffle</button>` : ''}
+      <div class="acts">${ts.length ? `<button class="pill main" data-pl-play>${I.play}Play</button><button class="pill soft" data-pl-shuffle>${I.shuffle || ''}Shuffle</button><button class="pill soft" data-pl-queue>${I.queue}Add to queue</button>` : ''}
         ${OWNER && !ed ? `<button class="pill soft" data-pl-edit>${I.edit}Edit</button>` : ''}</div></div></header>
     ${ed ? plEditor() : ts.length ? `<ol class="tracks">${ts.map((t, i) => trackRow(t, true).replace(/<span class="n">[^<]*<\/span>/, `<span class="n">${i + 1}</span>`)).join('')}</ol>`
          : `<div class="ins-empty">No songs yet. Use the ⋯ menu on any song and choose <b>Add to playlist</b>.</div>`}
