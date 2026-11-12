@@ -1145,7 +1145,19 @@ async function runFetch(fn, ...a) {
   if (!j.ok) throw new Error(j.error || 'Something went wrong.');
   return j.result;
 }
-const run = (fn, ...a) => TRANSPORT === 'fetch' ? runFetch(fn, ...a) : runGas(fn, ...a);
+const runBase = (fn, ...a) => TRANSPORT === 'fetch' ? runFetch(fn, ...a) : runGas(fn, ...a);
+// Covers, song covers, page backgrounds and photos are kept on our own storage (media.soulnicolas.com/img/<file id>/<size>, copied by tools/mirror-images.py).
+// The old way (Apps Script reading Google Drive) is the spare: used when a picture is not there, for private/sealed releases, and for animated covers.
+const IMG_BASE = 'https://media.soulnicolas.com/img/', imgMiss = {};
+const imgSizeKey = full => { if (!full) return 't'; if (full === true) return '1200'; const n = +full || 1200; return n <= 240 ? '160' : n <= 600 ? '400' : n <= 1300 ? '1200' : '1600'; };
+const loadOurImg = url => new Promise((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(url); i.onerror = () => rej(new Error('img')); i.src = url; });
+async function ourImage(id, full) {
+  const key = imgSizeKey(full), tag = id + '|' + key;
+  if (!id || imgMiss[tag] || /[^A-Za-z0-9_-]/.test(String(id))) return '';
+  try { return await loadOurImg(IMG_BASE + id + '/' + key); } catch (e) { imgMiss[tag] = 1; return ''; }
+}
+const setImgSrc = (img, u) => { if (/^https:\/\/media\./.test(u)) img.crossOrigin = 'anonymous'; img.src = u; };   // our pictures are drawn on a canvas for the cover tint, which needs the CORS mode
+const run = (fn, ...a) => fn === 'getCover' ? ourImage(a[0], a[3]).then(u => u || runBase(fn, ...a)) : runBase(fn, ...a);
 const timeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 // First call of the session: if Google's channel is silent for 8 seconds, switch to the backup for good.
 async function firstCall(fn, ...a) {
@@ -2375,12 +2387,12 @@ function setCover(img, id, full, done) {
   if (!S.coverP[k]) S.coverP[k] = (S.xcov && S.xcov[id] ? photoP(id, full ? 1600 : 400, S.xcov[id]) : run('getCover', id, BOOT.key, BOOT.token, !!full)).then(u => (S.covers[k] = u));
   const small = S.covers[id];
   // show the new cover's thumbnail right away (also when the picture changes, e.g. Explicit ↔ Clean), then the full image
-  if (full && small && (!img.src || img.dataset.cid !== id)) img.src = small;
+  if (full && small && (!img.src || img.dataset.cid !== id)) setImgSrc(img, small);
   if (full) img.dataset.cid = id;
   S.coverP[k].then(u => {
     if (!u) return;
     img.onload = done || null;
-    img.src = u;
+    setImgSrc(img, u);
     if (full && !S.covers[id]) S.covers[id] = u;
   }).catch(() => {});
 }
@@ -6050,7 +6062,11 @@ function prepImages(relId, round) {
     return d;
   }).catch(() => ({})));
 }
-function photoP(id, size, relIdArg) {
+function photoP(id, size, relIdArg) {   // our own storage first; the old way (below) is the spare
+  const k = id + '|' + size; if (S.coverP[k]) return S.coverP[k];
+  return (S.coverP[k] = ourImage(id, size).then(u => u || (delete S.coverP[k], photoPOld(id, size, relIdArg))));
+}
+function photoPOld(id, size, relIdArg) {
   const k = id + '|' + size; if (S.coverP[k]) return S.coverP[k];
   const relId = relIdArg || S.releaseId, r = rel(relId);
   const slow = () => run('getCover', id, BOOT.key, BOOT.token, size);
