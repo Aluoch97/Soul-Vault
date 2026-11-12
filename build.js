@@ -17,7 +17,7 @@ const boot = `<script>(function(){if(/^www\\./.test(location.hostname)){location
 var k=c(q.get('k'))||c(ls('sv_owner_key')),s=c(q.get('s'));if(q.get('k')){ls('sv_owner_key',k);history.replaceState(null,'',location.pathname)}
 var pub=!k&&!s;if(pub)s=${JSON.stringify(cfg.publicToken.replace(/[^A-Za-z0-9]/g, ''))};
 window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.edge ? '/api' : cfg.api)},gas:${JSON.stringify(cfg.api)},pub:pub,home:${JSON.stringify(homeBaked).replace(/</g, '\\u003c')},site:${JSON.stringify(String(cfg.siteUrl || 'https://' + cfg.domain).replace(/\/$/, ''))}};})();</script>`;
-let page = raw.slice(0, a).replace('window.SV_BOOT = __SV_BOOT__;', '') + `<script src="/app.js?v=${build}" onerror="svAppFailed()"></script>` + raw.slice(b + 9);
+let page = raw.slice(0, a).replace('window.SV_BOOT = __SV_BOOT__;', '') + `<script src="/app.js?v=${build}-APPHASH" onerror="svAppFailed()"></script>` + raw.slice(b + 9);
 page = page.replace(/<script>window\.SV_BOOT = __SV_BOOT__;<\/script>/, '');
 // boot must run before app.js: put it right before the app script tag
 page = page.replace('<script src="/app.js', boot + '<script src="/app.js').replace('<title>Soul Vault</title>', `<title>${cfg.siteName}</title>`);
@@ -55,6 +55,9 @@ fs.rmSync('dist', { recursive: true, force: true }); fs.mkdirSync('dist', { recu
 let minified = false;
 try { code = require('esbuild').transformSync(code, { minify: true, target: 'safari15', legalComments: 'none' }).code; minified = true; }
 catch (e) { console.log('minify skipped (' + String(e.message || e).split('\n')[0].slice(0, 80) + ')'); }
+// The address of app.js carries a fingerprint of its content, so every new version is fetched at once instead of waiting for the browser's saved copy to expire.
+const appHash = require('crypto').createHash('sha1').update(code).digest('hex').slice(0, 8);
+page = page.replace('APPHASH', appHash);
 fs.writeFileSync('dist/index.html', page); fs.writeFileSync('dist/app.js', code);
 const lame = fs.readFileSync('apps-script/Lame.html', 'utf8').replace(/^\s*<script[^>]*>/, '').replace(/<\/script>\s*$/, '');
 fs.writeFileSync('dist/lame.js', lame);
