@@ -326,6 +326,15 @@
   #sitebg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,11,.35), rgba(10,10,11,.72) 55%, rgba(10,10,11,.88)); }
   .homepg { position: relative; z-index: 1; }
   .homepg .herot, .homepg .herop, .homepg .eyebrow { text-shadow: 0 2px 18px rgba(0,0,0,.55); }
+  /* Listen links under a release header */
+  .listenrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 14px 0 4px; }
+  .lrlab { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  .lrchips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .lrchip { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid var(--line); color: var(--text); text-decoration: none; font-weight: 700; font-size: 13px; }
+  .lrchip:hover { background: rgba(255,255,255,.12); }
+  .lrchip svg { width: 16px; height: 16px; flex: none; }
+  .lrfirst { flex-basis: 100%; font-size: 13px; color: var(--dim); }
+  .lrfirst b { color: var(--text); }
   /* Support button */
   .support { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: min(260px, 100%); margin: 16px auto 0; padding: 0 7px 0 18px; min-height: 40px;
              border-radius: 999px; background: #2f7a22; color: #fff; text-decoration: none; font-weight: 700; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase;
@@ -1225,7 +1234,10 @@ function ytId(u) {
             u.match(/^([A-Za-z0-9_-]{11})$/);
   return m ? m[1] : '';
 }
-const videoOf = t => (t && ytId(t.video_url)) || '';
+// A slowed + reverb version can have its own YouTube video, listed in /links.json under "sr" (track id → video link). Pass the playing version as `v` to get it.
+const isSR = v => !!v && /slow|reverb|\bs\s*(\+|&|n|and)\s*r\b/i.test(String(v.label || ''));
+const srVideo = t => (t && S.links && S.links.sr && ytId(S.links.sr[t.track_id])) || '';
+const videoOf = (t, v) => (v && isSR(v) && srVideo(t)) || (t && ytId(t.video_url)) || '';
 const hasWorld = r => !!(r && (String(r.world_tagline || '').trim() || String(r.world_story || '').trim() || String(r.world_mood || '').trim()));
 // Covers saved by the app carry a small copy in the Sheet: show it instantly instead of waiting on Drive.
 function primeThumbs() {
@@ -1274,6 +1286,7 @@ const numLabel = t => String(t.number_label || '').trim() || String(t.track_no |
 /* ── boot ── */
 async function init() {
   window.SV_STARTED = true;
+  loadLinks();   // listen links + slowed/reverb videos (a small file, read in the background)
   $$('[data-ctl="prev"]').forEach(b => b.innerHTML = I.prev);
   $$('[data-ctl="next"]').forEach(b => b.innerHTML = I.next);
   $$('[data-ctl="close"]').forEach(b => b.innerHTML = I.down);
@@ -1654,6 +1667,28 @@ function renderLibrary(keepScroll) {
   window.scrollTo(0, keepScroll ? S.libScroll : 0);
 }
 
+/* ── Listen links under each release header, and slowed + reverb videos: both come from /links.json ──
+   { "releases": { "<release_id>": { "first": "DatPiff", "links": [["Spotify", "https://..."], ["Apple Music", "https://..."]] } },
+     "sr": { "<track_id>": "<YouTube link or id>" } }   (edited by hand in public/links.json) */
+function loadLinks() {
+  if (S.linksP) return S.linksP;
+  S.linksP = fetch('/links.json').then(r => (r.ok ? r.json() : {})).catch(() => ({})).then(j => {
+    S.links = (j && typeof j === 'object') ? j : {};
+    const el = $('#listenRow'); if (el && S.releaseId) el.innerHTML = listenRow(rel(S.releaseId));
+    if (S.now) syncVideo();
+    return S.links;
+  });
+  return S.linksP;
+}
+function listenRow(r) {
+  const e = r && S.links && S.links.releases && S.links.releases[r.release_id];
+  const links = e && Array.isArray(e.links) ? e.links.filter(l => Array.isArray(l) && l[0] && /^https?:\/\//i.test(String(l[1] || ''))) : [];
+  if (!links.length && !(e && e.first)) return '';
+  const type = String(typeOf(r) || 'project').toLowerCase();
+  return `<section class="listenrow" aria-label="Listen on streaming services">
+    ${links.length ? `<span class="lrlab">Listen on</span><span class="lrchips">${links.map(l => `<a class="lrchip" href="${esc(l[1])}" target="_blank" rel="noopener">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : ''}<span>${esc(l[0])}</span></a>`).join('')}</span>` : ''}
+    ${e.first ? `<span class="lrfirst">First ${type === 'single' ? 'released' : 'appeared'} on <b>${esc(e.first)}</b></span>` : ''}</section>`;
+}
 function shelfOrder(rs) {
   const key = r => (/^\d{4}-\d{2}-\d{2}/.test(String(r.release_date || '')) ? String(r.release_date).slice(0, 10) : String(r.year || 0) + '-00-00');
   return rs.slice().sort((a, b) => key(b).localeCompare(key(a)) || String(a.title).localeCompare(String(b.title)));
@@ -1735,7 +1770,7 @@ function renderLibBody() {
   const chips = `<div class="seg" role="group" aria-label="Filter by type">${types.map(t => `<button data-filter="${esc(t)}" aria-pressed="${t === S.filter}">${esc(t)}</button>`).join('')}</div>`;
   const empty = `<p class="status" style="padding-left:0">${q ? `Nothing matches "${esc(S.q)}". Try part of a song or release title.` : 'Nothing matches this filter yet.'}</p>`;
   $('#libBody').innerHTML = (!q ? resumeCard() : '') + chips + (rs.length ? shelf(rs) : (songList || lyList ? '' : empty)) + songList + lyList +
-    (!q ? seriesRow() + playlistsRow() + dropsRow() + recentRow() : '') +
+    (!q ? seriesRow() + playlistsRow() + dropsRow() + unreleasedSection() + recentRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
   wireShelf();
@@ -1921,7 +1956,7 @@ function renderRelease(id) {
         </div>
       </div>
     </div></header>
-    <div class="wrap">${editing ? editList(ts) : eraNav(r, ts) + songsSection(ts) + videosSection(r, ts) + playlistsSection(r) + notesSection(r) + aboutSection(r) + photosSection(r)
+    <div class="wrap">${editing ? '' : `<div id="listenRow">${listenRow(r)}</div>`}${editing ? editList(ts) : eraNav(r, ts) + songsSection(ts) + videosSection(r, ts) + playlistsSection(r) + notesSection(r) + aboutSection(r) + photosSection(r)
       + linkCards(r, 'review', '<b>Reviews</b> and press') + linkCards(r, 'app', '<b>Apps</b> and experiences') + seriesPanel(r)}</div>`;
   const hero = $('#heroArt');
   if (r.world_color) $('#relhead').style.setProperty('--tint', r.world_color);
@@ -2272,14 +2307,30 @@ function updateNowUI() {
   markPlaying();
 }
 
+// The cover for the lock screen, CarPlay and Bluetooth displays. The picture is turned into a blob address (phones read that more reliably than a data: address),
+// sent with its real size, and set again once it has loaded, because it often arrives after the song starts.
+function artBlob(u) {
+  S.artB = S.artB || new Map();
+  if (S.artB.has(u)) return S.artB.get(u);
+  const p = fetch(u).then(r => r.blob()).then(b => new Promise(res => {
+    const url = URL.createObjectURL(b), im = new Image();
+    im.onload = () => res({ src: url, sizes: (im.naturalWidth || 512) + 'x' + (im.naturalHeight || 512), type: b.type || 'image/jpeg' });
+    im.onerror = () => res(null); im.src = url;
+  })).catch(() => null);
+  S.artB.set(u, p); return p;
+}
+function mediaArt(n) {
+  const k = artFor(n.t, n.v); if (!k) return Promise.resolve([]);
+  const have = S.covers[k + '|f'] || S.covers[k];
+  const src = S.coverP[k + '|f'] || (have ? Promise.resolve(have) : (S.coverP[k] = S.coverP[k] || run('getCover', k, BOOT.key, BOOT.token, false).then(u => (S.covers[k] = u))));   // the full-size cover when it is on its way
+  return src.then(u => (u ? artBlob(u) : null)).then(a => (a ? [a] : []));
+}
 function mediaSession(n) {
   if (!('mediaSession' in navigator)) return;
-  const k = artFor(n.t, n.v), art = S.covers[k + '|f'] || S.covers[k];
   try {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: n.t.title, artist: artistOf(n.t) || relArtist(n.r), album: n.r.title,
-      artwork: art ? [{ src: art, sizes: '512x512' }] : []
-    });
+    const meta = { title: n.t.title, artist: artistOf(n.t) || relArtist(n.r), album: n.r.title };
+    navigator.mediaSession.metadata = new MediaMetadata(meta);
+    mediaArt(n).then(art => { if (art.length && S.now === n) navigator.mediaSession.metadata = new MediaMetadata(Object.assign({}, meta, { artwork: art })); }).catch(() => {});
     navigator.mediaSession.setActionHandler('play', () => audio.play());
     navigator.mediaSession.setActionHandler('pause', () => audio.pause());
     navigator.mediaSession.setActionHandler('previoustrack', () => step(-1));
@@ -2702,7 +2753,7 @@ function openNp() {
 }
 /* ── videos: Song | Video switch in now playing ── */
 function setMode(mode) {
-  const n = S.now, id = n && videoOf(n.t);
+  const n = S.now, id = n && videoOf(n.t, n.v);
   const wantVideo = mode === 'video' && !!id;
   S.videoMode = wantVideo;
   if (wantVideo && S.lyrMode) { S.lyrMode = false; S.sync = null; $('#npLyr').hidden = true; $('#lyNote').hidden = true; }
@@ -2722,7 +2773,7 @@ function setMode(mode) {
 }
 // Keeps the switch and player in step when the song changes.
 function syncVideo() {
-  const id = S.now && videoOf(S.now.t);
+  const id = S.now && videoOf(S.now.t, S.now.v);
   $('#npMode').hidden = !id;
   if (!id && S.videoMode) setMode('song');
   else if (id && S.videoMode && $('#npVid').dataset.vid !== id) setMode('video');
@@ -2961,6 +3012,18 @@ function letterCard() {
     <div class="lbody${long ? '' : ' open'}" id="lbody">${paras(L.body)}</div>
     ${long ? '<button class="seeall" data-letter-more>Read the whole note</button>' : ''}
   </section>`;
+}
+// Songs that were never officially released: every song marked "Unreleased" (or on a release marked Unreleased). Tap one to play it.
+function unreleasedSongs() {
+  return S.lib.tracks.filter(t => !hidden(t) && primaryOf(t) && (isUnrel(t) || isUnrel(rel(t.release_id))) && (OWNER || !(rel(t.release_id) || {}).locked))
+    .sort((a, b) => relDateKey(rel(b.release_id) || {}).localeCompare(relDateKey(rel(a.release_id) || {})) || (Number(a.track_no) || 0) - (Number(b.track_no) || 0));
+}
+function unreleasedSection() {
+  const ts = unreleasedSongs();
+  if (!ts.length) return '';
+  return `<section id="unreleased"><h2 class="sh"><span><b>Unreleased</b></span></h2>
+    <p class="cs" style="margin:-4px 0 8px">Songs that were never officially released. ${ts.length} ${ts.length === 1 ? 'song' : 'songs'}.</p>
+    <ol class="tracks">${ts.map(t => trackRow(t, true)).join('')}</ol></section>`;
 }
 function dropsRow() {
   const ds = S.lib.releases.filter(isLocked).sort((a, b) => new Date(a.unlock_at) - new Date(b.unlock_at));
@@ -3280,6 +3343,7 @@ function creditLines(txt) {
 }
 function eraVideos(r, ts) {
   const v = ts.filter(t => videoOf(t)).map(t => ({ kind: 'track', id: videoOf(t), title: t.title, tid: t.track_id }));
+  ts.forEach(t => { const id = srVideo(t); if (id && id !== videoOf(t)) v.push({ kind: 'extra', id, list: '', title: t.title + ' (Slowed + Reverb)', xid: 'sr_' + t.track_id }); });
   extrasOf(r.release_id, 'video').forEach(x => { const id = ytId(x.url), list = ytList(x.url); if (id || list) v.push({ kind: 'extra', id, list, title: x.title || (list ? 'Playlist' : 'Video'), xid: x.extra_id }); });
   return v;
 }
