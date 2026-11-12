@@ -1914,6 +1914,7 @@ function renderVault() {
       <li><button data-backup>${I.up2}<span>Back up my Sheet now</span><span class="cs">${esc(backupLine())}</span></button></li>
       ${EDGE_UPLOADS() ? `<li><button data-areas>${I.layers}<span>Move off the Sheet</span><span class="cs">playlists, extras, letter and bio: switch to Cloudflare</span></button></li>` : ''}
       <li><button data-nav="studio">${I.edit}<span>Studio</span><span class="cs">edit titles, songs, info, links</span></button></li>
+      ${EDGE_UPLOADS() ? `<li><button data-fans>${I.link}<span>Soul Tribe fan list</span><span class="cs">sign-ups from /join, download as a spreadsheet</span></button></li>` : ''}
       <li><button data-install>${I.plus}<span>Add to Home Screen</span><span class="cs">put Soul Vault on your phone like an app</span></button></li>
       <li><button data-ownerpw>${I.lock}<span>Set owner password</span><span class="cs">sign in at soulnicolas.com/admin, no key needed</span></button></li>
       <li><button data-signout>${I.x}<span>Sign out on this device</span><span class="cs">you can sign back in with your password</span></button></li>
@@ -1922,6 +1923,7 @@ function renderVault() {
   </div>`;
   $('[data-ownerpw]').addEventListener('click', openOwnerPw);
   if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
+  if ($('[data-fans]')) $('[data-fans]').addEventListener('click', openFans);
   $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });
   const ok = $('[data-ownerkey]');
   if (ok) ok.addEventListener('click', async () => {   // the key is never shown on screen, only put on the clipboard
@@ -2227,6 +2229,24 @@ function openInstall() {
     try { await ev.userChoice; } catch (e) {}
     closeModal();
   });
+}
+async function openFans() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Soul Tribe fan list"><h2>Soul Tribe fan list</h2><p class="cs" id="fnSt">Loading…</p>
+    <div id="fnList" style="display:grid;gap:6px;max-height:50vh;overflow:auto"></div>
+    <div class="end"><button class="pill soft" data-close>Close</button><button class="pill main" id="fnCsv" disabled>Download CSV</button></div></div>`;
+  m.hidden = false;
+  try {
+    const rows = await run('getFans', BOOT.key); $('#fnSt').textContent = rows.length + ' fans. New sign-ups are saved here (and still copied to the old Google list so the newsletter keeps working).';
+    $('#fnList').innerHTML = rows.slice(0, 200).map(r => `<div class="cs"><b>${esc(r.first_name + ' ' + r.last_name)}</b> · ${esc(r.email)} · ${esc(new Date(r.at).toLocaleDateString())}</div>`).join('');
+    const cols = ['at', 'first_name', 'last_name', 'email', 'consent', 'city', 'birth_year', 'social', 'how_heard', 'favorite', 'source'];
+    const cell = v => { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
+    $('#fnCsv').disabled = false;
+    $('#fnCsv').addEventListener('click', () => {
+      const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => cell(c === 'at' ? new Date(r.at).toISOString() : r[c])).join(','))).join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'soul-tribe-fans.csv'; a.click();
+    });
+  } catch (e) { $('#fnSt').textContent = (e && e.message) || 'Could not load the list.'; }
 }
 function openOwnerPw() {
   const m = $('#modal'); m.className = 'modal';

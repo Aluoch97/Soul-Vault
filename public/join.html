@@ -748,7 +748,6 @@
       // Same script.google.com URL as the deployed backend. Hardcoded
       // here because this HTML now lives directly in Wix, not on
       // Apps Script, so there's no automatic way to know it otherwise.
-      const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbx22pIcJuFLQyN9VIvp4LDy9gcmXnaxxfsIc47JPKgI7D7Bq-SufKQWRk3nzX4TOqw6/exec';
       let current = 0;
 
       const form = document.getElementById('fanForm');
@@ -925,14 +924,15 @@
         // (addresses get logged; bodies don't). Same method the Vault app uses.
         const ctl = new AbortController();
         const timer = setTimeout(function () { ctl.abort(); }, 15000);
-        fetch(SUBMIT_URL, {
+        fetch('/api', {
           method: 'POST',
-          body: JSON.stringify({ action: 'submit', data: payload }),
+          body: JSON.stringify({ fn: 'joinSubmit', args: [payload] }),
           credentials: 'omit',
           redirect: 'follow',
           signal: ctl.signal
         })
           .then(function (r) { return r.json(); })
+          .then(function (j) { return j && j.ok ? j.result : { error: j && j.error }; })
           .then(handleSubmitResult, function () {
             setSubmitting(false);
             showStatus('Connection hiccup. Try again in a moment.');
