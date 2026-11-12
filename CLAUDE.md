@@ -51,6 +51,13 @@ Background video: one `#sitebg` element (made by `syncSiteBg()` in `renderChrome
 Lore has no title; each photo opens a full-screen viewer (`openLorePhoto`): rotate, download, next/previous, close.
 Lore reads each release's free-text album credits with `scanCredits` (any layout: "Produced by X", "Name - producer", a "Producers" list, "Recorded at") and photo credits with `scanPhotoCredits`, on top of the per-song credit fields. Releases with no credits typed on their page (The Birdhouse, soulLESS, Cali EP, saturn.RETURN, the singles) add nothing.
 
+## Edge backend (moving off Apps Script, stage 1, Nov 12, 2026)
+Plan: replace Apps Script with Cloudflare in stages (1: reads from a copy in D1; 2: Studio and all owner edits on the new backend; 3: covers/photos off Drive to R2; 4: plays, comments, sign-ups, then switch Apps Script off). Apps Script stays the place where data is edited until stage 2.
+`functions/api.js` is `POST /api` (same `{fn, args}` shape as Apps Script, so the app barely changes). Today it answers only `getShare` (the slow call) from the D1 copy and keeps the built answer 60 s in the edge cache (`caches.default`); every other call is forwarded to Apps Script, and any error also falls back to Apps Script. `functions/_lib/share.js` is the port of `findShare_/shareScope_/shareBody_` from Vault.gs; `functions/_lib/mirror.js` stores the copy in the D1 table `kv` (chunked JSON).
+The copy is filled from Apps Script's `getLibrary` using the owner key kept as the Pages secret `OWNER_KEY` (not in the repo); it refreshes itself in the background when older than 5 min, or on demand with `edgeSync`. `edgeStatus` (no key needed) shows whether the DB binding and secret exist and how old the copy is. The birthday is never copied.
+Bindings are set in the Cloudflare dashboard / API, not in a wrangler file: D1 binding `DB`; secret `OWNER_KEY`. Without them /api just forwards to Apps Script.
+Switch: `site.config.json` `"edge": true` makes the app call `/api` (`SV_BOOT.api`); `SV_BOOT.gas` is always the Apps Script address, used if `/api` fails (`runFetch`). `node tools/edgecheck.js <base> [ownerKey]` compares `/api` with Apps Script for the public link (must say SAME). Not served at the edge yet: `getHome`, `getCover`, `prepareAudio`, all writes, plays, comments.
+
 ## Tab addresses and old links
 Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
 `/vault/<release>` (release id without `rel_`, `_` becomes `-`, e.g. `/vault/2019-soulless`), `/tour`, `/tour/road-to-100`, `/press`, `/press/video`, `/lore`.

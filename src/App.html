@@ -1134,11 +1134,14 @@ let TRANSPORT = 'gas';
 const runGas = (fn, ...a) => new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...a));
 async function runFetch(fn, ...a) {
   if (!BOOT.api) throw new Error('The backup connection needs app_url in the Settings tab.');
-  let r;
-  try { r = await fetch(BOOT.api, { method: 'POST', body: JSON.stringify({ fn: fn, args: a }), credentials: 'omit', redirect: 'follow' }); }
-  catch (e) { throw new Error('Could not reach Soul Vault. Check your internet connection.'); }
-  let j;
-  try { j = await r.json(); } catch (e) { throw new Error('Soul Vault answered with something unexpected (' + r.status + ').'); }
+  // BOOT.api is our own /api on Cloudflare (when switched on); BOOT.gas is the Apps Script address. If our own answer fails, the call is repeated against Apps Script.
+  const call = url => fetch(url, { method: 'POST', body: JSON.stringify({ fn: fn, args: a }), credentials: 'omit', redirect: 'follow' }).then(async r => ({ r, j: await r.json() }));
+  let r, j;
+  try { ({ r, j } = await call(BOOT.api)); }
+  catch (e) {
+    if (BOOT.gas && BOOT.gas !== BOOT.api) { try { ({ r, j } = await call(BOOT.gas)); } catch (e2) { throw new Error('Could not reach Soul Vault. Check your internet connection.'); } }
+    else throw new Error('Could not reach Soul Vault. Check your internet connection.');
+  }
   if (!j.ok) throw new Error(j.error || 'Something went wrong.');
   return j.result;
 }

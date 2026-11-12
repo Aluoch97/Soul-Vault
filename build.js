@@ -16,7 +16,7 @@ try { homeBaked = JSON.parse(fs.readFileSync('home.json', 'utf8')); } catch (e) 
 const boot = `<script>(function(){if(/^www\\./.test(location.hostname)){location.replace(location.href.replace('//www.','//'));return}var q=new URLSearchParams(location.search),c=x=>String(x||'').replace(/[^A-Za-z0-9]/g,'').slice(0,64),ls=function(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}};
 var k=c(q.get('k'))||c(ls('sv_owner_key')),s=c(q.get('s'));if(q.get('k')){ls('sv_owner_key',k);history.replaceState(null,'',location.pathname)}
 var pub=!k&&!s;if(pub)s=${JSON.stringify(cfg.publicToken.replace(/[^A-Za-z0-9]/g, ''))};
-window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.api)},pub:pub,home:${JSON.stringify(homeBaked).replace(/</g, '\\u003c')},site:${JSON.stringify(String(cfg.siteUrl || 'https://' + cfg.domain).replace(/\/$/, ''))}};})();</script>`;
+window.SV_BOOT={token:s,key:s?'':k,api:${JSON.stringify(cfg.edge ? '/api' : cfg.api)},gas:${JSON.stringify(cfg.api)},pub:pub,home:${JSON.stringify(homeBaked).replace(/</g, '\\u003c')},site:${JSON.stringify(String(cfg.siteUrl || 'https://' + cfg.domain).replace(/\/$/, ''))}};})();</script>`;
 let page = raw.slice(0, a).replace('window.SV_BOOT = __SV_BOOT__;', '') + `<script src="/app.js?v=${build}" onerror="svAppFailed()"></script>` + raw.slice(b + 9);
 page = page.replace(/<script>window\.SV_BOOT = __SV_BOOT__;<\/script>/, '');
 // boot must run before app.js: put it right before the app script tag
