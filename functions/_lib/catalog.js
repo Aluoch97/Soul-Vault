@@ -65,7 +65,7 @@ export function agesFor(r, birth) {
 }
 
 // ── editors ──
-const TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'];
+const TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
 // items = the release's songs in their new order; each song's number becomes its place in the list. (Studio never calls this with a partial list.)
 export function saveTracklist(ow, releaseId, releaseTitle, items, releaseHidden, releaseType, chapterMode, chapterColors, chapterMeta) {
   const byId = {}; ow.tracks.forEach(t => { byId[t.track_id] = t; });

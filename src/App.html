@@ -384,6 +384,17 @@
   .pcards { display: grid; gap: 18px; margin: 10px 0 26px; max-width: 560px; }
   .pcard { display: block; background: #000; border: 1px solid rgba(255,255,255,.16); color: inherit; text-decoration: none; overflow: hidden; border-radius: 4px; }
   .pcard img { display: block; width: 100%; aspect-ratio: 1.91 / 1; object-fit: cover; background: #111; }
+  .viewrow { display: flex; justify-content: flex-end; margin: 4px 0 10px; }
+  .allgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; margin: 6px 0 22px; }
+  .agc { display: grid; gap: 4px; align-content: start; text-align: left; padding: 0; background: none; border: 0; color: inherit; cursor: pointer; min-width: 0; }
+  .agc img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: #1a1a1c; }
+  .agc .agt { font: 700 13px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
+  .agc .cs { font-size: 11px; }
+  @media (min-width: 761px) { .allgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .vcard { position: relative; } .vshare { position: absolute; top: 6px; right: 6px; z-index: 2; width: 36px; height: 36px; background: rgba(0,0,0,.55); border-radius: 50%; color: #fff; display: grid; place-items: center; }
+  .pimg { position: relative; aspect-ratio: 1.91 / 1; background: linear-gradient(135deg, #3a1d27, #141417); }
+  .pimg img { position: absolute; inset: 0; height: 100%; }
+  .pfall { position: absolute; inset: 0; display: grid; place-items: center; padding: 14px; text-align: center; font: 800 clamp(18px, 5vw, 24px)/1.15 var(--serif); color: rgba(255,255,255,.88); }
   .pbody { padding: 16px 18px 14px; }
   .ptitle { font-weight: 800; font-size: 19px; line-height: 1.25; }
   .pdesc { margin: 8px 0 12px; font-size: 15px; line-height: 1.5; color: rgba(246,243,239,.88); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -958,6 +969,7 @@
         </div>
         <img class="art" id="npArt" alt="">
         <div class="npvid" id="npVid" hidden></div>
+        <div class="lyhead" id="lyHead"></div>
         <div class="nplyr" id="npLyr" hidden aria-live="off"></div>
         <div class="lynote" id="lyNote" hidden></div>
       </div>
@@ -979,7 +991,6 @@
         <a class="dl" id="npDl" target="_blank" rel="noopener" hidden></a>
         <div id="npVoice"></div>
         <div id="npLyrics"></div>
-        <div id="npComments"></div>
         <div id="npCredits"></div>
         <div id="npNext"></div>
       </div>
@@ -1197,7 +1208,7 @@ function versionsOf(trackId, all) {
     .sort((a, b) => (b.is_primary - a.is_primary) || String(a.label).localeCompare(b.label));
 }
 const primaryOf = t => versionsOf(t.track_id)[0];
-const TYPE_FILTERS = ['All', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation'];
+const TYPE_FILTERS = ['All', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation', 'Unreleased'];
 // Runtime: song lengths are "m:ss" (or "h:mm:ss"); a project shows as "54 min 12 sec".
 function durSecs(d) {
   const p = String(d || '').trim().split(':').map(Number);
@@ -1235,7 +1246,7 @@ function metaLine(r, ts) {
 // Release types describe the format. Old "Deluxe"/"B-Sides" labels read as Album until you pick a type in Edit.
 const typeOf = r => (['Deluxe', 'B-Sides'].indexOf(r.type) > -1 || !r.type ? 'Album' : r.type);
 const typeGroup = r => typeOf(r);
-const EDIT_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'];
+const EDIT_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
 // Songs inside a release: the full project (main tracklist), the drafts songs, singles, and b-sides.
 const sectionOf = t => (['B-Side', 'Extra'].indexOf(t.category) > -1 ? 'bsides' : ['Deluxe', 'Bonus'].indexOf(t.category) > -1 ? 'deluxe' : 'full');
 const isSingle = t => t.is_single === true || t.is_single === 'TRUE';
@@ -1494,13 +1505,13 @@ const SITE = {
       title: 'Rising Stars: Meet Nicólas Soul of Nashville', desc: 'Today we’d like to introduce you to Nicólas Soul Alright, so thank you so much for sharing your story and insight with our readers. To kick things off, can you tell us a bit about how you…' },
     { url: 'https://www.buzz-music.com/post/nic%C3%B3las-soul-tells-a-story-with-his-album-soulless', image: 'buzz', site: 'BUZZMUSIC', author: 'Jennifer Gurton', date: 'Feb 7, 2020',
       title: 'Nicólas Soul Tells A Story With His Album, “SoulLESS”', desc: 'Nicólas Soul released the thought-provoking album titled “SoulLESS”. When asked about the name of this album, Nicólas Soul explains that the name is based upon two concepts. This album…' },
-    { url: 'https://aboveaveragehiphop.com/nicolas-soul-drops-a-new-ep-called-summer-break/', image: 'none', site: "Above Average Hip Hop", date: '', title: "Nicólas Soul Drops a New EP Called Summer Break", desc: "Linked from the Summer Break EP release page." },
-    { url: 'https://thebandcampdiaries.com/post/185469080652/nic%C3%B3las-soul-soulless-nic%C3%B3las-soul-is-a', image: 'none', site: "The Bandcamp Diaries", date: '', title: "Nicólas Soul: soulLESS", desc: "Review linked from the soulLESS release page." },
-    { url: 'https://thearkofmusic.com/nurenaissance-redd-bluu/', image: 'none', site: "The Ark of Music", date: '', title: "NuRenaissance: REDD & bluu", desc: "Coverage linked from the Surviving the NUWORLD release page." },
-    { url: 'https://indiebandguru.com/nurenaissance-redd-bluu/', image: 'none', site: "Indie Band Guru", date: '', title: "NuRenaissance: REDD & bluu", desc: "Coverage linked from the Surviving the NUWORLD release page." },
-    { url: 'https://stereostickman.com/music/nurenaissance-redd-bluu/', image: 'none', site: "Stereo Stickman", date: '', title: "NuRenaissance: REDD & bluu", desc: "Coverage linked from the Surviving the NUWORLD release page." },
-    { url: 'https://maxedhiphop.com/the-heart-and-sound-of-nicolas-soul/', image: 'none', site: "Maxed Hip Hop", date: '', title: "The Heart and Sound of Nicólas Soul", desc: "Linked from the RISE OF THE LOST. release page." },
-    { url: 'https://utdailybeacon.com/109514/arts-and-culture/review-the-connect-playlist-brings-together-campus-musicians/', image: 'none', site: "The Daily Beacon (University of Tennessee)", date: '', title: "Review: The Connect playlist brings together campus musicians", desc: "A review that includes Nicólas Soul. Linked from the soulLESS release page." },
+    { url: "https://aboveaveragehiphop.com/nicolas-soul-drops-a-new-ep-called-summer-break/", image: "aah", site: "Above Average Hip Hop", date: "2016", title: "Nicólas Soul Drops a New EP Called Summer Break", desc: "Coverage of the Summer Break EP." },
+    { url: "https://thebandcampdiaries.com/post/185469080652/nic%C3%B3las-soul-soulless-nic%C3%B3las-soul-is-a", image: "bcd", site: "The Bandcamp Diaries", date: "", title: "Nicólas Soul: soulLESS", desc: "A review of the soulLESS album." },
+    { url: "https://thearkofmusic.com/nurenaissance-redd-bluu/", image: "ark", site: "The Ark of Music", date: "", title: "NuRenaissance: REDD & bluu", desc: "Coverage of REDD and bluu from the NuRenaissance." },
+    { url: "https://indiebandguru.com/nurenaissance-redd-bluu/", image: "ibg", site: "Indie Band Guru", date: "Aug 4, 2020", title: "Decide to go with REDD or bluu in the NuRenaissance", desc: "Coverage of REDD and bluu from the NuRenaissance." },
+    { url: "https://stereostickman.com/music/nurenaissance-redd-bluu/", image: "ss", site: "Stereo Stickman", date: "2020", title: "NuRenaissance: REDD & bluu", desc: "Coverage of REDD and bluu from the NuRenaissance." },
+    { url: "https://maxedhiphop.com/the-heart-and-sound-of-nicolas-soul/", image: "maxed", site: "Maxed Hip Hop", date: "Jul 7, 2025", title: "The Heart and Sound of Nicólas Soul", desc: "A feature on Nicólas Soul." },
+    { url: "https://utdailybeacon.com/109514/arts-and-culture/review-the-connect-playlist-brings-together-campus-musicians/", image: "utdb", site: "The Daily Beacon (University of Tennessee)", date: "", title: "Review: The Connect playlist brings together campus musicians", desc: "A review of a campus playlist that includes Nicólas Soul." },
   ],
   videos: [
     ["Da' Healerz Circle Ep. 5 w/ Special Guest Nicólas Soul", 'fJkff8Er46Q'],
@@ -1645,7 +1656,7 @@ function renderTour() {
 function renderPress() {
   clearPageBg(); S.view = 'press'; renderChrome();
   const articles = `<div class="pcards">${SITE.press.map(p => `<a class="pcard" href="${esc(p.url)}" target="_blank" rel="noopener">
-      <img src="/press-img/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()">
+      <div class="pimg"><span class="pfall" aria-hidden="true">${esc(p.site)}</span><img src="/press-img/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()"></div>
       <div class="pbody"><div class="ptitle">${esc(p.title)}</div><p class="pdesc">${esc(p.desc)}</p>
         <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">${esc([p.site, p.author, p.date].filter(Boolean).join(' · '))}</span>${I.chev}</div></div></a>`).join('')}</div>`;
   const videos = `<div class="vidgrid">${SITE.videos.map(v => `<div class="vid">
@@ -1743,6 +1754,48 @@ function shelfOrder(rs) {
   const key = r => (/^\d{4}-\d{2}-\d{2}/.test(String(r.release_date || '')) ? String(r.release_date).slice(0, 10) : String(r.year || 0) + '-00-00');
   return rs.slice().sort((a, b) => key(b).localeCompare(key(a)) || String(a.title).localeCompare(String(b.title)));
 }
+// "View all": every release at once, in rows of covers (newest first).
+function allGrid(rs) {
+  return `<section class="allgrid" aria-label="All releases">${rs.map(r => `<button class="agc" data-rel="${esc(r.release_id)}" aria-label="Open ${esc(r.title)}">
+    <img class="art" data-cover="${esc(r.cover_file_id)}" alt=""><span class="agt">${esc(r.title)}</span><span class="cs">${esc([r.year, typeOf(r)].filter(Boolean).join(' · '))}</span></button>`).join('')}</section>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-libview]'); if (!b) return;
+  S.libAll = !S.libAll; renderLibBody(); window.scrollTo(0, 0);
+});
+// Sharing out: the phone's own share sheet when there is one (Instagram, TikTok, Messages, WhatsApp...), else a small sheet with links.
+const siteBase = () => String((window.SV_BOOT && SV_BOOT.site) || location.origin).replace(/\/$/, '');
+const relShareUrl = id => siteBase() + '/vault/' + relSlug(id);
+async function shareOut(o) {
+  try {
+    if (o.file && navigator.canShare && navigator.canShare({ files: [o.file] })) { await navigator.share({ files: [o.file], title: o.title, text: o.text || o.title }); return; }
+    if (navigator.share) { await navigator.share({ title: o.title, text: o.text || o.title, url: o.url }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  openSocialShare(o);
+}
+function openSocialShare(o) {
+  const u = encodeURIComponent(o.url), t = encodeURIComponent(o.text || o.title), m = $('#modal'); m.className = 'modal';
+  const link = (href, label) => `<a class="pill soft" href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Share"><h2>Share</h2><p class="cs" style="margin:0 0 10px">${esc(o.title)}</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${link('https://wa.me/?text=' + t + '%20' + u, 'WhatsApp')}${link('https://twitter.com/intent/tweet?text=' + t + '&url=' + u, 'X')}${link('https://www.facebook.com/sharer/sharer.php?u=' + u, 'Facebook')}
+      ${link('https://t.me/share/url?url=' + u + '&text=' + t, 'Telegram')}${link('mailto:?subject=' + encodeURIComponent(o.title) + '&body=' + t + '%20' + u, 'Email')}
+      <button class="pill main" data-copy="${esc(o.url)}">Copy link</button></div>
+    <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
+  m.hidden = false;
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('[data-share-out]'); if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const k = b.dataset.shareOut;
+  if (k === 'release') { const r = rel(S.releaseId); if (r) shareOut({ title: r.title, text: 'Listen to ' + r.title + ' by ' + relArtist(r), url: relShareUrl(r.release_id) }); }
+  else if (k === 'video') shareOut({ title: b.dataset.title || 'Video', text: b.dataset.title || 'Watch', url: 'https://www.youtube.com/watch?v=' + b.dataset.vid });
+  else if (k === 'photo') {
+    const r = rel(S.releaseId), url = r ? relShareUrl(r.release_id) : siteBase(), o = { title: r ? r.title + ' (photo)' : 'Photo', text: r ? 'A photo from ' + r.title : 'A photo', url };
+    try { const img = $('#ssImg'); if (img && img.src) { const blob = await (await fetch(img.src)).blob(); o.file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' }); } } catch (er) {}
+    shareOut(o);
+  }
+}, true);
 function shelf(rs) {
   if (!rs.length) return '';
   return `<section class="shelf" id="all-releases" aria-label="Releases, newest to oldest">
@@ -1819,8 +1872,10 @@ function renderLibBody() {
     <ol class="tracks">${songHits.map(t => trackRow(t, true)).join('')}</ol>` : '';
   const chips = `<div class="seg" role="group" aria-label="Filter by type">${types.map(t => `<button data-filter="${esc(t)}" aria-pressed="${t === S.filter}">${esc(t)}</button>`).join('')}</div>`;
   const empty = `<p class="status" style="padding-left:0">${q ? `Nothing matches "${esc(S.q)}". Try part of a song or release title.` : 'Nothing matches this filter yet.'}</p>`;
-  $('#libBody').innerHTML = (!q ? resumeCard() : '') + chips + (rs.length ? shelf(rs) : (songList || lyList ? '' : empty)) + songList + lyList +
-    (!q ? seriesRow() + playlistsRow() + dropsRow() + unreleasedSection() + recentRow() : '') +
+  const allMode = !!S.libAll && !q;
+  const viewBtn = q ? '' : `<div class="viewrow"><button class="pill soft" data-libview aria-pressed="${allMode}">${allMode ? 'Back to browsing' : 'View all releases'}</button></div>`;
+  $('#libBody').innerHTML = (!q ? resumeCard() : '') + chips + viewBtn + (rs.length ? (allMode ? allGrid(rs) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
+    (!q && !allMode ? seriesRow() + playlistsRow() + dropsRow() + unreleasedSection() + recentRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
   wireShelf();
@@ -1912,7 +1967,6 @@ function renderVault() {
   const tracks = S.lib.tracks.filter(t => !hidden(t) && primaryOf(t));
   const rels = S.lib.releases.filter(r => tracksOf(r.release_id).length);
   const live = (S.lib.shares || []).filter(s => s.active);
-  const comments = Object.values(S.lib.commentCounts || {}).reduce((a, b) => a + b, 0);
   const recentN = ls.get(recentKey(), []).length;
   const tile = (cls, nav, icon, title, sub) => `<button class="tile ${cls}" ${nav}><span class="ic">${icon}</span><strong>${title}</strong><span>${sub}</span></button>`;
   $('#main').innerHTML = `<div class="wrap">
@@ -1922,7 +1976,6 @@ function renderVault() {
       ${tile('r', 'data-nav="search"', I.note, 'Songs', tracks.length + ' songs')}
       ${tile('g', 'data-jump="all"', I.disc, 'Releases', rels.length + ' releases')}
       ${tile('g', 'data-nav="shares"', I.link, 'Share links', live.length + ' on')}
-      ${tile('r', 'data-nav="shares"', I.chat, 'Comments', comments + ' total')}
     </div>
     <p class="vsub" style="margin-top:28px">Your activity</p>
     <ul class="acts-list">
@@ -2080,7 +2133,7 @@ function openStudioNewRelease() {
     <h2>New release</h2>
     <label class="sf" style="display:grid;gap:5px;margin-bottom:10px">Title<input class="field" id="nrT" maxlength="120"></label>
     <div class="sf2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <label class="sf" style="display:grid;gap:5px">Type<select class="field" id="nrType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'].map(t => `<option ${t === 'Single' ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label class="sf" style="display:grid;gap:5px">Type<select class="field" id="nrType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'].map(t => `<option ${t === 'Single' ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
       <label class="sf" style="display:grid;gap:5px">Year<input class="field" id="nrY" inputmode="numeric" maxlength="4" value="${new Date().getFullYear()}"></label></div>
     <div class="sf2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <label class="sf" style="display:grid;gap:5px">Release date<input class="field" id="nrD" type="date"></label>
@@ -2140,7 +2193,7 @@ function drawStudio() {
     <div style="display:flex;gap:8px;align-items:center;margin:6px 0 14px"><select class="field stusel" id="stuRel" aria-label="Release" style="margin:0;flex:1;min-width:0">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
       ${EDGE_UPLOADS() ? `<button type="button" class="pill main" id="stuNewRel" style="flex:none">${I.plus}New</button>` : ''}</div>
     <details class="stu" open><summary>Release info</summary><div class="stubody" id="stuInfo">
-      <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'].map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
+      <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'].map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
       <div class="sf2">${f('stArtist', 'Artist name (if not Nicólas Soul)', r.artist_name)}${f('stRec', 'Recorded at', r.recorded_at)}</div>
       ${f('stTag', 'Tagline', r.world_tagline, 'maxlength="140"')}
       ${ta('stStory', 'Story', r.world_story, 6)}
@@ -2438,7 +2491,7 @@ function renderRelease(id) {
           ${metaLine(r, ts)}
           <div class="acts">
             ${editing ? '' : `<button class="pill main" data-playall>${I.play}Play</button>
-                              <button class="pill soft" data-shuffleall>${I.shuf}Shuffle</button>`}
+                              <button class="pill soft" data-shuffleall>${I.shuf}Shuffle</button>${!isLocked(r) && !isUnrel(r) ? `<button class="pill soft" data-share-out="release" aria-label="Share ${esc(r.title)}">${I.share}Share</button>` : ''}`}
           </div>
           ${OWNER && !editing ? `<div class="tools" role="group" aria-label="Release tools">
             <button class="pill soft" data-share="release" data-id="${esc(id)}">${I.share}<span>Share</span></button>
@@ -2780,7 +2833,7 @@ function updateNowUI() {
   const npArt = $('#npArt');
   const relBg = !(!OWNER && n.r.locked) && n.r.bg_file_id || '';
   S.npRelBg = relBg;
-  setCover(npArt, artFor(n.t, n.v), true, () => { if (!S.npRelBg) $('#npBg').style.backgroundImage = `url("${npArt.src}")`; });
+  setCover(npArt, artFor(n.t, n.v), true, () => { if (!S.npRelBg) $('#npBg').style.backgroundImage = `url("${npArt.src}")`; if (S.lyrMode) syncLyHead(); });
   paintNpBg(n.r);
   const vs = versionsOf(n.t.track_id);
   $('#npVers').innerHTML = vs.length > 1 ? `<h4>Versions</h4><div class="chips">${vs.map(v => `<button class="chip${isExclusive(v) ? ' excl' : ''}" data-play="${esc(v.version_id)}"${isExclusive(v) ? ' title="Vault exclusive"' : ''}>${isExclusive(v) ? I.star : ''}${esc(v.label)}</button>`).join('')}</div>` : '';
@@ -2791,7 +2844,6 @@ function updateNowUI() {
   }).join('')}</ol>` : '';
   renderCredits();
   syncVideo();
-  if (!$('#np').hidden) loadComments(n.v.version_id);
   mediaSession(n);
   renderNpExtras(n);
   const dl = $('#npDl');
@@ -3057,6 +3109,7 @@ async function loadComments(vid, force) {
   if (S.now && S.now.v.version_id === vid) renderComments();
 }
 function renderComments() {
+  if (!$('#npComments')) return;   // comments are not part of the app any more
   const n = S.now; if (!n) return;
   const list = S.comments[n.v.version_id];
   const box = $('#npComments');
@@ -3243,7 +3296,6 @@ async function doUpload(btn) {
 
 function openNp() {
   const np = $('#np'); np.hidden = false; np.classList.add('opening');
-  if (S.now) loadComments(S.now.v.version_id, true);
   setTimeout(() => np.classList.remove('opening'), 400);
   np.querySelector('[data-ctl="close"]').focus();
   document.body.style.overflow = 'hidden';
@@ -3393,7 +3445,7 @@ function renderShares() {
       ${tg.club ? `<span class="art clubart" aria-hidden="true">${I.star}</span>` : `<img class="art" data-cover="${esc(tg.r ? tg.r.cover_file_id : '')}" alt="">`}
       <div style="min-width:0"><strong>${esc(s.label || s.fan_name || 'Unnamed link')}</strong><span class="cs">${esc(tg.name)}${s.member_no ? ', member #' + pad3(s.member_no) + (s.fan_name ? ' (' + esc(s.fan_name) + ')' : '') : ''}</span>
         <span class="lmeta">${s.plays} ${s.plays === 1 ? 'play' : 'plays'}, ${s.expires ? 'ends ' + esc(fmtDate(s.expires)) : 'no end date'}</span></div>
-      <span class="cs plays">${s.plays} ${s.plays === 1 ? 'play' : 'plays'}${(S.lib.commentCounts || {})[s.token] ? ', ' + S.lib.commentCounts[s.token] + ' comments' : ''}</span>
+      <span class="cs plays">${s.plays} ${s.plays === 1 ? 'play' : 'plays'}</span>
       <span class="cs ends">${s.expires ? 'Ends ' + esc(fmtDate(s.expires)) : 'No end date'}</span>
       <div class="lctl" style="display:flex;gap:12px;align-items:center">
         <label class="tog"><input type="checkbox" data-active="${esc(s.token)}" ${s.active ? 'checked' : ''} aria-label="Link for ${esc(s.label || tg.name)} is on"><span></span></label>
@@ -3415,7 +3467,6 @@ function openShare(type, id) {
       <label>Who is it for?<input class="field" id="mLabel" type="text" maxlength="120" placeholder="${type === 'all' ? 'Everyone, or one fan\'s name' : 'Shake, mix notes'}"></label>
       ${type === 'all' ? `<label>Greeting name (optional)<input class="field" id="mFan" maxlength="40" placeholder="Aisha"></label>
         <p class="cs cnote">Adds "Karibu, Aisha" to their Home and gives this link the next member number. Leave empty for a shared link.</p>` : ''}
-      ${type === 'all' ? '<p class="cs cnote">Everyone who uses the same link shares one comment space and can see each other\'s names and notes. Give someone their own link if their comments should stay between you two.</p>' : ''}
       <label class="row2"><input type="checkbox" id="mDl"> Let them download the WAV</label>
       <label>Link works for
         <select class="field" id="mExp"><option value="0">Until I turn it off</option><option value="7">7 days</option><option value="30">30 days</option></select>
@@ -3640,7 +3691,8 @@ function renderNpExtras(n) {
   $('[data-np-lyrics]').hidden = !has;
   $('#npLyrics').innerHTML = '';
   if (S.sync && S.sync.tid !== n.t.track_id) S.sync = null;
-  if (S.lyrMode) { if (has) renderLyr(); else setLyrMode(false); }
+  if (S.lyrMode) { if (has) { renderLyr(); syncLyHead(); } else setLyrMode(false); }
+  else if (has && isSynced(n.t.lyrics) && !S.lyrAutoOff && !S.videoMode) setLyrMode(true);   // synced lyrics open by themselves, like Apple Music
 }
 function openLyrics(tid) {
   const t = trk(tid);
@@ -3657,7 +3709,6 @@ const BADGES = [
   { id: 'video', icon: '🎬', name: 'Front row', how: 'Watch a music video' },
   { id: 'voice', icon: '🎙️', name: 'Inner circle', how: 'Hear a voice note from Nicólas' },
   { id: 'world3', icon: '🌍', name: 'Era explorer', how: 'Open 3 different releases' },
-  { id: 'comment', icon: '💬', name: 'In the room', how: 'Leave a comment on a song' },
   { id: 'lyrics', icon: '📝', name: 'Word for word', how: 'Open the lyrics' },
   { id: 'drop', icon: '⏳', name: 'There at the drop', how: 'Be here the moment a sealed drop opens' }
 ];
@@ -3670,7 +3721,7 @@ function visitWorld() {}
 
 
 /* ═════════ New release (owner only) ═════════ */
-const REL_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'];
+const REL_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
 const AUDIO_OK = /\.(wav|aiff?|flac|mp3|m4a|aac)$/i;
 function niceTitle(name) {
   return name.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/^\s*\d{1,3}\s*[-.)]?\s+/, '').replace(/\s+/g, ' ').trim() || name;
@@ -4104,6 +4155,16 @@ const B31_CSS = `
   .syncui { display: grid; gap: 14px; align-content: center; width: 100%; aspect-ratio: 1; max-height: 58vh; text-align: center; }
   .syncui .cur { font: 800 clamp(22px, 6vw, 30px)/1.25 var(--serif); }
   .syncui .nxt { color: var(--dim); font-weight: 600; }
+  /* Apple Music-style lyrics: small song header on top, big lines, the current one bright, the rest soft */
+  .lyhead { display: none; align-items: center; gap: 12px; padding: 4px 2px 10px; width: 100%; }
+  #np.lyrmode .lyhead { display: flex; }
+  #np.lyrmode .np-t, #np.lyrmode .np-s, #np.lyrmode .exclt { display: none; }
+  .lyhead img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: #222; flex: none; }
+  .lyhead b { display: block; font: 800 17px/1.2 var(--serif); } .lyhead span { font-size: 14px; color: rgba(255,255,255,.6); }
+  #np.lyrmode .nplyr { aspect-ratio: auto; max-height: none; height: 52vh; border-radius: 0; padding: 20vh 4px; }
+  #np.lyrmode .nplyr .ly { font: 800 clamp(28px, 8vw, 38px)/1.18 var(--serif); color: rgba(255,255,255,.34); filter: blur(.5px); margin: 0 0 18px; transform: none; }
+  #np.lyrmode .nplyr .ly.on { color: #fff; filter: none; }
+  #np.lyrmode .nplyr.plain .ly { font-size: clamp(22px, 6vw, 28px); color: rgba(255,255,255,.85); filter: none; }
   .syncui .prog { font-size: 12px; color: var(--dim); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
   .syncui .tap { min-height: 64px; font-size: 18px; justify-content: center; }
   .syncui .row3 { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
@@ -4326,11 +4387,17 @@ function plainLyrics(text) {
   return String(text || '').split('\n').filter(l => !/^\s*\[[a-z]+:[^\]]*\]\s*$/i.test(l)).map(l => l.replace(LRC_TAG, '').trimEnd()).join('\n').trim();
 }
 const fmtLrc = s => { const m = Math.floor(s / 60), r = s - m * 60; return `[${String(m).padStart(2, '0')}:${r.toFixed(2).padStart(5, '0')}]`; };
+// The small song header shown above Apple Music-style lyrics (cover, title, artist).
+function syncLyHead() {
+  const h = $('#lyHead'), a = $('#npArt'); if (!h || !S.now) return;
+  h.innerHTML = `<img alt="" src="${esc((a && (a.currentSrc || a.src)) || '')}"><div><b>${esc(S.now.t.title)}</b><span>${esc(($('#npS') && $('#npS').textContent) || '')}</span></div>`;
+}
 function setLyrMode(on) {
   const n = S.now, has = n && String(n.t.lyrics || '').trim();
   S.lyrMode = !!(on && has); S.sync = S.lyrMode ? S.sync : null;
   if (S.lyrMode && S.videoMode) setMode('song');
   $('#npLyr').hidden = !S.lyrMode;
+  $('#np').classList.toggle('lyrmode', S.lyrMode); if (S.lyrMode) syncLyHead();
   $('#npArt').hidden = S.lyrMode || S.videoMode;
   const b = $('[data-np-lyrics]'); if (b) b.setAttribute('aria-pressed', String(S.lyrMode));
   if (S.lyrMode) { renderLyr(); award('lyrics'); }
@@ -5605,7 +5672,6 @@ function renderLore() {
     ${OWNER ? `<section class="lorebio"><h2 class="sh"><span><b>Bio:</b> Nicólas Soul</span></h2>
       <textarea class="field" id="loreBio" maxlength="8000" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
       <div class="end"><button class="pill soft" data-lore-copy>Copy all lore as text</button><button class="pill main" data-lore-bio>Save bio</button></div><p class="cs" style="margin:6px 0 0">Fans on the fan club link can read this bio and the whole Lore page.</p></section>` : `<section class="lorebio"><h2 class="sh"><span><b>About</b> Nicólas Soul</span></h2><p class="biotxt">${esc((S.lib.artist_bio || '').trim() || SITE.bio)}</p></section>`}
-    ${t.names.length > 1 ? `<h2 class="sh"><span><b>Names</b> over the years</span></h2><p>${t.names.map(esc).join(' → ')}</p>` : ''}
     <h2 class="sh"><span><b>Eras</b></span></h2>
     <div class="loreeras" role="list">${L.eras.map(e => { const c = /^#[0-9a-f]{6}$/i.test(e.r.world_color || '') ? e.r.world_color : '', nv = Object.values(e.vcount).reduce((a, b) => a + b, 0);
       return `<button type="button" role="listitem" class="loreera" data-rel="${esc(e.r.release_id)}"><span class="lc"${c ? ` style="background:${c}"` : ''}><img data-lcover="${esc(e.r.cover_file_id || '')}" alt="" loading="lazy"></span>
@@ -6258,7 +6324,7 @@ function videosSection(r, ts) {
   const card = ([v, i]) => `<div class="vcard">${OWNER ? `<button class="vedit" data-vtype-edit="${i}" aria-label="Edit video type: ${esc(v.title)}">${I.edit}</button>` : ''}
       <button class="vthumb" data-vplay="${i}" aria-label="Play ${VTYPE[v.type].toLowerCase()}: ${esc(v.title)}${vs.length > 1 ? ', then the rest of this section' : ''}">
         ${v.id ? `<img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<span class="plph" aria-hidden="true">Playlist</span>'}<span class="vplay" aria-hidden="true">${I.play}</span></button>
-      <span class="ct">${esc(v.title)}</span>${v.list ? '<span class="vtype plist">Playlist</span>' : ''}<span class="vtype ${v.type}">${VTYPE[v.type]}</span>
+      ${v.id ? `<button class="ib vshare" data-share-out="video" data-vid="${esc(v.id)}" data-title="${esc(v.title)}" aria-label="Share ${esc(v.title)}">${I.share}</button>` : ''}<span class="ct">${esc(v.title)}</span>${v.list ? '<span class="vtype plist">Playlist</span>' : ''}<span class="vtype ${v.type}">${VTYPE[v.type]}</span>
       ${OWNER ? (v.xid ? `<button class="ib xdel" data-xdel="${esc(v.xid)}" aria-label="Remove ${esc(v.title)} from this release">${I.trash}</button>`
                        : `<button class="ib xdel" data-del-tvideo="${esc(v.tid)}" aria-label="Remove the video from ${esc(v.title)}">${I.trash}</button>`) : ''}</div>`;
   return `<section id="era-videos" class="erasec">${secs.map(sec => `<div class="vsec" data-vsec="${sec.k}">
@@ -6532,7 +6598,7 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .note .pill { min-height: 40px; }
   .notebox audio { width: 100%; margin-top: 8px; }
 ` }));
-const isUnrel = x => !!x && (x.unreleased === true || String(x.unreleased) === 'true');
+const isUnrel = x => !!x && (x.unreleased === true || String(x.unreleased) === 'true' || x.type === 'Unreleased');
 const unrelTag = x => isUnrel(x) ? '<div class="gtags"><span class="gtag unrel">Unreleased</span></div>' : '';
 
 /* ── audio notes: radio clips, behind-the-scenes voice notes ── */
@@ -6817,7 +6883,7 @@ function openSlideshow(start) {
   $('#modal').innerHTML = `<div class="slideshow" role="dialog" aria-modal="true" aria-label="Photo slideshow">
     <div class="ssbar"><span class="cs" id="ssCount"></span><span class="acts">
       ${m.credits ? `<button class="pill soft sscredbtn" type="button" data-ss-cred aria-expanded="false" aria-controls="ssCred">Credits</button>` : ''}
-      ${OWNER ? `<button class="ib" data-ss-del aria-label="Remove this photo from the release page" hidden>${I.trash}</button>` : ''}<button class="ib" data-close aria-label="Close slideshow">${I.x}</button></span></div>
+      <button class="ib" data-share-out="photo" aria-label="Share this photo">${I.share}</button>${OWNER ? `<button class="ib" data-ss-del aria-label="Remove this photo from the release page" hidden>${I.trash}</button>` : ''}<button class="ib" data-close aria-label="Close slideshow">${I.x}</button></span></div>
     <div class="ssmain"><img id="ssImg" alt="">
       <button class="ssnav prev" data-photo-step="-1" aria-label="Previous photo">${I.back}</button><button class="ssnav next" data-photo-step="1" aria-label="Next photo">${I.back}</button>
       <div class="sscap" id="ssCap" aria-live="polite"></div></div>
@@ -7361,7 +7427,7 @@ document.addEventListener('click', e => {
   else if (d.chapDel != null) { S.chaps.splice(+d.chapDel, 1); chapRender(); }
   else if ('bgPick' in d) $('#bgFile').click();
   else if ('bgClear' in d) { run('setReleaseBg', BOOT.key, S.releaseId, '').then(() => { rel(S.releaseId).bg_file_id = ''; clearPageBg(); const row = $('.bgrow'); if (row) row.outerHTML = bgRow(rel(S.releaseId)); toast('Background removed'); }).catch(() => toast('Could not remove the background')); }
-  else if ('npLyrics' in d) setLyrMode(!S.lyrMode);
+  else if ('npLyrics' in d) { S.lyrAutoOff = !!S.lyrMode; setLyrMode(!S.lyrMode); }
   else if (d.lt != null) { audio.currentTime = +d.lt; if (audio.paused) audio.play().catch(() => {}); updateLyr(true); }
   else if ('syncStart' in d) startSync();
   else if ('syncTap' in d) syncTap();
@@ -7431,9 +7497,6 @@ document.addEventListener('click', e => {
   else if (d.detailsSave) saveDetails(d.detailsSave, el);
   else if (d.upload) openUpload(S.releaseId, null);
   else if (d.uploadGo) doUpload(el);
-  else if ('commentAdd' in d) openCommentForm();
-  else if ('commentPost' in d) postComment(el);
-  else if ('commentCancel' in d) $('#cForm').innerHTML = '';
   else if (d.seekTo != null) { if (audio.duration) { audio.currentTime = +d.seekTo; if (audio.paused) audio.play().catch(() => {}); } }
   else if (d.resolve) resolveComment(d.resolve);
   else if (d.cdel) deleteComment(d.cdel);
