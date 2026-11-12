@@ -1890,8 +1890,14 @@ function renderVault() {
       <li><button data-jump="all">${I.disc}<span>Browse by year</span><span class="cs">${I.chev}</span></button></li>
       <li><button data-check-playback>${I.play}<span>Check playback setup</span><span class="cs">tests your API key</span></button></li>
       <li><button data-backup>${I.up2}<span>Back up my Sheet now</span><span class="cs">${esc(backupLine())}</span></button></li>
+      <li><button data-ownerkey>${I.link}<span>Copy owner key</span><span class="cs">for setting up Cloudflare; keep it private</span></button></li>
     </ul>
   </div>`;
+  const ok = $('[data-ownerkey]');
+  if (ok) ok.addEventListener('click', async () => {   // the key is never shown on screen, only put on the clipboard
+    try { await navigator.clipboard.writeText(BOOT.key || ''); toast('Owner key copied. Paste it into Cloudflare, nowhere else.'); }
+    catch (e) { toast('Could not copy. Try again, or use the Soul Vault menu in your Sheet.'); }
+  });
   window.scrollTo(0, 0);
 }
 
