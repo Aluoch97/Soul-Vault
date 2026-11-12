@@ -1,0 +1,14 @@
+{
+  "name": "Nicólas Soul",
+  "short_name": "Soul Vault",
+  "description": "Heal hop artist. The music, lore and shows of Nicólas Soul.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#151318",
+  "theme_color": "#151318",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

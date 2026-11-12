@@ -1579,7 +1579,7 @@ function renderHome() {
     ${join ? `<section class="tribe" id="tribe" data-join="${esc(join)}"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
       <button type="button" class="pill main" data-tribe-open>${I.mail}Join the Soul Tribe</button></section>` : ''}
-    <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · © ${new Date().getFullYear()} Nicólas Soul</p>
+    <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · <a href="#" data-install>Add to Home Screen</a> · © ${new Date().getFullYear()} Nicólas Soul</p>
   </div>`;
   // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
   // (a still image instead if the person asked for less motion or is saving data).
@@ -1913,6 +1913,7 @@ function renderVault() {
       <li><button data-check-playback>${I.play}<span>Check playback setup</span><span class="cs">tests your API key</span></button></li>
       <li><button data-backup>${I.up2}<span>Back up my Sheet now</span><span class="cs">${esc(backupLine())}</span></button></li>
       <li><button data-nav="studio">${I.edit}<span>Studio</span><span class="cs">edit titles, songs, info, links</span></button></li>
+      <li><button data-install>${I.plus}<span>Add to Home Screen</span><span class="cs">put Soul Vault on your phone like an app</span></button></li>
       <li><button data-ownerpw>${I.lock}<span>Set owner password</span><span class="cs">sign in at soulnicolas.com/admin, no key needed</span></button></li>
       <li><button data-signout>${I.x}<span>Sign out on this device</span><span class="cs">you can sign back in with your password</span></button></li>
       <li><button data-ownerkey>${I.link}<span>Copy owner key</span><span class="cs">for setting up Cloudflare; keep it private</span></button></li>
@@ -2143,6 +2144,40 @@ function drawStudio() {
 }
 
 /* ── Owner password: sign in at /admin without the owner key ── */
+// Add to Home Screen: Chrome/Android fires beforeinstallprompt (a real Install button); Safari/iOS has no such API, so we show the steps.
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+window.addEventListener('appinstalled', () => { installEvt = null; });
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-install]');
+  if (t) { e.preventDefault(); openInstall(); }
+});
+function openInstall() {
+  const ua = navigator.userAgent || '';
+  const ios = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const android = /Android/.test(ua);
+  const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const m = $('#modal'); m.className = 'modal';
+  const stepsIos = '<p class="cs" style="margin:0 0 6px"><b>iPhone or iPad (Safari):</b> tap the <b>Share</b> button (square with an arrow), scroll down, tap <b>Add to Home Screen</b>, then <b>Add</b>.</p>';
+  const stepsAnd = '<p class="cs" style="margin:0 0 6px"><b>Android (Chrome):</b> tap the <b>\u22EE</b> menu, then <b>Install app</b> or <b>Add to Home screen</b>.</p>';
+  const body = standalone ? '<p class="cs">You are already using Soul Vault from your home screen. \u2713</p>'
+    : (installEvt ? '<button class="pill main" id="instGo" style="margin:4px 0 10px">Install Soul Vault</button>' : '')
+      + (ios ? stepsIos : android ? stepsAnd : stepsIos + stepsAnd);
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Add to Home Screen">
+    <h2>Add to Home Screen</h2>
+    <p class="cs" style="margin:0 0 10px">Put Soul Vault on your phone so it opens like an app, one tap from your home screen.</p>
+    ${body}
+    <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
+  m.hidden = false;
+  const go = $('#instGo');
+  if (go) go.addEventListener('click', async () => {
+    const ev = installEvt; installEvt = null;
+    if (!ev) return;
+    ev.prompt();
+    try { await ev.userChoice; } catch (e) {}
+    closeModal();
+  });
+}
 function openOwnerPw() {
   const m = $('#modal'); m.className = 'modal';
   m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Owner password">
