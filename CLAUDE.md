@@ -68,6 +68,10 @@ Before pushing anything in `functions/`, run a real build (`npx wrangler pages d
 
 `build.js` puts a fingerprint of the app code in the script address (`/app.js?v=<build>-<hash>`), so each deploy is fetched at once; before this (Nov 12) browsers kept the old `app.js` for hours and new buttons did not appear without a hard refresh.
 
+## Images on our own storage (stage 3 of the move off Google, Nov 12, 2026)
+Covers, song covers, page backgrounds and photos are copied from Drive into the R2 bucket `soulvault-media` at `img/<Drive file id>/<size>` (sizes `t` thumbnail, `160`, `400`, `1200`, `1600`), public at `https://media.soulnicolas.com/img/...` (immutable, cached a year; CORS only for soulnicolas.com). The app asks there first (`ourImage`, inside `run('getCover')` and `photoP`); a miss falls back to the old way (Apps Script `getCover` / Drive), so private, sealed and animated images still work. `tools/mirror-images.py` does the copying (930 images for 349 files on Nov 12; 3 animated ones skipped on purpose); it only copies what a logged-out visitor can see, skips what is already there, and uses the Cloudflare API token that the session holds for api.cloudflare.com. Run it again after adding releases/photos/covers, and after a sealed release unlocks (A Love Letter to Kenya, Feb 14, 2027), otherwise those images keep using the slow old way. Never copy images of hidden or sealed releases to the public bucket.
+Test page behaviour from the real address (CORS allows only soulnicolas.com): serve `dist` through Playwright `page.route('https://soulnicolas.com/**')` and let `/api` through; from `localhost` every image misses and falls back.
+
 ## Tab addresses and old links
 Each page has its own URL, handled in `src/App.html` by `parseRoute / pathFor / syncUrl / routeTo` (just above `renderChrome`): `/` Home, `/vault`,
 `/vault/<release>` (release id without `rel_`, `_` becomes `-`, e.g. `/vault/2019-soulless`), `/tour`, `/tour/road-to-100`, `/press`, `/press/video`, `/lore`.
