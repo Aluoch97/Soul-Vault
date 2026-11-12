@@ -12,7 +12,7 @@ import * as AC from './_lib/activity.js';
 import * as FN from './_lib/fans.js';
 import * as MS from './_lib/missing.js';
 import * as BK from './_lib/backup.js';
-import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
+import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanWorldPart, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
 const FRESH_MS = 5 * 60 * 1000;      // refresh the copy when it is older than this
@@ -199,6 +199,35 @@ async function studio(ctx, fn, a) {
     if (f.unreleased != null) { ov.flags.releases[rid] = !!f.unreleased; }
     await keepLib(ctx, lib, f.unreleased != null ? ov : null);
     return true;
+  }
+  if (fn === 'studioSaveBulk') {
+    // Change the same fields on several releases. Only the fields sent are touched, each release keeps all its other values,
+    // and a release that cannot be saved does not stop the others.
+    const ids = (Array.isArray(a[1]) ? a[1] : []).map(String).slice(0, 200), ch = a[2] || {};
+    if (!ids.length) throw new Error('Pick at least one release.');
+    const bIn = {}; if (ch.type != null) bIn.type = ch.type; if (ch.hidden != null) bIn.hidden = !!ch.hidden;
+    const basics = cleanBasics(bIn), world = cleanWorldPart(ch);
+    if (!Object.keys(basics).length && !Object.keys(world).length && ch.unreleased == null) throw new Error('Pick at least one thing to change.');
+    const saved = [], failed = []; let touched = false, flagged = false;
+    for (const id of ids) {
+      const cur = relOf(id); if (!cur) { failed.push({ id, title: id, error: 'Release not found.' }); continue; }
+      try {
+        if (isNat('releases', 'release_id', id)) {
+          patchRow(store, 'releases', 'release_id', id, Object.assign({}, basics, world)); touched = true;
+        } else {   // a release that still comes from the Sheet: the same path as the single-release form
+          const fullWorld = cleanWorld(Object.assign({ world_tagline: cur.world_tagline, world_story: cur.world_story, world_color: cur.world_color, world_mood: cur.world_mood, album_credits: cur.album_credits,
+            recorded_at: cur.recorded_at, artist_name: cur.artist_name, series_name: cur.series_name, series_part: String(cur.series_part || '').replace(/^'/, '') }, world));
+          if (Object.keys(basics).length) { await callApps(env, 'saveTracklist', [env.OWNER_KEY, id, cur.title, [], basics.hidden != null ? basics.hidden : cur.hidden === true, basics.type || cur.type]); patchRow(lib, 'releases', 'release_id', id, basics); }
+          if (Object.keys(world).length) { await callApps(env, 'saveWorld', [env.OWNER_KEY, id, Object.assign(fullWorld, world.genre != null ? { genre: world.genre } : {})]); patchRow(lib, 'releases', 'release_id', id, world); }
+        }
+        if (ch.unreleased != null) { ov.flags.releases[id] = !!ch.unreleased; flagged = true; }
+        saved.push(id);
+      } catch (e) { failed.push({ id, title: cur.title, error: String((e && e.message) || e) }); }
+    }
+    if (touched) await saveNat();
+    if (flagged) { await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; mem.at = Date.now(); await forgetCached(all); }
+    else if (!touched && saved.length) { await keepLib(ctx, lib, null); }
+    return { saved, failed, applied: Object.assign({}, basics, world, ch.unreleased != null ? { unreleased: !!ch.unreleased } : {}) };
   }
   if (fn === 'studioSaveTrack') {
     const tid = String(a[1] || ''), f = a[2] || {};
@@ -477,7 +506,7 @@ export async function onRequestPost(ctx) {
       return res;
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
-    } else if (/^(studio(Get|SaveRelease|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {

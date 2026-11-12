@@ -24,6 +24,17 @@ export function cleanWorld(w) {
   if (w.genre != null) out.genre = cleanGenre(w.genre);   // only when sent, so older callers do not wipe it
   return out;
 }
+// For "edit several releases at once": only the fields that were sent are cleaned and returned (nothing else is read or touched).
+export function cleanWorldPart(w) {
+  const out = {};
+  if (w.world_color != null) { const c = cut(w.world_color, 7); if (c && !/^#[0-9A-Fa-f]{6}$/.test(c)) throw new Error('Theme color must look like #C8102E.'); out.world_color = c; }
+  if (w.world_mood != null) out.world_mood = String(w.world_mood).split(',').map(x => x.trim()).filter(Boolean).slice(0, 8).join(', ').slice(0, 200);
+  if (w.recorded_at != null) out.recorded_at = cut(w.recorded_at, 140);
+  if (w.artist_name != null) out.artist_name = cut(w.artist_name, 80);
+  if (w.series_name != null) out.series_name = cut(w.series_name, 80).replace(/\s+/g, ' ');
+  if (w.genre != null) out.genre = cleanGenre(w.genre);
+  return out;
+}
 export function cleanTrack(f) {
   const out = {};
   if (f.video_url != null) { const v = cut(f.video_url, 200); if (v && !ytOk(v)) throw new Error("That doesn't look like a YouTube link. Paste the full link from YouTube's Share button."); out.video_url = v; }
