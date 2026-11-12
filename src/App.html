@@ -327,12 +327,12 @@
   .homepg { position: relative; z-index: 1; }
   .homepg .herot, .homepg .herop, .homepg .eyebrow { text-shadow: 0 2px 18px rgba(0,0,0,.55); }
   /* Listen links under a release header */
-  .listenrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 14px 0 4px; }
+  .listenrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 10px 0 2px; } .listenrow .lrchips { justify-content: center; }
   .lrlab { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
   .lrchips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .lrchip { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid var(--line); color: var(--text); text-decoration: none; font-weight: 700; font-size: 13px; }
+  .lrchip { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid var(--line); color: var(--text); text-decoration: none; }
   .lrchip:hover { background: rgba(255,255,255,.12); }
-  .lrchip svg { width: 16px; height: 16px; flex: none; }
+  .lrchip svg { width: 20px; height: 20px; flex: none; }
   .lrfirst { flex-basis: 100%; font-size: 13px; color: var(--dim); }
   .lrfirst b { color: var(--text); }
   /* Support button */
@@ -1229,6 +1229,7 @@ function metaLine(r, ts) {
   if (String(r.recorded_at || '').trim()) html += `<div class="recorded">${I.pin}<span>Recorded in ${esc(r.recorded_at)}</span></div>`;
   html += `<div id="firstRow">${firstRow(r)}</div>`;
   html += agesLine(r) + unrelTag(r) + genreTags(r.genre);
+  html += `<div id="listenRow">${S.editing ? '' : listenRow(r)}</div>`;   // streaming icons, directly under the genre
   return html;
 }
 // Release types describe the format. Old "Deluxe"/"B-Sides" labels read as Album until you pick a type in Edit.
@@ -1736,10 +1737,7 @@ function listenRow(r) {
   const e = r && S.links && S.links.releases && S.links.releases[r.release_id];
   const links = e && Array.isArray(e.links) ? e.links.filter(l => Array.isArray(l) && l[0] && /^https?:\/\//i.test(String(l[1] || ''))) : [];
   if (!links.length) return '';
-  const type = String(typeOf(r) || 'project').toLowerCase();
-  return `<section class="listenrow" aria-label="Listen on streaming services">
-    ${links.length ? `<span class="lrlab">Listen on</span><span class="lrchips">${links.map(l => `<a class="lrchip" href="${esc(l[1])}" target="_blank" rel="noopener">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : ''}<span>${esc(l[0])}</span></a>`).join('')}</span>` : ''}
-  </section>`;
+  return `<section class="listenrow" aria-label="Listen on streaming services"><span class="lrchips">${links.map(l => `<a class="lrchip" href="${esc(l[1])}" target="_blank" rel="noopener" title="${esc(l[0])}" aria-label="Listen on ${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : I.link}</a>`).join('')}</span></section>`;
 }
 function shelfOrder(rs) {
   const key = r => (/^\d{4}-\d{2}-\d{2}/.test(String(r.release_date || '')) ? String(r.release_date).slice(0, 10) : String(r.year || 0) + '-00-00');
@@ -2450,7 +2448,7 @@ function renderRelease(id) {
         </div>
       </div>
     </div></header>
-    <div class="wrap">${editing ? '' : `<div id="listenRow">${listenRow(r)}</div>`}${editing ? editList(ts) : eraNav(r, ts) + songsSection(ts) + videosSection(r, ts) + playlistsSection(r) + notesSection(r) + aboutSection(r) + photosSection(r)
+    <div class="wrap">${editing ? editList(ts) : eraNav(r, ts) + songsSection(ts) + videosSection(r, ts) + playlistsSection(r) + notesSection(r) + aboutSection(r) + photosSection(r)
       + linkCards(r, 'review', '<b>Reviews</b> and press') + linkCards(r, 'app', '<b>Apps</b> and experiences') + seriesPanel(r)}</div>`;
   const hero = $('#heroArt');
   if (r.world_color) $('#relhead').style.setProperty('--tint', r.world_color);
