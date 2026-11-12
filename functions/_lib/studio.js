@@ -11,15 +11,18 @@ export function cleanBasics(b) {
   if (b.hidden != null) out.hidden = !!b.hidden;
   return out;
 }
+const cleanGenre = v => { const seen = {}, out = []; String(v || '').split(',').forEach(g => { g = g.trim().replace(/\s+/g, ' ').slice(0, 40); if (g && !seen[g.toLowerCase()] && out.length < 6) { seen[g.toLowerCase()] = 1; out.push(g); } }); return out.join(', '); };
 export function cleanWorld(w) {
   const color = cut(w.world_color, 7);
   if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) throw new Error('Theme color must look like #C8102E.');
-  return {
+  const out = {
     world_tagline: cut(w.world_tagline, 140), world_story: cut(w.world_story, 12000), world_color: color,
     world_mood: String(w.world_mood || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 8).join(', ').slice(0, 200),
     album_credits: cut(w.album_credits, 4000), recorded_at: cut(w.recorded_at, 140), artist_name: cut(w.artist_name, 80),
     series_name: cut(w.series_name, 80).replace(/\s+/g, ' '), series_part: cut(w.series_part, 12)
   };
+  if (w.genre != null) out.genre = cleanGenre(w.genre);   // only when sent, so older callers do not wipe it
+  return out;
 }
 export function cleanTrack(f) {
   const out = {};

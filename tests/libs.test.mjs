@@ -38,6 +38,9 @@ test('Studio cleaners: release page (colour, mood, lengths)', () => withWorld(as
   assert.equal(s.cleanWorld({ world_story: 'x'.repeat(20000) }).world_story.length, 12000);
   assert.equal(s.cleanWorld({ series_name: '  The   Series  ' }).series_name, 'The Series');
   assert.equal(s.cleanWorld({}).world_color, '');
+  assert.equal(s.cleanWorld({ genre: ' Hip Hop,  hip hop , R&B ,, Gospel' }).genre, 'Hip Hop, R&B, Gospel');   // tidied like the release page does
+  assert.equal(s.cleanWorld({ genre: 'a,b,c,d,e,f,g,h' }).genre, 'a, b, c, d, e, f');                            // at most 6
+  assert.equal('genre' in s.cleanWorld({ world_color: '#C8102E' }), false);                                         // not sent: not touched
 }));
 
 test('Studio cleaners: songs only accept real YouTube links', () => withWorld(async (w) => {
