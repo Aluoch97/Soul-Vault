@@ -1675,13 +1675,22 @@ function renderLibrary(keepScroll) {
      "sr": { "<track_id>": "<YouTube link or id>" } }   (edited by hand in public/links.json) */
 function loadLinks() {
   if (S.linksP) return S.linksP;
-  S.linksP = fetch('/links.json').then(r => (r.ok ? r.json() : {})).catch(() => ({})).then(j => {
-    S.links = (j && typeof j === 'object') ? j : {};
+  // The owner reads the Studio extras from the edge; everyone else gets them with the library (lib.overlay), or from the small /links.json file as a fallback.
+  S.linksP = (OWNER ? run('getOverlay').catch(() => ({})) : fetch('/links.json').then(r => (r.ok ? r.json() : {})).catch(() => ({}))).then(j => {
+    S.links = Object.assign({}, (j && typeof j === 'object') ? j : {}, S.links || {});
+    if (OWNER && j) S.links = j;
+    applyFlags(S.lib);
     const el = $('#listenRow'); if (el && S.releaseId) el.innerHTML = listenRow(rel(S.releaseId));
     if (S.now) syncVideo();
     return S.links;
   });
   return S.linksP;
+}
+// Unreleased flags saved in Studio (kept on Cloudflare) win over the Sheet's.
+function applyFlags(lib) {
+  const f = S.links && S.links.flags; if (!f || !lib) return;
+  (lib.releases || []).forEach(r => { if (f.releases && r.release_id in f.releases) r.unreleased = !!f.releases[r.release_id]; });
+  (lib.tracks || []).forEach(t => { if (f.tracks && t.track_id in f.tracks) t.unreleased = !!f.tracks[t.track_id]; });
 }
 function listenRow(r) {
   const e = r && S.links && S.links.releases && S.links.releases[r.release_id];
@@ -1890,6 +1899,7 @@ function renderVault() {
       <li><button data-jump="all">${I.disc}<span>Browse by year</span><span class="cs">${I.chev}</span></button></li>
       <li><button data-check-playback>${I.play}<span>Check playback setup</span><span class="cs">tests your API key</span></button></li>
       <li><button data-backup>${I.up2}<span>Back up my Sheet now</span><span class="cs">${esc(backupLine())}</span></button></li>
+      <li><button data-nav="studio">${I.edit}<span>Studio</span><span class="cs">edit titles, songs, info, links</span></button></li>
       <li><button data-ownerkey>${I.link}<span>Copy owner key</span><span class="cs">for setting up Cloudflare; keep it private</span></button></li>
     </ul>
   </div>`;
@@ -1899,6 +1909,112 @@ function renderVault() {
     catch (e) { toast('Could not copy. Try again, or use the Soul Vault menu in your Sheet.'); }
   });
   window.scrollTo(0, 0);
+}
+
+/* ═════════ Studio: one place to edit titles, songs, info, streaming links (owner only) ═════════ */
+document.head.appendChild(Object.assign(document.createElement('style'), { textContent: `
+  .studio .stusel { width: 100%; margin: 6px 0 14px; }
+  .studio details.stu { border: 1px solid var(--line); border-radius: 14px; margin: 0 0 12px; background: rgba(255,255,255,.03); }
+  .studio details.stu > summary { cursor: pointer; padding: 14px 16px; font-weight: 800; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .studio details.stu > summary::-webkit-details-marker { display: none; }
+  .studio .stubody { padding: 0 16px 16px; display: grid; gap: 12px; }
+  .studio label.sf { display: grid; gap: 5px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+  .studio label.sf .field, .studio label.sf select, .studio label.sf textarea { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 15px; color: var(--text); }
+  .studio .sf2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } @media (max-width: 520px) { .studio .sf2 { grid-template-columns: 1fr; } }
+  .studio .chk { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .studio .lrow { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+  .studio .scard { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; background: rgba(255,255,255,.02); }
+  .studio .scard h3 { margin: 0; font-size: 15px; } .studio .scard h3 span { color: var(--dim); font-weight: 600; margin-right: 6px; }
+  .studio .save { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .studio .st { font-size: 13px; color: var(--dim); }
+` }));
+const STU_SERVICES = ['Spotify', 'Apple Music', 'YouTube Music', 'YouTube', 'Bandcamp', 'SoundCloud', 'DatPiff', 'Audiomack', 'Tidal', 'Amazon Music', 'Deezer'];
+async function renderStudio() {
+  clearPageBg(); S.view = 'studio'; renderChrome();
+  const head = '<header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>';
+  $('#main').innerHTML = `<div class="wrap studio">${head}<p class="cs">Loading your catalog…</p></div>`;
+  try { S.stu = await run('studioGet', BOOT.key); }
+  catch (e) { $('#main').innerHTML = `<div class="wrap studio">${head}<p class="status">${esc(e.message || 'Studio could not load.')}</p><button class="pill main" data-nav="studio">Try again</button></div>`; return; }
+  if (!S.stuRel || !S.stu.releases.some(r => r.release_id === S.stuRel)) S.stuRel = (S.stu.releases.slice().sort((a, b) => String(b.release_date || b.year).localeCompare(String(a.release_date || a.year))).find(r => !r.unlock_at && S.stu.tracks.some(t => t.release_id === r.release_id)) || S.stu.releases[0] || {}).release_id;
+  drawStudio();
+}
+function drawStudio() {
+  const g = S.stu, rid = S.stuRel, r = g.releases.find(x => x.release_id === rid); if (!r) return;
+  const ov = g.overlay || { releases: {}, sr: {}, flags: { releases: {}, tracks: {} } };
+  const fl = ov.flags || { releases: {}, tracks: {} }, lk = ov.releases[rid] || { first: '', links: [] };
+  const rels = g.releases.slice().sort((a, b) => String(b.release_date || b.year).localeCompare(String(a.release_date || a.year)));
+  const tracks = g.tracks.filter(t => t.release_id === rid).sort((a, b) => (Number(a.track_no) || 0) - (Number(b.track_no) || 0));
+  const unrel = rid in fl.releases ? fl.releases[rid] : (r.unreleased === true || String(r.unreleased) === 'true');
+  const f = (id, label, val, extra) => `<label class="sf">${label}<input class="field" id="${id}" value="${esc(val == null ? '' : val)}" ${extra || ''}></label>`;
+  const ta = (id, label, val, rows) => `<label class="sf">${label}<textarea class="field" id="${id}" rows="${rows}">${esc(val || '')}</textarea></label>`;
+  const linkRow = l => `<div class="lrow"><input class="field" list="stuSvc" placeholder="Spotify" value="${esc(l[0])}" aria-label="Service name"><input class="field" type="url" placeholder="https://…" value="${esc(l[1])}" aria-label="Link"><button type="button" class="ib" data-stu-rmlink aria-label="Remove this link">${I.x}</button></div>`;
+  const songs = tracks.map(t => {
+    const hasSR = g.versions.some(v => v.track_id === t.track_id && isSR(v)), tu = t.track_id in fl.tracks ? fl.tracks[t.track_id] : (t.unreleased === true || String(t.unreleased) === 'true');
+    return `<div class="scard" data-stu-song="${esc(t.track_id)}">
+      <h3><span>${esc(t.number_label || t.track_no)}</span>${esc(t.title)}</h3>
+      <div class="sf2">${f('', 'Title', t.title, 'data-k="title"')}${f('', 'Artist', t.artist, 'data-k="artist"')}</div>
+      <div class="sf2">${f('', 'Features', t.features, 'data-k="features"')}${f('', 'Producer', t.producer, 'data-k="producer"')}</div>
+      <div class="sf2">${f('', 'Engineer', t.engineer, 'data-k="engineer"')}${f('', 'Music video (YouTube link)', t.video_url, 'data-k="video_url" type="url"')}</div>
+      ${hasSR ? f('', 'Slowed + reverb video (YouTube link)', ov.sr[t.track_id] || '', 'data-sr type="url"') : ''}
+      <label class="chk"><input type="checkbox" data-unrel ${tu ? 'checked' : ''}> Unreleased song</label>
+      <div class="save"><button type="button" class="pill main" data-stu-savesong>Save song</button><span class="st" role="status"></span></div></div>`;
+  }).join('');
+  $('#main').innerHTML = `<div class="wrap studio">
+    <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>
+    <p class="cs">Pick a release, change what you need, and press Save in that section. Changes show on the site within about a minute.</p>
+    <select class="field stusel" id="stuRel" aria-label="Release">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
+    <details class="stu" open><summary>Release info</summary><div class="stubody" id="stuInfo">
+      <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'].map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
+      <div class="sf2">${f('stArtist', 'Artist name (if not Nicólas Soul)', r.artist_name)}${f('stRec', 'Recorded at', r.recorded_at)}</div>
+      ${f('stTag', 'Tagline', r.world_tagline, 'maxlength="140"')}
+      ${ta('stStory', 'Story', r.world_story, 6)}
+      <div class="sf2">${f('stMood', 'Mood words (comma separated)', r.world_mood)}${f('stColor', 'Theme color (like #D21034)', r.world_color)}</div>
+      <div class="sf2">${f('stSeries', 'Series name', r.series_name)}${f('stPart', 'Series part', String(r.series_part || '').replace(/^'/, ''))}</div>
+      ${ta('stCredits', 'Album credits (one per line, like “Produced by: Name (1, 3-5)”)', r.album_credits, 8)}
+      <label class="chk"><input type="checkbox" id="stHidden" ${r.hidden === true ? 'checked' : ''}> Hide this release from fans</label>
+      <label class="chk"><input type="checkbox" id="stUnrel" ${unrel ? 'checked' : ''}> Unreleased (shows in the Unreleased section)</label>
+      <div class="save"><button type="button" class="pill main" id="stuSaveInfo">Save release info</button><span class="st" id="stuInfoSt" role="status"></span></div></div></details>
+    <details class="stu" open><summary>Streaming links</summary><div class="stubody">
+      <p class="cs" style="margin:0">Shown as “Listen on” buttons under the release name. Use the full link.</p>
+      <div id="stuLinks" style="display:grid;gap:8px">${(lk.links || []).map(linkRow).join('')}</div>
+      <datalist id="stuSvc">${STU_SERVICES.map(x => `<option value="${x}">`).join('')}</datalist>
+      <div class="save"><button type="button" class="pill soft" id="stuAddLink">${I.plus}Add a link</button></div>
+      ${f('stFirst', 'First appeared on (DatPiff, Bandcamp…)', lk.first)}
+      <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></details>
+    <details class="stu"><summary>Songs <span class="cs">${tracks.length}</span></summary><div class="stubody">${songs || '<p class="cs">No songs on this release.</p>'}</div></details>
+    <p class="cs" style="margin:16px 0 0">Lyrics, covers and audio files are still edited on the release page.</p></div>`;
+  window.scrollTo(0, 0);
+  const say = (el, t, bad) => { if (el) { el.textContent = t; el.style.color = bad ? 'var(--red, #ff6b6b)' : ''; } };
+  const guard = async (btn, st, fn) => { btn.disabled = true; say(st, 'Saving…'); try { await fn(); say(st, 'Saved'); toast('Saved'); } catch (e) { say(st, e.message || 'Could not save', true); } btn.disabled = false; };
+  $('#stuRel').addEventListener('change', e => { S.stuRel = e.target.value; drawStudio(); });
+  $('#stuSaveInfo').addEventListener('click', e => guard(e.currentTarget, $('#stuInfoSt'), async () => {
+    const v = id => $('#' + id).value;
+    const basics = { title: v('stTitle'), type: v('stType'), hidden: $('#stHidden').checked };
+    const world = { world_tagline: v('stTag'), world_story: v('stStory'), world_color: v('stColor'), world_mood: v('stMood'), album_credits: v('stCredits'), recorded_at: v('stRec'), artist_name: v('stArtist'), series_name: v('stSeries'), series_part: v('stPart') };
+    await run('studioSaveRelease', BOOT.key, rid, { basics, world, unreleased: $('#stUnrel').checked });
+    Object.assign(r, basics, world); (g.overlay.flags = g.overlay.flags || { releases: {}, tracks: {} }).releases[rid] = $('#stUnrel').checked;
+    const mine = rel(rid); if (mine) { Object.assign(mine, basics, world, { unreleased: $('#stUnrel').checked }); }
+  }));
+  $('#stuAddLink').addEventListener('click', () => { $('#stuLinks').insertAdjacentHTML('beforeend', linkRow(['', ''])); });
+  $('#stuLinks').addEventListener('click', e => { const b = e.target.closest('[data-stu-rmlink]'); if (b) b.closest('.lrow').remove(); });
+  $('#stuSaveLinks').addEventListener('click', e => guard(e.currentTarget, $('#stuLinksSt'), async () => {
+    const links = [...$$('#stuLinks .lrow')].map(row => { const i = row.querySelectorAll('input'); return [i[0].value, i[1].value]; });
+    await run('studioSaveLinks', BOOT.key, rid, { first: $('#stFirst').value, links });
+    const clean = links.filter(l => l[0].trim() && l[1].trim()), first = $('#stFirst').value.trim();
+    if (clean.length || first) g.overlay.releases[rid] = { first, links: clean }; else delete g.overlay.releases[rid];
+    S.links = Object.assign({}, S.links || {}, { releases: Object.assign({}, g.overlay.releases) });
+  }));
+  $$('[data-stu-savesong]').forEach(btn => btn.addEventListener('click', e => {
+    const card = e.currentTarget.closest('[data-stu-song]'), tid = card.dataset.stuSong, t = g.tracks.find(x => x.track_id === tid);
+    guard(e.currentTarget, card.querySelector('.st'), async () => {
+      const fields = {}; card.querySelectorAll('[data-k]').forEach(i => { fields[i.dataset.k] = i.value; });
+      const srEl = card.querySelector('[data-sr]'), un = card.querySelector('[data-unrel]').checked;
+      await run('studioSaveTrack', BOOT.key, tid, { fields, sr: srEl ? srEl.value : undefined, unreleased: un });
+      Object.assign(t, fields); const mine = trk(tid); if (mine) Object.assign(mine, fields, { unreleased: un });
+      g.overlay.flags.tracks[tid] = un; if (srEl) { if (srEl.value.trim()) g.overlay.sr[tid] = srEl.value.trim(); else delete g.overlay.sr[tid]; }
+      S.links = Object.assign({}, S.links || {}, { sr: Object.assign({}, g.overlay.sr), flags: g.overlay.flags });
+      card.querySelector('h3').innerHTML = `<span>${esc(t.number_label || t.track_no)}</span>${esc(t.title)}`;
+    });
+  }));
 }
 
 function recentKey() { return 'sv_recent_' + (OWNER ? 'owner' : BOOT.token); }
@@ -4936,6 +5052,8 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
 
 /* ── every name/title is text (Sheets turns "1995" into a number) ── */
 function normalizeLib(lib) {
+  if (lib.overlay) S.links = Object.assign({}, S.links || {}, lib.overlay);
+  applyFlags(lib);
   const str = (o, keys) => o && keys.forEach(k => { if (o[k] != null && typeof o[k] !== 'string') o[k] = String(o[k]); });
   (lib.releases || []).forEach(r => str(r, ['title', 'artist_name', 'world_tagline', 'world_story', 'recorded_at', 'series_name', 'series_part', 'genre', 'album_credits', 'world_mood']));
   (lib.tracks || []).forEach(t => str(t, ['title', 'artist', 'features', 'producer', 'engineer', 'chapter', 'number_label', 'genre', 'lyrics', 'notes', 'key', 'bpm']));
@@ -6908,6 +7026,7 @@ document.addEventListener('click', e => {
     if (d.nav === 'shares') renderShares();
     else if (d.nav === 'vault') renderVault();
     else if (d.nav === 'insights' && OWNER) renderInsights();
+    else if (d.nav === 'studio' && OWNER) renderStudio();
     else if (d.nav === 'home') renderHome();
     else if (d.nav === 'tour') renderTour();
     else if (d.nav === 'press') renderPress();
