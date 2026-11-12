@@ -1492,7 +1492,14 @@ const SITE = {
     { url: 'https://nashvillevoyager.com/interview/rising-stars-meet-nicolas-soul-of-nashville', image: 'nv2024', site: 'Nashville Voyager', date: '2024',
       title: 'Rising Stars: Meet Nicólas Soul of Nashville', desc: 'Today we’d like to introduce you to Nicólas Soul Alright, so thank you so much for sharing your story and insight with our readers. To kick things off, can you tell us a bit about how you…' },
     { url: 'https://www.buzz-music.com/post/nic%C3%B3las-soul-tells-a-story-with-his-album-soulless', image: 'buzz', site: 'BUZZMUSIC', author: 'Jennifer Gurton', date: 'Feb 7, 2020',
-      title: 'Nicólas Soul Tells A Story With His Album, “SoulLESS”', desc: 'Nicólas Soul released the thought-provoking album titled “SoulLESS”. When asked about the name of this album, Nicólas Soul explains that the name is based upon two concepts. This album…' }
+      title: 'Nicólas Soul Tells A Story With His Album, “SoulLESS”', desc: 'Nicólas Soul released the thought-provoking album titled “SoulLESS”. When asked about the name of this album, Nicólas Soul explains that the name is based upon two concepts. This album…' },
+    { url: 'https://aboveaveragehiphop.com/nicolas-soul-drops-a-new-ep-called-summer-break/', image: 'none', site: "Above Average Hip Hop", date: '', title: "Nicólas Soul Drops a New EP Called Summer Break", desc: "Linked from the Summer Break EP release page." },
+    { url: 'https://thebandcampdiaries.com/post/185469080652/nic%C3%B3las-soul-soulless-nic%C3%B3las-soul-is-a', image: 'none', site: "The Bandcamp Diaries", date: '', title: "Nicólas Soul: soulLESS", desc: "Review linked from the soulLESS release page." },
+    { url: 'https://thearkofmusic.com/nurenaissance-redd-bluu/', image: 'none', site: "The Ark of Music", date: '', title: "NuRenaissance: REDD & bluu", desc: "Coverage linked from the Surviving the NUWORLD release page." },
+    { url: 'https://indiebandguru.com/nurenaissance-redd-bluu/', image: 'none', site: "Indie Band Guru", date: '', title: "NuRenaissance: REDD & bluu", desc: "Coverage linked from the Surviving the NUWORLD release page." },
+    { url: 'https://stereostickman.com/music/nurenaissance-redd-bluu/', image: 'none', site: "Stereo Stickman", date: '', title: "NuRenaissance: REDD & bluu", desc: "Coverage linked from the Surviving the NUWORLD release page." },
+    { url: 'https://maxedhiphop.com/the-heart-and-sound-of-nicolas-soul/', image: 'none', site: "Maxed Hip Hop", date: '', title: "The Heart and Sound of Nicólas Soul", desc: "Linked from the RISE OF THE LOST. release page." },
+    { url: 'https://utdailybeacon.com/109514/arts-and-culture/review-the-connect-playlist-brings-together-campus-musicians/', image: 'none', site: "The Daily Beacon (University of Tennessee)", date: '', title: "Review: The Connect playlist brings together campus musicians", desc: "A review that includes Nicólas Soul. Linked from the soulLESS release page." },
   ],
   videos: [
     ["Da' Healerz Circle Ep. 5 w/ Special Guest Nicólas Soul", 'fJkff8Er46Q'],
@@ -1690,9 +1697,14 @@ function renderLibrary(keepScroll) {
 function loadLinks() {
   if (S.linksP) return S.linksP;
   // The owner reads the Studio extras from the edge; everyone else gets them with the library (lib.overlay), or from the small /links.json file as a fallback.
-  S.linksP = (OWNER ? run('getOverlay').catch(() => ({})) : fetch('/links.json').then(r => (r.ok ? r.json() : {})).catch(() => ({}))).then(j => {
-    S.links = Object.assign({}, (j && typeof j === 'object') ? j : {}, S.links || {});
-    if (OWNER && j) S.links = j;
+  // The small /links.json file holds links found by hand (Apple Music, Spotify...). A release that Studio has its own links for wins; every other release keeps the file's links.
+  const fileP = fetch('/links.json').then(r => (r.ok ? r.json() : {})).catch(() => ({}));
+  S.linksP = Promise.all([OWNER ? run('getOverlay').catch(() => ({})) : Promise.resolve(null), fileP]).then(([ov, fb]) => {
+    fb = (fb && typeof fb === 'object') ? fb : {};
+    const base = OWNER ? (ov && typeof ov === 'object' ? ov : {}) : (S.links || {});
+    S.links = Object.assign({}, fb, base);
+    S.links.releases = Object.assign({}, fb.releases || {}, base.releases || {});
+    S.links.sr = Object.assign({}, fb.sr || {}, base.sr || {});
     applyFlags(S.lib);
     const el = $('#listenRow'); if (el && S.releaseId) el.innerHTML = listenRow(rel(S.releaseId)); const fr = $('#firstRow'); if (fr && S.releaseId) fr.innerHTML = firstRow(rel(S.releaseId));
     if (S.now) syncVideo();
@@ -5434,7 +5446,7 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
 
 /* ── every name/title is text (Sheets turns "1995" into a number) ── */
 function normalizeLib(lib) {
-  if (lib.overlay) S.links = Object.assign({}, S.links || {}, lib.overlay);
+  if (lib.overlay) { const prev = S.links || {}; S.links = Object.assign({}, prev, lib.overlay); S.links.releases = Object.assign({}, prev.releases || {}, lib.overlay.releases || {}); S.links.sr = Object.assign({}, prev.sr || {}, lib.overlay.sr || {}); }   // Studio's links per release win; other releases keep the ones from /links.json
   applyFlags(lib);
   const str = (o, keys) => o && keys.forEach(k => { if (o[k] != null && typeof o[k] !== 'string') o[k] = String(o[k]); });
   (lib.releases || []).forEach(r => str(r, ['title', 'artist_name', 'world_tagline', 'world_story', 'recorded_at', 'series_name', 'series_part', 'genre', 'album_credits', 'world_mood']));

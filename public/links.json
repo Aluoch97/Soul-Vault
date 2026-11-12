@@ -1,4 +1,93 @@
 {
-  "releases": {},
-  "sr": {}
+ "releases": {
+  "rel_2018_trouble_in_paradise": {
+   "links": [
+    [
+     "Spotify",
+     "https://open.spotify.com/album/2bookeQckmYgdc0I0jPgbk"
+    ],
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/trouble-in-paradise/1762693811"
+    ]
+   ]
+  },
+  "rel_2019_soulless": {
+   "links": [
+    [
+     "Spotify",
+     "https://open.spotify.com/album/1sIbPa3xuu7PnzaaQGaEcS"
+    ],
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/soulless/1764315490"
+    ]
+   ]
+  },
+  "rel_2020_a_love_letter_to_cali_ep": {
+   "links": [
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/a-love-letter-to-cali-directors-cut-ep/1762694600"
+    ]
+   ]
+  },
+  "rel_2022_jambo_jacque_tesphaye": {
+   "links": [
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/jambo-jacque-tesphaye/1762675942"
+    ]
+   ]
+  },
+  "rel_2022_soulsearching": {
+   "links": [
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/soulsearching/1762667931"
+    ]
+   ]
+  },
+  "rel_2023_sin_city": {
+   "links": [
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/sin-city-single/1774299510"
+    ]
+   ]
+  },
+  "rel_2024_shadow_work_b_sides": {
+   "links": [
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/shadow-work-b-sides-ep/1771460883"
+    ]
+   ]
+  },
+  "rel_2025_rise_of_the_lost": {
+   "links": [
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/rise-of-the-lost/1822142812"
+    ]
+   ]
+  },
+  "rel_2026_saturn_return": {
+   "links": [
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/saturn-return-ep/1887907558"
+    ]
+   ]
+  },
+  "rel_2026_idk_what_u_need": {
+   "links": [
+    [
+     "Apple Music",
+     "https://music.apple.com/us/album/idk-what-u-need-single/6791386225"
+    ]
+   ]
+  }
+ },
+ "sr": {}
 }
