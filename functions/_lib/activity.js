@@ -4,7 +4,7 @@ import { shareScope, findShare } from './share.js';
 const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
 const hex = n => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
 
-export const ACTIVITY_FNS = ['createShare', 'setShareActive', 'quickShare', 'recordPlay', 'logListens', 'getInsights', 'getComments', 'addComment', 'resolveComment', 'deleteComment', 'logClientError', 'errorSummary'];
+export const ACTIVITY_FNS = ['createShare', 'setShareActive', 'deleteShare', 'quickShare', 'recordPlay', 'logListens', 'getInsights', 'getComments', 'addComment', 'resolveComment', 'deleteComment', 'logClientError', 'errorSummary'];
 const DDL = [
   'CREATE TABLE IF NOT EXISTS shares (token TEXT PRIMARY KEY, target_type TEXT, target_id TEXT, label TEXT, allow_download INTEGER, expires TEXT, active INTEGER, plays INTEGER, created TEXT, fan_name TEXT, member_no INTEGER)',
   'CREATE TABLE IF NOT EXISTS listens (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, track_id TEXT, version_id TEXT, release_id TEXT, share_token TEXT, device_id TEXT, seconds INTEGER, pct INTEGER, outcome TEXT, device TEXT)',
@@ -40,6 +40,12 @@ export async function createShare(db, o, siteUrl) {
 export async function setShareActive(db, token, active) {
   const r = await db.prepare('UPDATE shares SET active = ? WHERE token = ?').bind(active ? 1 : 0, String(token || '')).run();
   if (!r.meta || !r.meta.changes) throw new Error('Share not found.'); return true;
+}
+export async function deleteShare(db, token, publicToken) {
+  token = String(token || '');
+  if (token && token === String(publicToken || '')) throw new Error('This is the link every visitor to the site uses, so it cannot be deleted. Turn off or delete the others.');
+  const r = await db.prepare('DELETE FROM shares WHERE token = ?').bind(token).run();
+  if (!r.meta || !r.meta.changes) throw new Error('Share not found.'); return true;   // plays and comments already recorded for it are kept
 }
 export async function quickShare(db, o, siteUrl) {
   if (o.targetType !== 'release' && o.targetType !== 'track') throw new Error('Unknown share type.');
