@@ -66,7 +66,7 @@ def wanted(lib):
             if (fid, s) not in seen: seen.add((fid, s)); out.append((fid, s, kind))
     for r in lib['releases']:
         if r.get('locked'): continue
-        add(r.get('cover_file_id'), ['t', '1200'], 'cover'); add(r.get('clean_cover_file_id'), ['t', '1200'], 'cover')
+        add(r.get('cover_file_id'), ['t', '400', '1200'], 'cover'); add(r.get('clean_cover_file_id'), ['t', '1200'], 'cover')
         add(r.get('bg_file_id'), ['1600'], 'background')
         for c in str(r.get('extra_covers') or '').split(','): add(c.split('|')[0], ['400', '1600'], 'cover')
     vis = {r['release_id'] for r in lib['releases'] if not r.get('locked')}

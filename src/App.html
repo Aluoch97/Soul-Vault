@@ -5324,7 +5324,26 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .lorelist li { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid var(--line); }
   .lorelist li b { display: block; }
   .lorelist li .cs { font-size: 13px; }
-  @media (min-width: 0px) { .lorestats { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (min-width: 0px) { .lorestats { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; } .lorestats .kpi { padding: 10px 4px; text-align: center; } .lorestats .kpi b { font-size: 16px; white-space: nowrap; } .lorestats .kpi span { font-size: 10px; letter-spacing: .04em; } }
+  .lorephotos .extra { display: none; } .lorephotos.all .extra { display: block; }
+  .lormore { display: block; margin: -8px auto 20px; }
+  .lorehi { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; margin: 0 0 8px; }
+  .lorehi .hi { padding: 10px; border-radius: 14px; background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.02)); border: 1px solid var(--line); display: grid; gap: 2px; align-content: start; min-width: 0; }
+  .lorehi .hi b { font: 800 15px/1.2 var(--serif); overflow-wrap: anywhere; } .lorehi .hi .cs { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .loreeras { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 16px; padding: 4px 16px 14px; margin: 0 -16px; scrollbar-width: none; }
+  .loreeras::-webkit-scrollbar { display: none; }
+  .loreera { flex: 0 0 148px; scroll-snap-align: start; display: grid; gap: 3px; align-content: start; text-align: left; padding: 0; background: none; border: 0; color: inherit; cursor: pointer; }
+  .loreera .lc { display: block; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #1a1a1c; margin-bottom: 4px; }
+  .loreera .lc img { display: block; width: 100%; height: 100%; object-fit: cover; } .loreera .lc img:not([src]) { visibility: hidden; }
+  .loreera b { font: 700 14px/1.25 var(--serif); } .loreera .cs { font-size: 12px; }
+  .agechip { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--raise); color: var(--dim); }
+  .lorecats button i { font-style: normal; opacity: .6; margin-left: 2px; }
+  .lchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .lchip { padding: 8px 14px; border-radius: 99px; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .lchip i { font-style: normal; font-size: 11px; margin-left: 7px; padding: 1px 6px; border-radius: 99px; background: var(--raise); color: var(--dim); }
+  .lchip[aria-expanded="true"] { background: var(--text); color: var(--bg); } .lchip[aria-expanded="true"] i { background: rgba(0,0,0,.12); color: inherit; }
+  .lpdetail { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.04); display: grid; gap: 6px; }
+  .lprel { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
 ` }));
 
 /* ── every name/title is text (Sheets turns "1995" into a number) ── */
@@ -5471,31 +5490,54 @@ function indexList(map, label) {
 }
 function renderLore() {
   clearPageBg(); S.view = 'lore'; renderChrome();
-  const L = buildLore(), t = L.totals;
+  const L = buildLore(), t = L.totals; t.toNow = Math.min(Number(t.to) || 0, new Date().getFullYear()) || t.to;   // a release sealed until next year does not count as active years yet
+  const top = m => [...m.values()].sort((x, y) => y.releases.size - x.releases.size || x.name.localeCompare(y.name))[0];
+  const hi = [['Most-used producer', top(L.idx.producers)], ['Most-featured artist', top(L.idx.features)], ['Most-used place', top(L.idx.places)]].filter(h => h[1]);
+  const cats = [['producers', 'Producers', L.idx.producers, 'producers'], ['engineers', 'Engineers', L.idx.engineers, 'engineers'], ['features', 'Featured', L.idx.features, 'features'],
+    ['places', 'Places', L.idx.places, 'recording locations'], ['photographers', 'Photographers', L.idx.photographers, 'photo credits']];
+  let cat = cats.some(c => c[0] === S.loreCat) ? S.loreCat : (cats.find(c => c[2].size) || cats[0])[0];
   $('#main').innerHTML = `<div class="wrap lore">
     ${OWNER ? '<p class="cs" style="margin:6px 0 0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>' : ''}
-    <section class="lorephotos" aria-label="Photos">${SITE.photos.map((f, i) => `<button type="button" class="lph1" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</section>
+    <section class="lorephotos${S.loreAll ? ' all' : ''}" aria-label="Photos">${SITE.photos.map((f, i) => `<button type="button" class="lph1${i >= 6 ? ' extra' : ''}" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</section>
+    ${SITE.photos.length > 6 ? `<button type="button" class="pill soft lormore" data-lore-all>${S.loreAll ? 'Show fewer photos' : 'See all ' + SITE.photos.length + ' photos'}</button>` : ''}
     <div class="lorestats">
       <div class="kpi"><b>${t.releases}</b><span>Releases</span></div><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
-      <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.to && t.to !== t.from ? '–' + t.to : ''}</b><span>Years active</span></div></div>
+      <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.toNow && t.toNow !== t.from ? '–' + t.toNow : ''}</b><span>Years</span></div></div>
+    ${hi.length ? `<div class="lorehi">${hi.map(h => `<div class="hi"><span class="cs">${esc(h[0])}</span><b>${esc(h[1].name)}</b><span class="cs">${h[1].releases.size} ${h[1].releases.size === 1 ? 'release' : 'releases'}</span></div>`).join('')}</div>` : ''}
     ${OWNER ? `<section class="lorebio"><h2 class="sh"><span><b>Bio:</b> Nicólas Soul</span></h2>
       <textarea class="field" id="loreBio" maxlength="8000" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
       <div class="end"><button class="pill soft" data-lore-copy>Copy all lore as text</button><button class="pill main" data-lore-bio>Save bio</button></div><p class="cs" style="margin:6px 0 0">Fans on the fan club link can read this bio and the whole Lore page.</p></section>` : `<section class="lorebio"><h2 class="sh"><span><b>About</b> Nicólas Soul</span></h2><p class="biotxt">${esc((S.lib.artist_bio || '').trim() || SITE.bio)}</p></section>`}
     ${t.names.length > 1 ? `<h2 class="sh"><span><b>Names</b> over the years</span></h2><p>${t.names.map(esc).join(' → ')}</p>` : ''}
     <h2 class="sh"><span><b>Eras</b></span></h2>
-    <div class="ins-wrap"><table class="instable"><thead><tr><th>Release</th><th>Made / recorded</th><th>Producers</th><th class="n">Videos</th><th class="n">Photos</th></tr></thead><tbody>
-      ${L.eras.map(e => `<tr><td><button class="linkish" data-rel="${esc(e.r.release_id)}">${esc(e.r.title)}</button><span class="sub">${esc([e.r.year, isUnrel(e.r) ? 'Unreleased' : '', typeOf(e.r), e.songs + (e.songs === 1 ? ' song' : ' songs'), fmtRuntime(e.runtime)].filter(Boolean).join(' · '))}${isHomeName(e.as) ? '' : ' · as ' + esc(e.as)}</span></td>
-        <td>${esc(e.r.recorded_at || '—')}${e.ages.made ? `<span class="sub">made at ${esc(e.ages.made)}</span>` : ''}</td>
-        <td>${e.prod.length ? e.prod.map(linkName).join(', ') : '—'}${e.eng.length ? `<span class="sub">Mix/master: ${e.eng.map(esc).join(', ')}</span>` : ''}</td>
-        <td class="n">${Object.values(e.vcount).reduce((a, b) => a + b, 0)}${Object.keys(e.vcount).length ? `<span class="sub">${esc(vcText(e.vcount))}</span>` : ''}</td>
-        <td class="n">${e.photos}</td></tr>`).join('')}</tbody></table></div>
-    <h2 class="sh"><span><b>Producers</b></span></h2>${indexList(L.idx.producers, 'producers')}
-    <h2 class="sh"><span><b>Engineers</b> (mix, master, recording)</span></h2>${indexList(L.idx.engineers, 'engineers')}
-    <h2 class="sh"><span><b>Featured</b> artists</span></h2>${indexList(L.idx.features, 'features')}
-    <h2 class="sh"><span><b>Where</b> it was made</span></h2>${indexList(L.idx.places, 'recording locations')}
-    <h2 class="sh"><span><b>Photographers</b></span></h2>${indexList(L.idx.photographers, 'photo credits')}
+    <div class="loreeras" role="list">${L.eras.map(e => { const c = /^#[0-9a-f]{6}$/i.test(e.r.world_color || '') ? e.r.world_color : '', nv = Object.values(e.vcount).reduce((a, b) => a + b, 0);
+      return `<button type="button" role="listitem" class="loreera" data-rel="${esc(e.r.release_id)}"><span class="lc"${c ? ` style="background:${c}"` : ''}><img data-lcover="${esc(e.r.cover_file_id || '')}" alt="" loading="lazy"></span>
+        <b>${esc(e.r.title)}</b><span class="cs">${esc([e.r.year, isUnrel(e.r) ? 'Unreleased' : '', typeOf(e.r)].filter(Boolean).join(' · '))}</span>
+        <span class="cs">${e.songs} ${e.songs === 1 ? 'song' : 'songs'}${fmtRuntime(e.runtime) ? ' · ' + esc(fmtRuntime(e.runtime)) : ''}</span>
+        ${e.r.recorded_at ? `<span class="cs">${esc(e.r.recorded_at)}</span>` : ''}${e.ages.made ? `<span class="agechip">made at ${esc(e.ages.made)}</span>` : ''}
+        ${nv || e.photos ? `<span class="cs">${[nv ? nv + (nv === 1 ? ' video' : ' videos') : '', e.photos ? e.photos + (e.photos === 1 ? ' photo' : ' photos') : ''].filter(Boolean).join(' · ')}</span>` : ''}</button>`; }).join('')}</div>
+    <h2 class="sh"><span><b>The people</b> behind it</span></h2>
+    <div class="seg lorecats" role="group" aria-label="Credits">${cats.map(c => `<button type="button" data-lcat="${c[0]}" aria-pressed="${c[0] === cat}">${esc(c[1])} <i>${c[2].size}</i></button>`).join('')}</div>
+    <div id="lorePeople"></div>
   </div>`;
   $$('[data-lphoto]').forEach(b => b.addEventListener('click', () => openLorePhoto(+b.dataset.lphoto)));
+  const more = $('[data-lore-all]'); if (more) more.addEventListener('click', () => { S.loreAll = !S.loreAll; $('.lorephotos').classList.toggle('all', S.loreAll); more.textContent = S.loreAll ? 'Show fewer photos' : 'See all ' + SITE.photos.length + ' photos'; });
+  $$('[data-lcover]').forEach(img => setCover(img, img.dataset.lcover));
+  // The people: one list at a time as name chips; tap a name to see which releases they are on.
+  const drawPeople = () => {
+    const c = cats.find(x => x[0] === cat), all = [...c[2].values()].sort((x, y) => y.releases.size - x.releases.size || x.name.localeCompare(y.name));
+    const rows = S.lorePeopleAll || all.length <= 20 ? all : all.slice(0, 18);
+    $('#lorePeople').innerHTML = rows.length ? `<div class="lchips">${rows.map((e, i) => `<button type="button" class="lchip" data-lperson="${i}" aria-expanded="false">${esc(e.name)}${e.releases.size > 1 ? `<i>${e.releases.size}</i>` : ''}</button>`).join('')}</div><div class="lpdetail" id="lpDetail" hidden></div>${all.length > rows.length ? `<button type="button" class="pill soft" data-lpall>Show all ${all.length}</button>` : ''}` : `<p class="cs">No ${esc(c[3])} in the credits yet.</p>`;
+    const lpAll = $('[data-lpall]'); if (lpAll) lpAll.addEventListener('click', () => { S.lorePeopleAll = true; drawPeople(); });
+    $$('#lorePeople [data-lperson]').forEach(b => b.addEventListener('click', () => {
+      const e = rows[+b.dataset.lperson], d = $('#lpDetail'), open = b.getAttribute('aria-expanded') === 'true';
+      $$('#lorePeople [data-lperson]').forEach(x => x.setAttribute('aria-expanded', 'false'));
+      if (open) { d.hidden = true; return; }
+      b.setAttribute('aria-expanded', 'true'); d.hidden = false;
+      d.innerHTML = `<b>${linkName(e.name)}</b><div class="lprel">${[...e.releases].map(tt => { const er = L.eras.find(x => x.r.title === tt); return er ? `<button type="button" class="linkish" data-rel="${esc(er.r.release_id)}">${esc(tt)}</button>` : `<span>${esc(tt)}</span>`; }).join('')}</div>`;
+    }));
+  };
+  $$('[data-lcat]').forEach(b => b.addEventListener('click', () => { cat = b.dataset.lcat; S.loreCat = cat; S.lorePeopleAll = false; $$('[data-lcat]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawPeople(); }));
+  drawPeople();
   window.scrollTo(0, 0);
 }
 // Lore photo viewer: full screen; rotate, download, next/previous. (Pinch to zoom works as on any page.)
