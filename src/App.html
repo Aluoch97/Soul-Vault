@@ -2282,27 +2282,29 @@ function drawStudio() {
     if (!ids.length) return say(st, 'Tick at least one release.', true);
     if (!Object.keys(on).length) return say(st, 'Tick at least one field to change.', true);
     const names = { genre: 'genre', type: 'type', artist_name: 'artist name', recorded_at: 'recorded at', series_name: 'series name', world_mood: 'mood words', world_color: 'theme color', hidden: 'visibility', unreleased: 'unreleased' };
-    if (!confirm('Change ' + Object.keys(on).map(k => names[k]).join(', ') + ' on ' + ids.length + (ids.length === 1 ? ' release' : ' releases') + '?\n\nThis saves right away.')) return;
-    btn.disabled = true; let done = 0; const failed = [];
-    for (const id of ids) {
-      const x = g.releases.find(q => q.release_id === id); if (!x) continue;
-      say(st, 'Saving ' + (done + failed.length + 1) + ' of ' + ids.length + '…');
-      try {
-        const curUn = id in fl.releases ? fl.releases[id] : (x.unreleased === true || String(x.unreleased) === 'true');
-        const basics = { title: x.title, type: 'type' in on ? on.type : (x.type || 'Album'), hidden: 'hidden' in on ? on.hidden === 'true' : x.hidden === true };
-        const world = { world_tagline: x.world_tagline, world_story: x.world_story, world_color: 'world_color' in on ? on.world_color : x.world_color, world_mood: 'world_mood' in on ? on.world_mood : x.world_mood, album_credits: x.album_credits,
-          recorded_at: 'recorded_at' in on ? on.recorded_at : x.recorded_at, artist_name: 'artist_name' in on ? on.artist_name : x.artist_name, series_name: 'series_name' in on ? on.series_name : x.series_name,
-          series_part: String(x.series_part || '').replace(/^'/, ''), genre: 'genre' in on ? on.genre : x.genre };
-        const un = 'unreleased' in on ? on.unreleased === 'true' : curUn;
-        await run('studioSaveRelease', BOOT.key, id, { basics, world, unreleased: un });
-        Object.assign(x, basics, world); (g.overlay.flags = g.overlay.flags || { releases: {}, tracks: {} }).releases[id] = un; fl.releases[id] = un;
-        const mine = rel(id); if (mine) Object.assign(mine, basics, world, { unreleased: un });
-        done++;
-      } catch (er) { failed.push((x.title || id) + ': ' + (er.message || 'could not save')); }
+    const what = 'Change ' + Object.keys(on).map(k => names[k]).join(', ') + ' on ' + ids.length + (ids.length === 1 ? ' release' : ' releases');
+    if (!btn.dataset.armed) {   // two taps instead of a pop-up (some phones hide pop-ups): the first shows what will happen, the second does it
+      btn.dataset.armed = '1'; btn.textContent = 'Tap again to confirm'; say(st, what + '. Tap the button again within 10 seconds to save.');
+      setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Apply to the ticked releases'; }, 10000); return;
     }
+    delete btn.dataset.armed; btn.textContent = 'Apply to the ticked releases';
+    btn.disabled = true; say(st, 'Saving ' + ids.length + (ids.length === 1 ? ' release' : ' releases') + '…');
+    const changes = {}; Object.keys(on).forEach(k => { changes[k] = (k === 'hidden' || k === 'unreleased') ? on[k] === 'true' : on[k]; });
+    try {
+      const out = await run('studioSaveBulk', BOOT.key, ids, changes);
+      (out.saved || []).forEach(id => {
+        const x = g.releases.find(q => q.release_id === id), a = out.applied || {};
+        const fields = Object.assign({}, a); delete fields.unreleased;
+        if (x) Object.assign(x, fields);
+        const mine = rel(id); if (mine) Object.assign(mine, fields, 'unreleased' in a ? { unreleased: a.unreleased } : {});
+        if ('unreleased' in a) { (g.overlay.flags = g.overlay.flags || { releases: {}, tracks: {} }).releases[id] = a.unreleased; fl.releases[id] = a.unreleased; }
+      });
+      const bad = out.failed || [], n = (out.saved || []).length;
+      say(st, bad.length ? n + ' saved. Not saved: ' + bad.map(f => f.title + ' (' + f.error + ')').join('; ') : n + (n === 1 ? ' release' : ' releases') + ' saved.', !!bad.length);
+      if (bad.length) alert('Not saved:\n\n' + bad.map(f => f.title + ': ' + f.error).join('\n'));
+      if (n) toast(n + ' saved');
+    } catch (er) { say(st, er.message || 'Could not save.', true); alert('Nothing was saved.\n\n' + (er.message || 'Could not save.')); }
     btn.disabled = false;
-    say(st, failed.length ? done + ' saved. Not saved: ' + failed.join('; ') : done + (done === 1 ? ' release' : ' releases') + ' saved.', !!failed.length);
-    if (done) toast(done + ' saved');
   });
   $('#stuSaveInfo').addEventListener('click', e => guard(e.currentTarget, $('#stuInfoSt'), async () => {
     const v = id => $('#' + id).value;

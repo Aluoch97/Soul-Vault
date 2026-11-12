@@ -6,7 +6,7 @@ import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpe
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
 const OWNER_ONLY = ['setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
-  'studioGet', 'studioSaveRelease', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioAddPhoto',
+  'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
 
@@ -144,6 +144,33 @@ test('Studio: saving a release sends Apps Script an EMPTY song list (never renum
   assert.equal(calls[1].fn, 'saveWorld'); assert.equal(calls[1].args[2].world_tagline, 'tag');
   const rel = (await w.owner('studioGet')).result.releases.find(x => x.release_id === 'rel_pub');
   assert.equal(rel.title, 'New Name'); assert.equal(rel.type, 'EP'); assert.equal(rel.hidden, true);
+}));
+
+test('Studio: changing one field on several releases touches only that field; a bad release does not stop the rest', () => withWorld(async (w) => {
+  assert.match((await w.owner('studioSaveBulk', [], { genre: 'x' })).error, /at least one release/);
+  assert.match((await w.owner('studioSaveBulk', ['rel_pub'], {})).error, /at least one thing/);
+  assert.match((await w.owner('studioSaveBulk', ['rel_pub'], { type: 'Podcast' })).error, /release type/);
+  assert.match((await w.owner('studioSaveBulk', ['rel_pub'], { world_color: 'red' })).error, /Theme color/);
+  assert.equal((await w.call('studioSaveBulk', ['PUB', ['rel_pub'], { genre: 'x' }])).ok, false);
+  assert.deepEqual(w.appsCalls(), []);
+  const before = (await w.owner('studioGet')).result.releases.find(x => x.release_id === 'rel_pub');
+  const r = (await w.owner('studioSaveBulk', ['rel_pub', 'ghost'], { genre: ' Hip Hop,  hip hop , Gospel' })).result;
+  assert.deepEqual(r.saved, ['rel_pub']); assert.equal(r.failed.length, 1); assert.equal(r.failed[0].id, 'ghost'); assert.match(r.failed[0].error, /not found/);
+  const after = (await w.owner('studioGet')).result.releases.find(x => x.release_id === 'rel_pub');
+  assert.equal(after.genre, 'Hip Hop, Gospel');
+  assert.equal(after.title, before.title); assert.equal(after.world_tagline, before.world_tagline); assert.equal(after.type, before.type);
+}));
+
+test('Studio: changing several releases once the catalog is ours writes here only (never Apps Script), visibility and unreleased included', () => withWorld(async (w) => {
+  assert.equal((await w.owner('adoptDomain', 'catalog')).ok, true);
+  const n0 = w.appsCalls().length;
+  const r = (await w.owner('studioSaveBulk', ['rel_pub'], { hidden: true, unreleased: true, recorded_at: ' Nashville, TN ', type: 'Unreleased' })).result;
+  assert.deepEqual(r.saved, ['rel_pub']); assert.deepEqual(r.failed, []);
+  assert.equal(w.appsCalls().length, n0);
+  const after = (await w.owner('studioGet')).result;
+  const rel = after.releases.find(x => x.release_id === 'rel_pub');
+  assert.equal(rel.hidden, true); assert.equal(rel.recorded_at, 'Nashville, TN'); assert.equal(rel.type, 'Unreleased');
+  assert.equal(after.overlay.flags.releases.rel_pub, true);
 }));
 
 test('Studio: if Apps Script refuses a save, the copy here is not changed', () => withWorld({ failApps: ['saveTracklist'] }, async (w) => {
