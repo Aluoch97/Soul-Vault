@@ -92,8 +92,11 @@ async function edgeHome(ctx, args) {
     .sort((a, b) => key(b).localeCompare(key(a)) || String(a.title).localeCompare(String(b.title)));
   const pick = async r => {
     if (!r) return null;
-    if (!r.cover_file_id || !ctx.env.MEDIA || !(await ctx.env.MEDIA.head('img/' + r.cover_file_id + '/400'))) throw new Error('cover not in R2');
-    return { release_id: r.release_id, title: r.title, cover_file_id: r.cover_file_id, src: MEDIA_BASE + 'img/' + r.cover_file_id + '/400', img: '', thumb: '' };
+    if (!r.cover_file_id || !ctx.env.MEDIA) throw new Error('no cover');
+    // covers copied from Drive have a 400 px size; covers uploaded in Studio only have 1200 (about 90 KB), which is fine too
+    const size = (await ctx.env.MEDIA.head('img/' + r.cover_file_id + '/400')) ? '400' : (await ctx.env.MEDIA.head('img/' + r.cover_file_id + '/1200')) ? '1200' : '';
+    if (!size) throw new Error('cover not in R2');
+    return { release_id: r.release_id, title: r.title, cover_file_id: r.cover_file_id, src: MEDIA_BASE + 'img/' + r.cover_file_id + '/' + size, img: '', thumb: '' };
   };
   return { picks: { single: await pick(list.filter(r => kind(r) === 'Single')[0]), project: await pick(list.filter(r => kind(r) !== 'Single')[0]) } };
 }
