@@ -45,7 +45,7 @@ page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta nam
 // Crawlable text: the app draws everything in the browser, so give crawlers that don't run it a plain-text version. The app replaces it as soon as it starts.
 const releases = JSON.parse(fs.readFileSync('releases.json', 'utf8'));   // refresh with: node tools/updatereleases.js
 if (!Array.isArray(releases) || !releases.length) throw new Error('releases.json is empty; run node tools/updatereleases.js');
-const pages = [['Vault: the music', '/vault'], ['Tour: upcoming shows', '/tour'], ['Road to 100 Shows', '/tour/road-to-100'], ['Press', '/press'], ['Press videos', '/press/video'], ['Lore: bio and story', '/lore'], ['Join the Soul Tribe', '/join'], ['Privacy policy', '/privacy-policy']];
+const pages = [['Music: every release and song', '/vault'], ['Tour: upcoming shows', '/tour'], ['Road to 100 Shows', '/tour/road-to-100'], ['Press', '/press'], ['Press videos', '/press/video'], ['Lore: bio and story', '/lore'], ['Join the Soul Tribe', '/join'], ['Privacy policy', '/privacy-policy']];
 const seo = '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"><h1>' + attr(cfg.siteName) + '</h1><p>' + attr(cfg.description) + '</p><nav><ul>'
   + pages.map(p => '<li><a href="' + p[1] + '">' + attr(p[0]) + '</a></li>').join('') + releases.map(r => '<li><a href="/vault/' + r[1] + '">' + attr(r[0]) + '</a></li>').join('') + '</ul></nav></div>';
 if (!page.includes('<main id="main"></main>')) throw new Error('index.html: empty <main id="main"> not found, cannot add crawlable text');

@@ -1397,7 +1397,7 @@ function syncUrl() {
   if (S.urlInit && location.pathname !== p) setRobots(false);   // the visitor moved on from an unknown address
   setCanonical(p);
   const r = S.lib && S.view === 'release' ? rel(S.releaseId) : null;
-  const names = { home: '', library: 'Vault', tour: 'Tour', press: 'Press', lore: 'Lore' };
+  const names = { home: '', library: 'Music', tour: 'Tour', press: 'Press', lore: 'Lore' };
   S.siteName = S.siteName || document.title.split(' | ')[0] || 'Nicólas Soul';
   const t = S.view === 'release' ? (r ? r.title : 'Release') : names[S.view];
   document.title = t ? t + ' | ' + S.siteName : S.siteName;
@@ -1439,7 +1439,7 @@ function renderChrome(noUrl) {
   const years = [...new Set(((S.lib && S.lib.releases) || []).map(r => r.year))].sort((a, b) => b - a);
   const cc = n => n === cur ? 'aria-current="page"' : '';
   const club = !OWNER;
-  const main = [['home', I.home, 'Home'], ['library', I.vault, 'Vault'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['lore', I.layers, 'Lore']];
+  const main = [['home', I.home, 'Home'], ['library', I.vault, 'Music'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['lore', I.layers, 'Lore']];
   $('#side').innerHTML = `
     <div class="brand">Soul <span>Vault</span><i class="flagband" aria-hidden="true"></i></div>
     <nav>
@@ -2404,7 +2404,7 @@ function renderRelease(id) {
   const ts = tracksOf(id, editing);
   $('#main').innerHTML = `
     <header class="relhead" id="relhead"><div class="wrap">
-      ${OWNER || CLUB() ? `<button class="back" data-nav="library-back">${I.back}Vault</button>` : ''}
+      ${OWNER || CLUB() ? `<button class="back" data-nav="library-back">${I.back}Music</button>` : ''}
       <div class="hero">
         <div class="artwrap">
           <img class="art" id="heroArt" alt="Cover of ${esc(r.title)}">
@@ -3527,7 +3527,7 @@ function sealedView(r) {
   clearPageBg();
   $('#main').innerHTML = `
     <header class="relhead sealed" id="relhead"><div class="wrap">
-      <button class="back" data-nav="library-back">${I.back}Vault</button>
+      <button class="back" data-nav="library-back">${I.back}Music</button>
       <div class="hero">
         <div class="artwrap sealart"><img class="art" id="heroArt" alt=""><span class="lock" aria-hidden="true">${I.lock}</span></div>
         <div>
@@ -5813,7 +5813,7 @@ function renderPlaylist(id) {
   const ts = plTracks(p), ed = OWNER && S.plEditing;
   if (ed && !S.pldraft) S.pldraft = { title: p.title, description: p.description, fans: p.fans, tracks: ts.map(t => t.track_id) };
   $('#main').innerHTML = `<div class="wrap">
-    <button class="back" data-nav="library">${I.back}Vault</button>
+    <button class="back" data-nav="library">${I.back}Music</button>
     <header class="plhead">${mosaic(ts)}<div><div class="kick">Playlist${OWNER ? ' · ' + (p.fans ? 'shared with the fan club' : 'private') : ''}</div>
       <h1>${esc(p.title)}</h1>${p.description ? `<p class="cs" style="margin:0 0 4px;white-space:pre-line">${esc(p.description)}</p>` : ''}
       <div class="cs">${songs(ts.length)}${fmtRuntime(runtimeOf(ts)) ? ' · ' + fmtRuntime(runtimeOf(ts)) : ''}</div>
