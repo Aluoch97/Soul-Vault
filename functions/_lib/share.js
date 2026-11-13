@@ -87,7 +87,7 @@ export function shareBody(s, lib, now, ov) {
       track_id: t.track_id, release_id: t.release_id, track_no: t.track_no, title: t.title, artist: t.artist || '',
       features: t.features || '', producer: t.producer || '', engineer: t.engineer || '', bpm: t.bpm || '', key: t.key || '',
       video_url: t.video_url || '', lyrics: t.lyrics || '', voice_note_id: t.voice_note_id || '', chapter: t.chapter || '',
-      category: t.category || 'Main', extra_kind: t.extra_kind || '', is_single: t.is_single === true,
+      category: t.category || 'Main', extra_kind: t.extra_kind || '', unrel_kind: t.unrel_kind || '', is_single: t.is_single === true,
       track_cover: t.track_cover || '',
       number_label: String(t.number_label || '').replace(/^'/, ''), genre: t.genre || '',
       unreleased: ov && t.track_id in ov.flags.tracks ? !!ov.flags.tracks[t.track_id] : flag(t.unreleased)

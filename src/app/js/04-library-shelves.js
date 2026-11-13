@@ -83,9 +83,9 @@ const VSVG = {
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'
 };
 const VIEWS = [['scroll', 'Scrolling shelf'], ['large', 'Large covers'], ['small', 'Small covers'], ['list', 'List']];
-function viewMenu(cur) {
+function viewMenu(cur, sec) {   // sec: the Unreleased / Features sections have their own View menu, kept separately
   return `<div class="viewrow"><div class="viewwrap"><button type="button" class="pill soft viewbtn" data-libmenu aria-haspopup="menu" aria-expanded="false">${VSVG.list}<span>View</span><span aria-hidden="true">&#9662;</span></button>
-    <div class="viewmenu" role="menu" aria-label="View" hidden>${VIEWS.map(v => `<button type="button" role="menuitemradio" aria-checked="${v[0] === cur}" data-libview="${v[0]}"><i class="vdot">${v[0] === cur ? '&bull;' : ''}</i>${VSVG[v[0]]}<span>${v[1]}</span></button>`).join('')}</div></div></div>`;
+    <div class="viewmenu" role="menu" aria-label="View" hidden>${VIEWS.map(v => `<button type="button" role="menuitemradio" aria-checked="${v[0] === cur}" ${sec ? `data-secview="${sec}|${v[0]}"` : `data-libview="${v[0]}"`}><i class="vdot">${v[0] === cur ? '&bull;' : ''}</i>${VSVG[v[0]]}<span>${v[1]}</span></button>`).join('')}</div></div></div>`;
 }
 // Every release at once, in rows (newest first): large covers, small covers or a plain list.
 function allGrid(rs, view) {
@@ -97,6 +97,9 @@ function allGrid(rs, view) {
 document.addEventListener('click', e => {
   const m = e.target.closest && e.target.closest('[data-libmenu]');
   if (m) { const menu = m.nextElementSibling, open = menu.hidden; menu.hidden = !open; m.setAttribute('aria-expanded', String(open)); return; }
+  const sv = e.target.closest && e.target.closest('[data-secview]'), sc = e.target.closest && e.target.closest('[data-secchip]');
+  if (sv) { const [id, v] = sv.dataset.secview.split('|'); secState(id).view = v; ls.set('sv_secview_' + id, v); redrawSection(id); return; }
+  if (sc) { const [id, k] = sc.dataset.secchip.split('|'); secState(id).chip = k; redrawSection(id); return; }
   const o = e.target.closest && e.target.closest('[data-libview]');
   if (o) { S.libView = o.dataset.libview; ls.set('sv_libview', S.libView); renderLibBody(); return; }
   $$('.viewmenu').forEach(x => { x.hidden = true; if (x.previousElementSibling) x.previousElementSibling.setAttribute('aria-expanded', 'false'); });   // a tap anywhere else closes it
@@ -215,7 +218,7 @@ function renderLibBody() {
   const allMode = view !== 'scroll' && !q;
   const viewBtn = q ? '' : viewMenu(view);
   $('#libBody').innerHTML = (!q ? resumeCard() : '') + chips + viewBtn + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
-    (!q && !allMode ? seriesRow() + playlistsRow() + dropsRow() + unreleasedSection() + recentRow() : '') +
+    (!q && !allMode ? seriesRow() + playlistsRow() + dropsRow() : '') + (!q ? unreleasedSection() + featuresSection() : '') + (!q && !allMode ? recentRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
   wireShelf();

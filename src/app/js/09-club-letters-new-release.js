@@ -56,12 +56,68 @@ function unreleasedSongs() {
   return S.lib.tracks.filter(t => !hidden(t) && primaryOf(t) && (isUnrel(t) || isUnrel(rel(t.release_id))) && (OWNER || !(rel(t.release_id) || {}).locked))
     .sort((a, b) => relDateKey(rel(b.release_id) || {}).localeCompare(relDateKey(rel(a.release_id) || {})) || (Number(a.track_no) || 0) - (Number(b.track_no) || 0));
 }
+/* ═════ Special areas on the Music tab: Unreleased (secret access) and Features ═════
+   Each is its own area with its own View menu (scrolling shelf, large covers, small covers, list), kept separately from the releases' View menu, and filter chips. */
+const UNREL_KINDS = ['Single', 'Album', 'EP', 'Mixtape', 'Compilation'];
+// What an unreleased song is meant to be: the one you set on the song in Studio, else its release's type, else "Unsorted".
+const unrelKindOf = t => UNREL_KINDS.indexOf(t.unrel_kind) > -1 ? t.unrel_kind : (UNREL_KINDS.indexOf(typeOf(rel(t.release_id) || {})) > -1 ? typeOf(rel(t.release_id)) : '');
+// Guests on a song: the Features field, or "(feat. X)" / "(ft. X)" in the title.
+function featuresOf(t) {
+  const out = [], add = s => String(s || '').split(/\s*(?:,|&|\band\b|\+)\s*/i).map(x => x.replace(/^(feat\.?|ft\.?|featuring|with)\s+/i, '').trim()).filter(x => x && x.length < 60).forEach(x => { if (out.indexOf(x) < 0) out.push(x); });
+  add(t.features);
+  const m = String(t.title || '').match(/[(\[]\s*(?:feat\.?|ft\.?|featuring)\s+([^)\]]+)[)\]]/i); if (m) add(m[1]);
+  return out;
+}
+function featuredSongs() {
+  return S.lib.tracks.filter(t => !hidden(t) && primaryOf(t) && featuresOf(t).length && (OWNER || !(rel(t.release_id) || {}).locked))
+    .sort((a, b) => relDateKey(rel(b.release_id) || {}).localeCompare(relDateKey(rel(a.release_id) || {})) || (Number(a.track_no) || 0) - (Number(b.track_no) || 0));
+}
+const secState = id => { S.sec = S.sec || {}; return (S.sec[id] = S.sec[id] || { view: ls.get('sv_secview_' + id, 'scroll'), chip: 'all' }); };
+const songArt = t => t.track_cover || (rel(t.release_id) || {}).cover_file_id || '';
+function redrawSection(id) {
+  const el = $('#' + id); if (!el) return;
+  el.outerHTML = id === 'unreleased' ? unreleasedSection() : featuresSection();
+  const now = $('#' + id); loadCovers(); markPlaying(); if (now) wireRows(now);
+}
+/** cfg: { id, cls, ribbon (html), title (html), blurb (html), songs, chips: [[key, label, count]], inChip(t, key), tagOf(t) -> text, subOf(t) -> text, hint } */
+function vaultSection(cfg) {
+  const st = secState(cfg.id), view = VIEWS.some(v => v[0] === st.view) ? st.view : 'scroll';
+  if (!cfg.chips.some(c => c[0] === st.chip)) st.chip = 'all';
+  const list = st.chip === 'all' ? cfg.songs : cfg.songs.filter(t => cfg.inChip(t, st.chip));
+  const card = t => { const p = primaryOf(t), tag = cfg.tagOf(t); return `<button type="button" class="agc vsc" data-play="${esc(p.version_id)}" aria-label="Play ${esc(t.title)}">
+    <span class="vart"><img class="art" data-cover="${esc(songArt(t))}" alt=""><span class="vtag">${esc(tag)}</span><span class="vgo" aria-hidden="true">${I.play}</span></span>
+    <span class="agt">${esc(t.title)}</span><span class="cs">${esc(cfg.subOf(t))}</span></button>`; };
+  const body = !list.length ? '<p class="cs">Nothing here yet.</p>'
+    : view === 'list' ? `<ol class="tracks">${list.map(t => trackRow(t, true, cfg.listTagOf ? cfg.listTagOf(t) : '')).join('')}</ol>`
+    : view === 'scroll' ? `<div class="hrow vrow" aria-label="${esc(cfg.label)}">${list.map(card).join('')}</div>`
+    : `<div class="allgrid vgrid ${view === 'small' ? 'small' : 'large'}">${list.map(card).join('')}</div>`;
+  const chips = cfg.chips.length > 2 ? `<div class="seg vs-chips" role="group" aria-label="Filter ${esc(cfg.label)}">${cfg.chips.map(([k, l, n]) => `<button type="button" data-secchip="${esc(cfg.id)}|${esc(k)}" aria-pressed="${k === st.chip}">${esc(l)} <span class="n">${n}</span></button>`).join('')}</div>` : '';
+  return `<section id="${cfg.id}" class="vsec ${cfg.cls}" aria-label="${esc(cfg.label)}">
+    <div class="vs-ribbon">${cfg.ribbon}</div>
+    <div class="vs-head"><h2 class="sh"><span>${cfg.title}</span></h2></div>
+    <p class="cs vs-blurb">${cfg.blurb}</p>
+    ${viewMenu(view, cfg.id)}${chips}${body}${cfg.hint || ''}</section>`;
+}
 function unreleasedSection() {
   const ts = unreleasedSongs();
   if (!ts.length) return '';
-  return `<section id="unreleased"><h2 class="sh"><span><b>Unreleased</b></span></h2>
-    <p class="cs" style="margin:-4px 0 8px">Songs that were never officially released. ${ts.length} ${ts.length === 1 ? 'song' : 'songs'}.</p>
-    <ol class="tracks">${ts.map(t => trackRow(t, true)).join('')}</ol></section>`;
+  const counts = {}; ts.forEach(t => { const k = unrelKindOf(t) || 'Unsorted'; counts[k] = (counts[k] || 0) + 1; });
+  const chips = [['all', 'All', ts.length]].concat(UNREL_KINDS.concat(['Unsorted']).filter(k => counts[k]).map(k => [k, { Single: 'Singles', Album: 'Albums', EP: 'EPs', Mixtape: 'Mixtapes', Compilation: 'Compilations', Unsorted: 'Unsorted' }[k], counts[k]]));
+  return vaultSection({ id: 'unreleased', cls: 'secret', label: 'Unreleased songs', songs: ts, chips,
+    ribbon: `<span class="vs-lock">${I.lock}</span><span class="vs-acc">Access granted</span><i class="vs-dot" aria-hidden="true"></i><span class="vs-sub">Unreleased vault</span>`,
+    title: '<b>Unreleased</b>', blurb: `Songs that were never officially released. You are hearing them before anyone else. ${ts.length} ${ts.length === 1 ? 'song' : 'songs'}.`,
+    inChip: (t, k) => (unrelKindOf(t) || 'Unsorted') === k, tagOf: t => unrelKindOf(t) || 'Unreleased', listTagOf: t => unrelKindOf(t), subOf: t => [(rel(t.release_id) || {}).title, t.duration].filter(Boolean).join(' · '),
+    hint: OWNER && counts.Unsorted ? `<p class="cs vs-hint">${counts.Unsorted} ${counts.Unsorted === 1 ? 'song is' : 'songs are'} not sorted yet. In Studio, open the song and pick what it counts as (Single, Album, EP, Mixtape or Compilation).</p>` : '' });
+}
+function featuresSection() {
+  const ts = featuredSongs();
+  if (!ts.length) return '';
+  const by = {}; ts.forEach(t => featuresOf(t).forEach(n => { by[n] = (by[n] || 0) + 1; }));
+  const names = Object.keys(by).sort((a, b) => by[b] - by[a] || a.localeCompare(b)).slice(0, 10);
+  return vaultSection({ id: 'features', cls: 'spot', label: 'Songs with features', songs: ts, chips: [['all', 'All', ts.length]].concat(names.map(n => [n, n, by[n]])),
+    ribbon: `<span class="vs-lock">${I.mic || ''}</span><span class="vs-acc">Special guests</span><i class="vs-dot" aria-hidden="true"></i><span class="vs-sub">Features</span>`,
+    title: '<b>Features</b>', blurb: `Songs with a guest on them. ${ts.length} ${ts.length === 1 ? 'song' : 'songs'} with ${Object.keys(by).length} ${Object.keys(by).length === 1 ? 'artist' : 'artists'}.`,
+    inChip: (t, k) => featuresOf(t).indexOf(k) > -1, tagOf: t => 'feat. ' + featuresOf(t).join(', '), subOf: t => [(rel(t.release_id) || {}).title, t.duration].filter(Boolean).join(' · ') });
 }
 function dropsRow() {
   const ds = S.lib.releases.filter(isLocked).sort((a, b) => new Date(a.unlock_at) - new Date(b.unlock_at));
