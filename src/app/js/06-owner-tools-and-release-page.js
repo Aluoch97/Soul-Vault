@@ -84,7 +84,7 @@ async function openMissing() {
     const bad = new Set(items.map(x => x.id).concat(it.oldVersionIds || [])), tr = id => S.lib.tracks.find(t => t.track_id === id), rl = id => S.lib.releases.find(r => r.release_id === id);
     q = String(q || '').trim().toLowerCase();
     return S.lib.versions.filter(v => v.native === true && !bad.has(v.version_id) && v.track_id !== it.trackId && tr(v.track_id)).reverse()
-      .map(v => { const t = tr(v.track_id), r = rl(t.release_id) || {}; return { id: v.version_id, title: t.title, release: r.title || '', hidden: !!r.hidden, how: v.format === 'YOUTUBE' ? 'plays through YouTube' : (v.duration || 'audio file') }; })
+      .map(v => { const t = tr(v.track_id), r = rl(t.release_id) || {}; return { id: v.version_id, title: t.title, release: r.title || '', hidden: !!r.hidden, how: v.format === 'YOUTUBE' ? 'plays through YouTube' : v.format === 'SOUNDCLOUD' ? 'plays through SoundCloud' : (v.duration || 'audio file') }; })
       .filter(x => !q || (x.title + ' ' + x.release).toLowerCase().includes(q)).slice(0, 25);
   };
   const drawLink = (row, it, q) => {

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpers.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
-const OWNER_ONLY = ['setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
+const OWNER_ONLY = ['addSoundcloudSong', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
@@ -905,4 +905,21 @@ test('Video tab: each video carries its upload date, views and likes (likes can 
   assert.equal(r[0].videos[3].likes, null, 'hidden likes are null, not 0');
   assert.equal(r[0].videos[59].views, 590, 'the second batch of 50 is read too');
   assert.equal(w.ytCalls.filter(c => c.path === 'videos').length >= 2, true);
+}));
+
+// ---------------------------------------------------------------- songs from a SoundCloud link (plays through SoundCloud's own player; no key)
+test('SoundCloud: a song link becomes a song with no audio file; one song only; no duplicates; needs the owner key', () => withWorld(async (w) => {
+  w.soundcloud = { 'https://soundcloud.com/nicolas-soul/spiderman': { title: 'Spiderman by Nicolas Soul', author_name: 'Nicolas Soul' }, 'https://soundcloud.com/some-guest/their-song': { title: 'Their Song by Some Guest', author_name: 'Some Guest' } };
+  assert.equal((await w.call('addSoundcloudSong', [undefined, { releaseId: 'rel_pub', url: 'https://soundcloud.com/nicolas-soul/spiderman' }])).ok, false, 'owner key needed');
+  for (const bad of ['', 'https://example.com/a/b', 'https://soundcloud.com/nicolas-soul', 'https://soundcloud.com/nicolas-soul/sets/my-set', 'https://soundcloud.com/nicolas-soul/likes', 'http://soundcloud.com/a/b', 'javascript:alert(1)'])
+    assert.match((await w.owner('addSoundcloudSong', { releaseId: 'rel_pub', url: bad })).error, /ONE song from SoundCloud/, bad);
+  assert.match((await w.owner('addSoundcloudSong', { releaseId: 'nope', url: 'https://soundcloud.com/nicolas-soul/spiderman' })).error, /Release not found/);
+  assert.match((await w.owner('addSoundcloudSong', { releaseId: 'rel_pub', url: 'https://soundcloud.com/nicolas-soul/missing-song' })).error, /couldn't find that song/);
+  const ok = await w.owner('addSoundcloudSong', { releaseId: 'rel_pub', url: 'https://www.soundcloud.com/nicolas-soul/spiderman?si=abc&utm_source=clipboard' });
+  assert.equal(ok.ok, true); const { track, version } = ok.result;
+  assert.deepEqual([track.title, track.sc_url, track.artist, version.format, version.audio, version.url], ['Spiderman', 'https://soundcloud.com/nicolas-soul/spiderman', '', 'SOUNDCLOUD', '', ''], 'title tidied (no "by artist"), tracking parameters dropped, no audio file');
+  assert.match((await w.owner('addSoundcloudSong', { releaseId: 'rel_pub', url: 'https://soundcloud.com/nicolas-soul/spiderman' })).error, /already in this release/);
+  const g = await w.owner('addSoundcloudSong', { releaseId: 'rel_pub', url: 'https://soundcloud.com/some-guest/their-song', title: 'My own title' });
+  assert.deepEqual([g.result.track.title, g.result.track.artist], ['My own title', 'Some Guest'], 'a typed title wins; another artist is remembered');
+  const lib = (await w.owner('getLibrary')).result; assert.ok(lib.tracks.some((t) => t.sc_url === 'https://soundcloud.com/nicolas-soul/spiderman'), 'the owner library carries sc_url');
 }));
