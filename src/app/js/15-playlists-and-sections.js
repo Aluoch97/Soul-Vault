@@ -428,7 +428,6 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   #np #npArt { width: 100%; max-width: 100%; height: auto; aspect-ratio: 1 / 1; }
   /* text that has to fit small screens */
   .row .tt { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-  .lorebio .end { flex-wrap: wrap; }
   .vcard .ct, .plcard .nm { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   @media (max-width: 380px) {
     .home-h { gap: 8px; } .home-h .brand { font-size: 21px; } .hbtns { gap: 6px; }

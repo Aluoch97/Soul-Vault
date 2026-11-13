@@ -520,6 +520,19 @@ await step('a song\'s Options (release page > Edit) has a guest-spot checkbox: i
   await page.waitForFunction(() => /Open Album/.test(document.querySelector('#features').innerText) && /Guest spot/.test(document.querySelector('#features .vtag').textContent), null, { timeout: 8000 });
   await page.evaluate((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); x.feature_role = ''; }, tid);
 });
+await step('Lore is calmer: no bio editor in the middle of the page, credits in one dropdown; the bio is edited under Settings > Your bio', async () => {
+  await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-lcatsel]');
+  assert.deepEqual(await page.evaluate(() => [document.querySelectorAll('.wrap.lore textarea').length, document.querySelectorAll('.wrap.lore [data-lore-bio], .wrap.lore [data-lore-copy]').length, document.querySelectorAll('.wrap.lore .lorecats').length]), [0, 0, 0], 'no bio editor, no pills on Lore');
+  const opts = await page.evaluate(() => [...document.querySelectorAll('[data-lcatsel] option')].map((o) => o.textContent.replace(/\s*\(\d+\)$/, '')));
+  assert.deepEqual(opts, ['Producers', 'Engineers', 'Featured', 'Places', 'Photographers'], 'one dropdown for the credits');
+  await page.selectOption('[data-lcatsel]', await page.evaluate(() => [...document.querySelectorAll('[data-lcatsel] option')].find((o) => /^Featured/.test(o.textContent)).value));
+  await page.waitForFunction(() => document.querySelectorAll('#lorePeople .lchip').length > 0 && /Aziza/.test(document.querySelector('#lorePeople').innerText), null, { timeout: 5000 });
+  await noSideways('lore calm');
+  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-bio]'); await page.click('[data-bio]'); await page.waitForSelector('#loreBio');
+  assert.equal(await page.evaluate(() => !!document.querySelector('[data-lore-bio]') && !!document.querySelector('[data-lore-copy]')), true, 'Save bio and Copy lore are here now');
+  await page.fill('#loreBio', 'A short test bio.'); await page.click('[data-lore-bio]'); await seen('Bio saved');
+  await page.evaluate(() => closeModal());
+});
 await step('Unreleased is not in the type lists (filters, new release, Studio); unreleased work can still be marked and labelled Single, Album, ...', async () => {
   await page.evaluate(() => renderLibrary()); await page.waitForSelector('#libBody [data-filtersel]');
   assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#libBody [data-filtersel] option')].map((o) => o.textContent.trim())), ['All types', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation'], 'one type dropdown, no Unreleased type');

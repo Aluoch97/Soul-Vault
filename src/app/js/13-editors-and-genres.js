@@ -405,8 +405,6 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .lore h2 { margin-top: 26px; }
   .lorestats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 8px 0 18px; }
   .lorestats .kpi b { font-size: 26px; }
-  .lorebio textarea { width: 100%; min-height: 150px; line-height: 1.6; font: inherit; font-size: 15px; background: var(--raise); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
-  .lorebio .end { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
   .lorelist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
   .lorelist li { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid var(--line); }
   .lorelist li b { display: block; }
@@ -424,7 +422,6 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .loreera .lc img { display: block; width: 100%; height: 100%; object-fit: cover; } .loreera .lc img:not([src]) { visibility: hidden; }
   .loreera b { font: 700 14px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; } .loreera .cs { font-size: 12px; }
   .agechip { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--raise); color: var(--dim); }
-  .lorecats button i { font-style: normal; opacity: .6; margin-left: 2px; }
   .lchips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
   @media (min-width: 761px) { .lchips { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .lchip { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 8px 12px; border-radius: 14px; text-align: left; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: inherit; font-weight: 600; font-size: 14px; line-height: 1.2; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }

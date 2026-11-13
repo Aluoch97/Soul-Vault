@@ -69,3 +69,6 @@
 
   /* six tabs on a very narrow phone (320 px): share the width instead of keeping a 60 px minimum each */
   @media (max-width: 380px) { .tabs button { min-width: 0; flex: 1 1 0; padding: 4px 0; } .tabs button span, .tabs button { font-size: 11px; } }
+
+  .lorecatsel { display: block; margin: 0 0 12px; } .lorecatsel select { min-height: 44px; max-width: 100%; padding: 0 30px 0 16px; border-radius: 999px; font: 700 16px/1 var(--sans); }
+  #loreBio { width: 100%; min-height: 220px; line-height: 1.6; font-size: 16px; }
