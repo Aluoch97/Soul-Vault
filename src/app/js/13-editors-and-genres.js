@@ -141,6 +141,7 @@ function songOptsTags(d) {
   const t = [];
   if (d.category !== 'Main') t.push(d.extraKind || (d.category === 'B-Side' ? 'B-Side' : 'Draft'));
   if (d.single) t.push('Single');
+  if (d.guest) t.push('Guest spot');
   if (d.hidden) t.push('<span class="tag warn">Hidden</span>');
   if (d.artist && d.artist.toLowerCase() !== relArtist(rel(S.releaseId)).toLowerCase()) t.push(esc(d.artist));
   return t.map(x => x.startsWith('<span') ? x : `<span class="tag">${x}</span>`).join('');

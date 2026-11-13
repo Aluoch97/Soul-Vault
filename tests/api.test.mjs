@@ -950,3 +950,14 @@ test('release types: Unreleased is no longer a type you can pick (new releases r
   const old = await w.owner('studioSaveRelease', 'rel_pub', { basics: { type: 'Unreleased' } });   // an older release that already has this type can still be saved
   assert.equal(old.ok, true);
 }));
+
+test('song settings: marking a song as my guest spot (feature_role) is saved, shown to fans, and can be taken off again', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'catalog');
+  const save = (item) => w.owner('saveTracklist', 'rel_pub', 'Open Album', [Object.assign({ track_id: 'trk_a1' }, item)], false, 'Album');
+  const fan = async () => (await w.call('getShare', ['PUB'])).result.tracks.find(t => t.track_id === 'trk_a1');
+  assert.equal((await save({ feature_role: 'mine', artist: 'Berhani' })).ok, true);
+  let t = await fan(); assert.deepEqual([t.feature_role, t.artist], ['mine', 'Berhani'], 'saved with the main artist');
+  await save({ title: 'Open Album song' }); t = await fan(); assert.equal(t.feature_role, 'mine', 'an edit that does not mention it leaves it alone');
+  await save({ feature_role: 'something else' }); t = await fan(); assert.equal(t.feature_role, '', 'only "mine" is accepted; anything else clears it');
+  await save({ feature_role: 'mine' }); await save({ feature_role: '' }); t = await fan(); assert.equal(t.feature_role, '', 'taken off again');
+}));

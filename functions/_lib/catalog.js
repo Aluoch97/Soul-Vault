@@ -83,6 +83,7 @@ export function saveTracklist(ow, releaseId, releaseTitle, items, releaseHidden,
     if (it.artist != null) t.artist = cut(it.artist, 120);
     if (it.genre != null) t.genre = cleanGenre(it.genre);
     if (it.unreleased != null) t.unreleased = it.unreleased === true || it.unreleased === 'true';
+    if (it.feature_role != null) t.feature_role = it.feature_role === 'mine' ? 'mine' : '';   // 'mine' = my guest spot on someone else's song (shows under Features > Guest spots)
     const hv = {}; (it.hiddenVersions || []).forEach(id => { hv[id] = true; });
     ow.versions.filter(v => v.track_id === t.track_id).forEach(v => { if (it.primary) v.is_primary = v.version_id === it.primary; if (it.hiddenVersions) v.hidden = !!hv[v.version_id]; });
   });

@@ -316,7 +316,7 @@ function editList(ts) {
   S.draft = ts.map(t => {
     const vs = versionsOf(t.track_id, true);
     return { track_id: t.track_id, title: String(t.title == null ? '' : t.title), hidden: hidden(t), chapter: String(t.chapter || ''),
-             number: String(t.number_label || '').trim(), artist: String(t.artist || '').trim(), genre: String(t.genre || '').trim(), unreleased: isUnrel(t),
+             number: String(t.number_label || '').trim(), artist: String(t.artist || '').trim(), genre: String(t.genre || '').trim(), unreleased: isUnrel(t), guest: t.feature_role === 'mine',
              category: { bsides: 'B-Side', deluxe: 'Deluxe', full: 'Main' }[sectionOf(t)], extraKind: isExtra(t) ? extraKindOf(t) : '', single: isSingle(t),
              primary: (vs.find(v => v.is_primary) || vs[0] || {}).version_id,
              hiddenVersions: vs.filter(hidden).map(v => v.version_id) };
@@ -347,6 +347,8 @@ function editRows(moved) {
           <label><input type="checkbox" data-single="${i}" ${d.single ? 'checked' : ''}> Released as a single</label></div>
         <label><input type="checkbox" data-hide-track="${i}" ${d.hidden ? 'checked' : ''}> Hide this song</label>
         <label><input type="checkbox" data-unrel-track="${i}" ${d.unreleased ? 'checked' : ''}> Unreleased (shows an "Unreleased" tag)</label>
+        <label><input type="checkbox" data-guest-track="${i}" ${d.guest ? 'checked' : ''}> A feature: my guest spot on someone else's song</label>
+        <span class="cs">It then shows under Features, Guest spots. Type the main artist (whose song it is) in Song artist above.</span>
         <button class="pill soft danger" type="button" data-del-song="${i}">${I.trash}Delete this song…</button>
         ${(() => {
           const vs = versionsOf(d.track_id, true);
@@ -374,9 +376,16 @@ async function saveEdits() {
     const ce = $('#chapErr'); if (ce) { ce.hidden = false; ce.textContent = chapErr; const pd = ce.closest('details'); if (pd) pd.open = true; ce.scrollIntoView({ block: 'center' }); }
     toast(chapErr); return;
   }
+  const noArtist = S.draft.find(d => d.guest && !String(d.artist || '').trim());
+  if (noArtist) {
+    btn.disabled = false; btn.textContent = 'Save changes';
+    const msg = `For a guest spot, type the main artist (whose song it is) in Song artist for “${noArtist.title}”.`;
+    const row = $('#editList [data-guest-track="' + S.draft.indexOf(noArtist) + '"]'); if (row) { const dt = row.closest('details'); if (dt) dt.open = true; row.scrollIntoView({ block: 'center' }); }
+    toast(msg); return;
+  }
   try {
     items = S.draft.map(d => ({ track_id: d.track_id, title: String(d.title == null ? '' : d.title).trim(), hidden: d.hidden, primary: d.primary, hiddenVersions: d.hiddenVersions, chapter: d.chapter, category: d.category, extra_kind: d.category === 'Main' ? '' : d.extraKind, single: d.single,
-                                number: d.number, artist: d.artist, genre: d.genre, unreleased: !!d.unreleased }));
+                                number: d.number, artist: d.artist, genre: d.genre, unreleased: !!d.unreleased, feature_role: d.guest ? 'mine' : '' }));
     const al = artistLinksDraft();
     if (al) S.lib.artist_links = await run('saveArtistLinks', BOOT.key, al);
     if (details) {
@@ -407,7 +416,7 @@ async function saveEdits() {
       if (it.title) t.title = it.title; t.track_no = i + 1; t.hidden = !!it.hidden; t.chapter = String(it.chapter || '').trim(); t.category = it.category; t.extra_kind = it.category === 'Main' ? '' : (it.extra_kind || ''); t.is_single = !!it.single;
       t.number_label = String(it.number || '').trim().replace(/[^A-Za-z0-9.\-]/g, '').slice(0, 6); t.artist = String(it.artist || '').trim();
       if (it.genre != null) t.genre = String(it.genre || '').split(',').map(x => x.trim()).filter(Boolean).join(', ');
-      t.unreleased = !!it.unreleased;
+      t.unreleased = !!it.unreleased; t.feature_role = it.feature_role === 'mine' ? 'mine' : '';
       S.lib.versions.filter(v => v.track_id === t.track_id).forEach(v => {
         if (it.primary) v.is_primary = v.version_id === it.primary;
         v.hidden = it.hiddenVersions.includes(v.version_id);

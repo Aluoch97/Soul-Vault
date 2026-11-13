@@ -406,6 +406,7 @@ document.addEventListener('change', e => {
   if (ds.vtype != null && S.vdraft) { S.vdraft[+ds.vtype].type = VTYPE[e.target.value] ? e.target.value : 'music'; return; }
   if (!S.draft) return;
   if (ds.unrelTrack != null) { S.draft[+ds.unrelTrack].unreleased = e.target.checked; return; }
+  if (ds.guestTrack != null) { S.draft[+ds.guestTrack].guest = e.target.checked; const tg = e.target.closest('details').querySelector('summary'); if (tg) tg.innerHTML = 'Options ' + songOptsTags(S.draft[+ds.guestTrack]); return; }
   if (ds.hideTrack != null) { S.draft[+ds.hideTrack].hidden = e.target.checked; e.target.closest('.erow').classList.toggle('hid', e.target.checked); }
   else if (ds.primary != null) S.draft[+ds.primary].primary = e.target.value;
   else if (ds.cat != null) { const d = S.draft[+ds.cat], v = e.target.value; d.category = v === 'Main' ? 'Main' : v === 'B-Side' ? 'B-Side' : 'Deluxe'; d.extraKind = v === 'Main' ? '' : v; }   // an extra keeps its label; old category names stay for the Sheet
