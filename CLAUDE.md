@@ -172,3 +172,11 @@ Next for Nick: add soulnicolas.com in Google Search Console and submit `/sitemap
 - Never edit `dist/`. Change the right part in `src/app/` or `apps-script/*`, rebuild.
 - Backend changes: paste the changed `.gs` into Apps Script, new deployment version, bump `SV_BUILD`, update the "SV build" tag.
 - Keep text escaped with `esc()`. Run a syntax check (esbuild `--target=safari15`) and a phone-width layout check before shipping.
+
+## "Status check" (Nick's standing preference, same in all five apps)
+When Nick says "status check", answer in this shape, in plain language:
+1. A table, one row per app (nrnszn site, CERTIFIED, NuDirectory, Soul Vault, PODI): grade, why, what would move it up. Say how confident the grade is, and what was run just now versus only known from earlier.
+2. What would take the biggest-gap app to an A, as a short numbered list.
+3. A recommendation for the next hour, in order, with rough time estimates.
+4. Anything to watch (for example the Resend free tier: 100 e-mails a day, shared by NuDirectory and the newsletters).
+Be honest about what is untested or could not be run from the session.
