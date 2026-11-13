@@ -22,6 +22,7 @@ export async function freshBackend() {
 }
 
 export function makeD1() {
+  let chain = Promise.resolve();
   const db = new DatabaseSync(':memory:');
   const stmt = (sql, params = []) => ({
     bind: (...p) => stmt(sql, p),
@@ -31,10 +32,13 @@ export function makeD1() {
   });
   return {
     prepare: sql => stmt(sql),
-    async batch(list) {
-      db.exec('BEGIN');
-      try { const out = []; for (const s of list) out.push(await s.run()); db.exec('COMMIT'); return out; }
-      catch (e) { db.exec('ROLLBACK'); throw e; }
+    batch(list) {   // one at a time, like D1: two batches started together must not interleave
+      const go = async () => {
+        db.exec('BEGIN');
+        try { const out = []; for (const s of list) out.push(await s.run()); db.exec('COMMIT'); return out; }
+        catch (e) { db.exec('ROLLBACK'); throw e; }
+      };
+      const r = chain.then(go, go); chain = r.catch(() => {}); return r;
     },
     _raw: db,
   };
@@ -95,13 +99,16 @@ export function fixtureLib() {
 }
 
 // ---------------------------------------------------------------- the whole fake world for one test
+export const SAMPLE_FEED = '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Nicólas Soul</title>' +
+  '<entry><id>yt:video:abc123XYZ_-</id><title>SHOW 19 &amp; more | #ROADTO100SHOWS</title><link rel="alternate" href="https://www.youtube.com/watch?v=abc123XYZ_-"/></entry>' +
+  '<entry><id>yt:video:old</id><title>Older one</title><link rel="alternate" href="https://www.youtube.com/watch?v=old"/></entry></feed>';
 export const OWNER_KEY = 'owner-key-0123456789';
 export const APPS_URL = 'https://apps.test/exec';
 
 export async function harness({ lib = fixtureLib(), seed = true, bucket = true, failApps = [] } = {}) {
   const t = await freshBackend();
   const db = makeD1(), media = bucket ? makeBucket() : null;
-  const env = { DB: db, OWNER_KEY, APPS_URL, SIGNUP_API: 'https://signup.test/exec' };
+  const env = { DB: db, OWNER_KEY, APPS_URL, SIGNUP_API: 'https://signup.test/exec', RESEND_API_KEY: 're_test', NEWSLETTER_SECRET: 'news-secret-for-tests', NEWSLETTER_CRON_TOKEN: 'cron-token-for-tests', BANDSINTOWN_APP_ID: 'bit-test' };
   if (media) env.MEDIA = media;
   const log = [];                    // every call that would have gone to Apps Script (or anywhere else)
   const saved = { fetch: globalThis.fetch, caches: globalThis.caches };
@@ -117,6 +124,14 @@ export async function harness({ lib = fixtureLib(), seed = true, bucket = true, 
       return reply({ ok: true, result: true });
     }
     if (u.startsWith('https://signup.test')) return reply({ ok: true });
+    if (u.startsWith('https://api.resend.com/emails')) {                  // a fake Resend: h.mail = every message accepted; h.mailFail = addresses it refuses; h.mailDown = it is down
+      const m = JSON.parse(init.body);
+      if (h.mailDown || h.mailFail.includes(m.to[0])) return new Response('refused', { status: h.mailDown ? 500 : 422 });
+      h.mail.push(m); return reply({ id: 'mail_' + h.mail.length });
+    }
+    if (u.startsWith('https://www.youtube.com/feeds/videos.xml')) return h.feed == null ? new Response('no', { status: 500 }) : new Response(h.feed, { status: 200 });
+    if (u.startsWith('https://rest.bandsintown.com/')) return h.shows == null ? new Response('no', { status: 500 }) : reply(h.shows);
+    if (u.startsWith('https://docs.google.com/spreadsheets/')) return h.tracker == null ? new Response('no', { status: 403 }) : new Response(h.tracker, { status: 200 });
     if (u.startsWith('https://www.googleapis.com/youtube/v3/')) {       // a small fake YouTube: h.youtube = { videos: { id: title }, playlists: { id: { title, videos: [{ id, title }] } }, error: { status, reason } }
       const q = new URL(u), path = q.pathname.split('/').pop(), yt = h.youtube;
       h.ytCalls.push({ path, params: Object.fromEntries(q.searchParams) });
@@ -134,6 +149,7 @@ export async function harness({ lib = fixtureLib(), seed = true, bucket = true, 
   const pending = [];
   const h = {
     t, db, env, media, log, lib, youtube: { videos: {}, playlists: {} }, ytCalls: [], ytImages: {},
+    mail: [], mailFail: [], mailDown: false, feed: SAMPLE_FEED, shows: [], tracker: null,
     ctx(request) { return { request, env, waitUntil: p => { pending.push(Promise.resolve(p).catch(() => {})); } }; },
     async settle() { await Promise.all(pending.splice(0)); },
     /** POST /api { fn, args } -> the parsed JSON answer */

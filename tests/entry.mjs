@@ -12,3 +12,5 @@ export * as activity from '../functions/_lib/activity.js';
 export * as fans from '../functions/_lib/fans.js';
 export * as backup from '../functions/_lib/backup.js';
 export * as catalog from '../functions/_lib/catalog.js';
+export * as newsletter from '../functions/_lib/newsletter.js';
+export { onRequestGet as newsGet, onRequestPost as newsPost } from '../functions/news.js';
