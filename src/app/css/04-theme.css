@@ -137,3 +137,12 @@
     .rc { flex-basis: 120px; } .rc .art { width: 120px; height: 120px; }
   }
 
+
+  /* arrows on rows that scroll sideways */
+  .scrollwrap { position: relative; min-width: 0; }
+  .sarrow { position: absolute; top: 38%; transform: translateY(-50%); z-index: 4; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; color: #fff;
+            background: rgba(10,10,11,.72); border: 1px solid rgba(255,255,255,.22); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+  .sarrow[hidden] { display: none; }
+  .sarrow.l { left: 6px; } .sarrow.r { right: 6px; }
+  .sarrow svg { width: 18px; height: 18px; } .sarrow .flip { display: grid; transform: scaleX(-1); }
+  @media (hover: hover) { .sarrow:hover { background: var(--red); border-color: var(--red); } }
