@@ -81,3 +81,23 @@
   .extras > .sh { margin-bottom: 4px; }
   .extras .ex-tabs { margin: 2px 0 12px; }
   .extras .vsec { margin: 0 0 12px; } .extras .vs-head { display: none; }
+
+  /* Studio: a calmer page. Release card, four tabs (Info / Songs / Links / Add), groups you open as needed, a Save bar that stays in reach. */
+  .wrap.studio { max-width: 860px; margin-left: auto; margin-right: auto; }
+  .studio .stupick { display: flex; gap: 8px; align-items: center; margin: 8px 0 14px; } .studio .stupick .stusel { margin: 0; flex: 1; min-width: 0; } .studio .stupick .pill { flex: none; }
+  .studio .stuhead { display: flex; gap: 14px; align-items: center; margin: 0 0 12px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.03); }
+  .studio .stuart { flex: none; width: 72px; height: 72px; border-radius: 12px; overflow: hidden; background: #1a1a1c; } .studio .stuart img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .studio .stumeta { display: grid; gap: 4px; min-width: 0; } .studio .stumeta b { font-size: 18px; line-height: 1.2; overflow-wrap: anywhere; } .studio .stumeta .cs { margin: 0; }
+  .studio .stutags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .studio .stutabs { margin: 0 0 14px; border-bottom: 1px solid var(--line); gap: 22px; } .studio .stutabs button { margin-bottom: -1px; } .studio .stutabs .n { opacity: .6; font-weight: 600; margin-left: 2px; }
+  .studio [data-stupanel][hidden] { display: none; }
+  .studio .stuvis { display: grid; gap: 8px; margin: 0 0 12px; }
+  .studio .stuvis .chk { align-items: flex-start; gap: 12px; padding: 12px 14px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.03); }
+  .studio .stuvis .chk input { margin-top: 3px; } .studio .stuvis .chk span { display: grid; gap: 2px; } .studio .stuvis .chk .cs { font-size: 13px; margin: 0; }
+  .studio .stulist { display: grid; gap: 8px; margin: 0 0 12px; }
+  .studio details.scard { padding: 0; } .studio details.scard > summary { padding: 12px 14px; align-items: center; } .studio details.scard > summary h3 { min-width: 0; overflow-wrap: anywhere; } .studio details.scard > .stubody { padding-top: 0; }
+  .studio details.scard > summary::after, .studio details.stu > summary::after { content: '▾'; color: var(--dim); flex: none; margin-left: 8px; } .studio details[open] > summary::after { content: '▴'; }
+  .studio details.scard > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; row-gap: 6px; } .studio details.scard > summary::after { grid-column: 2; grid-row: 1; } .studio details.scard > summary .stutags { grid-column: 1 / -1; }
+  .studio .tag { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.5; background: rgba(255,255,255,.1); color: var(--text); } .studio .tag.warn { background: rgba(224,184,74,.2); color: #e0b84a; }
+  .studio .stubox { border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.03); padding: 16px 0 0; margin: 0 0 12px; }
+  .studio .stusticky { position: sticky; bottom: 78px; z-index: 5; margin: 8px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(12,12,13,.94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }

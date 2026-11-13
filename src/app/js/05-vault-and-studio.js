@@ -139,13 +139,13 @@ async function replaceAudioOnEdge(file, v, t, stat, bar) {
 
 // Studio: the buttons for adding things to a release, and a New release form.
 function stuAddSection(rid, isOwnerEdge) {
-  return `<details class="stu" open><summary>Add to this release</summary><div class="stubody">
+  return `<div class="stu stubox"><div class="stubody">
     <p class="cs" style="margin:0">Songs and pictures go straight to your own storage. A WAV or AIFF is turned into a 256 kbps MP3 first; your master files stay on your computer.</p>
     <div class="save"><button type="button" class="pill main" id="stuAddSong">${I.plus}Add a song</button><button type="button" class="pill soft" id="stuAddPhotos">${I.img}Add photos</button><button type="button" class="pill soft" id="stuCover">${I.img}Change cover</button>
       <button type="button" class="pill soft" id="stuBg">${I.img}Page background</button><button type="button" class="pill soft" id="stuClean">${I.img}Clean cover</button></div>
     <input type="file" id="stuPhotoFiles" accept="image/*" multiple hidden><input type="file" id="stuCoverFile" accept="image/*" hidden><input type="file" id="stuBgFile" accept="image/*" hidden><input type="file" id="stuCleanFile" accept="image/*" hidden>
     <p class="cs" style="margin:0">Page background, clean cover and song covers work once the catalog is switched to Cloudflare (Settings, Move off the Sheet).</p>
-    <p class="st" id="stuAddSt" role="status"></p></div></details>`;
+    <p class="st" id="stuAddSt" role="status"></p></div></div>`;
 }
 function wireStuAdd(rid) {
   const say = (t, bad) => { const e = $('#stuAddSt'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--red, #ff6b6b)' : ''; } };
@@ -247,23 +247,65 @@ function drawStudio() {
   const linkRow = l => `<div class="lrow"><input class="field" list="stuSvc" placeholder="Spotify" value="${esc(l[0])}" aria-label="Service name"><input class="field" type="url" placeholder="https://…" value="${esc(l[1])}" aria-label="Link"><button type="button" class="ib" data-stu-rmlink aria-label="Remove this link">${I.x}</button></div>`;
   const songs = tracks.map(t => {
     const hasSR = g.versions.some(v => v.track_id === t.track_id && isSR(v)), tu = t.track_id in fl.tracks ? fl.tracks[t.track_id] : (t.unreleased === true || String(t.unreleased) === 'true');
-    return `<div class="scard" data-stu-song="${esc(t.track_id)}">
-      <h3><span>${esc(t.number_label || t.track_no)}</span>${esc(t.title)}</h3>
-      <div class="sf2">${f('', 'Title', t.title, 'data-k="title"')}${f('', 'Artist', t.artist, 'data-k="artist"')}</div>
-      <div class="sf2">${f('', 'Features', t.features, 'data-k="features"')}${f('', 'Producer', t.producer, 'data-k="producer"')}</div>
-      <div class="sf2">${f('', 'Engineer', t.engineer, 'data-k="engineer"')}${f('', 'Music video (YouTube link)', t.video_url, 'data-k="video_url" type="url"')}</div>
-      ${hasSR ? f('', 'Slowed + reverb video (YouTube link)', ov.sr[t.track_id] || '', 'data-sr type="url"') : ''}
-      <label class="chk"><input type="checkbox" data-unrel ${tu ? 'checked' : ''}> Unreleased song</label>
-      <label class="stf">In the Features area <select class="field" data-k="feature_role"><option value="">Only if someone is featured on it</option><option value="mine"${t.feature_role === 'mine' ? ' selected' : ''}>My guest spot on someone else's song</option></select><span class="cs">For a guest spot, put the main artist in Artist above.</span></label>
-      <label class="stf">If unreleased, it counts as <select class="field" data-k="unrel_kind"><option value="">Same as its release</option>${UNREL_KINDS.map(k => `<option${t.unrel_kind === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select></label>
-      <div class="save"><button type="button" class="pill main" data-stu-savesong>Save song</button>${EDGE_UPLOADS() ? `<button type="button" class="pill soft" data-stu-songcover="${esc(t.track_id)}">${I.img}Song cover</button>` : ''}<span class="st" role="status"></span></div></div>`;
+    const tags = [tu ? 'Unreleased' : '', t.feature_role === 'mine' ? 'Guest spot' : '', t.artist ? 'by ' + t.artist : ''].filter(Boolean).map(x => `<span class="tag">${esc(x)}</span>`).join('');
+    return `<details class="stu scard" data-stu-song="${esc(t.track_id)}">
+      <summary><h3><span>${esc(t.number_label || t.track_no)}</span>${esc(t.title)}</h3><span class="stutags">${tags}</span></summary>
+      <div class="stubody">
+        <div class="sf2">${f('', 'Title', t.title, 'data-k="title"')}${f('', 'Artist', t.artist, 'data-k="artist"')}</div>
+        <div class="sf2">${f('', 'Features', t.features, 'data-k="features"')}${f('', 'Producer', t.producer, 'data-k="producer"')}</div>
+        <div class="sf2">${f('', 'Engineer', t.engineer, 'data-k="engineer"')}${f('', 'Music video (YouTube link)', t.video_url, 'data-k="video_url" type="url"')}</div>
+        ${hasSR ? f('', 'Slowed + reverb video (YouTube link)', ov.sr[t.track_id] || '', 'data-sr type="url"') : ''}
+        <div class="stuvis"><label class="chk"><input type="checkbox" data-unrel ${tu ? 'checked' : ''}> Unreleased song</label></div>
+        <div class="sf2"><label class="stf">In the Features area <select class="field" data-k="feature_role"><option value="">Not a guest spot</option><option value="mine"${t.feature_role === 'mine' ? ' selected' : ''}>My guest spot on someone else's song</option></select><span class="cs">For a guest spot, put the main artist in Artist above.</span></label>
+        <label class="stf">If unreleased, it counts as <select class="field" data-k="unrel_kind"><option value="">Same as its release</option>${UNREL_KINDS.map(k => `<option${t.unrel_kind === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select></label></div>
+        <div class="save"><button type="button" class="pill main" data-stu-savesong>Save song</button>${EDGE_UPLOADS() ? `<button type="button" class="pill soft" data-stu-songcover="${esc(t.track_id)}">${I.img}Song cover</button>` : ''}<span class="st" role="status"></span></div>
+      </div></details>`;
   }).join('');
+  const tab = ['info', 'songs', 'links', 'add'].indexOf(S.stuTab) > -1 && (S.stuTab !== 'add' || EDGE_UPLOADS()) ? S.stuTab : 'info';
+  const nowHidden = r.hidden === true;
   $('#main').innerHTML = `<div class="wrap studio">
     <button class="back" data-nav="vault">${I.back}Settings</button>
     <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>
-    <p class="cs">Pick a release, change what you need, and press Save in that section. Changes show on the site within about a minute.</p>
-    <div style="display:flex;gap:8px;align-items:center;margin:6px 0 14px"><select class="field stusel" id="stuRel" aria-label="Release" style="margin:0;flex:1;min-width:0">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
-      ${EDGE_UPLOADS() ? `<button type="button" class="pill main" id="stuNewRel" style="flex:none">${I.plus}New</button>` : ''}</div>
+    <div class="stupick"><select class="field stusel" id="stuRel" aria-label="Release">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
+      ${EDGE_UPLOADS() ? `<button type="button" class="pill main" id="stuNewRel">${I.plus}New</button>` : ''}</div>
+    <section class="stuhead" aria-label="${esc(r.title)}">
+      <span class="stuart">${r.cover_file_id ? `<img class="art" data-cover="${esc(r.cover_file_id)}" alt="">` : ''}</span>
+      <span class="stumeta"><b>${esc(r.title)}</b><span class="cs">${esc([typeOf(r), r.year].filter(Boolean).join(' · '))} · ${plural(tracks.length, 'song')}</span>
+        <span class="stutags"><span class="tag${nowHidden ? ' warn' : ''}">${nowHidden ? 'Hidden from fans' : 'Visible to fans'}</span>${unrel ? '<span class="tag">Unreleased</span>' : ''}</span></span>
+    </section>
+    <div class="vs-tabs stutabs" role="tablist" aria-label="Studio sections">
+      <button type="button" role="tab" data-stutab="info">Info</button><button type="button" role="tab" data-stutab="songs">Songs <span class="n">${tracks.length}</span></button><button type="button" role="tab" data-stutab="links">Links</button>${EDGE_UPLOADS() ? '<button type="button" role="tab" data-stutab="add">Add</button>' : ''}
+    </div>
+    <section data-stupanel="info" id="stuInfo">
+      <div class="stuvis">
+        <label class="chk"><input type="checkbox" id="stHidden" ${nowHidden ? 'checked' : ''}> <span><b>Hide this release from fans</b><span class="cs">Fans can't see it until you untick this.</span></span></label>
+        <label class="chk"><input type="checkbox" id="stUnrel" ${unrel ? 'checked' : ''}> <span><b>Unreleased</b><span class="cs">Shows under Extras, Unreleased.</span></span></label>
+      </div>
+      <details class="stu" open><summary>Basics</summary><div class="stubody">
+        <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${relTypeOptions(r.type).map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
+        <div class="sf2">${f('stArtist', 'Artist name (if not Nicólas Soul)', r.artist_name)}${f('stRec', 'Recorded at', r.recorded_at)}</div>
+        ${f('stGenre', 'Genre (comma separated, up to 6)', r.genre, 'list="stuGenres"')}<datalist id="stuGenres">${knownGenres().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+      </div></details>
+      <details class="stu"><summary>Story &amp; mood</summary><div class="stubody">
+        ${f('stTag', 'Tagline', r.world_tagline, 'maxlength="140"')}
+        ${ta('stStory', 'Story', r.world_story, 6)}
+        <div class="sf2">${f('stMood', 'Mood words (comma separated)', r.world_mood)}${f('stColor', 'Theme color (like #D21034)', r.world_color)}</div>
+      </div></details>
+      <details class="stu"><summary>Series &amp; credits</summary><div class="stubody">
+        <div class="sf2">${f('stSeries', 'Series name', r.series_name)}${f('stPart', 'Series part', String(r.series_part || '').replace(/^'/, ''))}</div>
+        ${ta('stCredits', 'Album credits (one per line, like “Produced by: Name (1, 3-5)”)', r.album_credits, 8)}
+      </div></details>
+      <div class="save stusticky"><button type="button" class="pill main" id="stuSaveInfo">Save release info</button><span class="st" id="stuInfoSt" role="status"></span></div>
+    </section>
+    <section data-stupanel="songs">${songs ? `<div class="stulist">${songs}</div>` : '<p class="cs">No songs on this release yet.</p>'}<p class="cs">Lyrics, covers and audio files are still edited on the release page.</p></section>
+    <section data-stupanel="links"><div class="stu stubox"><div class="stubody">
+      <p class="cs" style="margin:0">Shown as “Listen on” buttons under the release name. Use the full link.</p>
+      <div id="stuLinks" style="display:grid;gap:8px">${(lk.links || []).map(linkRow).join('')}</div>
+      <datalist id="stuSvc">${STU_SERVICES.map(x => `<option value="${x}">`).join('')}</datalist>
+      <div class="save"><button type="button" class="pill soft" id="stuAddLink">${I.plus}Add a link</button></div>
+      ${f('stFirst', 'First appeared on (DatPiff, Bandcamp…)', lk.first)}
+      <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></div></section>
+    ${EDGE_UPLOADS() ? `<section data-stupanel="add">${stuAddSection(rid)}</section>` : ''}
     <details class="stu" id="stuBulk"><summary>Edit several releases at once</summary><div class="stubody">
       <p class="cs" style="margin:0">Tick the releases, tick each field you want to change and type the new value, then Apply. Anything you leave unticked stays exactly as it is.</p>
       <div class="save"><button type="button" class="pill soft" data-bk-all>Select all</button><button type="button" class="pill soft" data-bk-none>None</button><span class="st" id="bkCount">0 selected</span></div>
@@ -281,28 +323,11 @@ function drawStudio() {
         <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="unreleased"> Unreleased</label><select class="field" data-bk-val="unreleased"><option value="true">Mark as unreleased</option><option value="false">Not unreleased</option></select></div>
       </div>
       <div class="save"><button type="button" class="pill main" id="bkApply">Apply to the ticked releases</button><span class="st" id="bkSt" role="status"></span></div></div></details>
-    <details class="stu" open><summary>Release info</summary><div class="stubody" id="stuInfo">
-      <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${relTypeOptions(r.type).map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
-      <div class="sf2">${f('stArtist', 'Artist name (if not Nicólas Soul)', r.artist_name)}${f('stRec', 'Recorded at', r.recorded_at)}</div>
-      ${f('stGenre', 'Genre (comma separated, up to 6)', r.genre, 'list="stuGenres"')}<datalist id="stuGenres">${knownGenres().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
-      ${f('stTag', 'Tagline', r.world_tagline, 'maxlength="140"')}
-      ${ta('stStory', 'Story', r.world_story, 6)}
-      <div class="sf2">${f('stMood', 'Mood words (comma separated)', r.world_mood)}${f('stColor', 'Theme color (like #D21034)', r.world_color)}</div>
-      <div class="sf2">${f('stSeries', 'Series name', r.series_name)}${f('stPart', 'Series part', String(r.series_part || '').replace(/^'/, ''))}</div>
-      ${ta('stCredits', 'Album credits (one per line, like “Produced by: Name (1, 3-5)”)', r.album_credits, 8)}
-      <label class="chk"><input type="checkbox" id="stHidden" ${r.hidden === true ? 'checked' : ''}> Hide this release from fans</label>
-      <label class="chk"><input type="checkbox" id="stUnrel" ${unrel ? 'checked' : ''}> Unreleased (shows in the Unreleased section)</label>
-      <div class="save"><button type="button" class="pill main" id="stuSaveInfo">Save release info</button><span class="st" id="stuInfoSt" role="status"></span></div></div></details>
-    <details class="stu" open><summary>Streaming links</summary><div class="stubody">
-      <p class="cs" style="margin:0">Shown as “Listen on” buttons under the release name. Use the full link.</p>
-      <div id="stuLinks" style="display:grid;gap:8px">${(lk.links || []).map(linkRow).join('')}</div>
-      <datalist id="stuSvc">${STU_SERVICES.map(x => `<option value="${x}">`).join('')}</datalist>
-      <div class="save"><button type="button" class="pill soft" id="stuAddLink">${I.plus}Add a link</button></div>
-      ${f('stFirst', 'First appeared on (DatPiff, Bandcamp…)', lk.first)}
-      <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></details>
-    ${EDGE_UPLOADS() ? stuAddSection(rid) : ''}
-    <details class="stu"><summary>Songs <span class="cs">${tracks.length}</span></summary><div class="stubody">${songs || '<p class="cs">No songs on this release.</p>'}</div></details>
-    <p class="cs" style="margin:16px 0 0">Lyrics, covers and audio files are still edited on the release page.</p></div>`;
+    </div>`;
+  loadCovers();
+  const stuTabs = [...$$('[data-stutab]')], stuPanels = [...$$('[data-stupanel]')];
+  const showStuTab = k => { S.stuTab = k; stuTabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.stutab === k))); stuPanels.forEach(x => { x.hidden = x.dataset.stupanel !== k; }); };
+  stuTabs.forEach(b => b.addEventListener('click', () => showStuTab(b.dataset.stutab))); showStuTab(tab);
   window.scrollTo(0, 0);
   const say = (el, t, bad) => { if (el) { el.textContent = t; el.style.color = bad ? 'var(--red, #ff6b6b)' : ''; } };
   const guard = async (btn, st, fn) => { btn.disabled = true; say(st, 'Saving…'); try { await fn(); say(st, 'Saved'); toast('Saved'); } catch (e) { say(st, e.message || 'Could not save', true); } btn.disabled = false; };
