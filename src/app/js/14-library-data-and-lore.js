@@ -367,14 +367,14 @@ function openLinkOnly() {
   const draw = () => {
     const ts = linkOnlySongs(), rl = id => S.lib.releases.find(r => r.release_id === id) || {};
     $('#loSt').textContent = ts.length ? `${ts.length} ${ts.length === 1 ? 'song plays' : 'songs play'} only through a YouTube or SoundCloud link. If a link is taken down, that song disappears. Tap Add file and pick the audio (a WAV, MP3 or M4A); the link keeps working as the video.` : 'Every song has its own audio file. Nothing depends on a link.';
-    const by = {}; ts.forEach(t => (by[rl(t.release_id).title || ''] = by[rl(t.release_id).title || ''] || []).push(t));
-    $('#loList').innerHTML = Object.keys(by).map(r => `<div><b>${esc(r)}</b>${by[r].map(t => { const v = S.lib.versions.find(x => x.track_id === t.track_id && !x.hidden);
+    const by = {}; ts.forEach(t => (by[t.release_id] = by[t.release_id] || []).push(t));
+    $('#loList').innerHTML = Object.keys(by).map(r => `<div><button type="button" class="linkish" data-lo-rel="${esc(r)}" aria-label="Open ${esc(rl(r).title || 'release')}"><b>${esc(rl(r).title || '')}</b></button>${by[r].map(t => { const v = S.lib.versions.find(x => x.track_id === t.track_id && !x.hidden);
       return `<div class="msrow" data-lo="${esc(t.track_id)}"><div><span>${esc(t.title)}</span> <span class="cs">· ${v && v.format === 'SOUNDCLOUD' ? 'SoundCloud' : 'YouTube'}</span></div>
         <div class="cs msst" role="status"></div><div class="msbar" hidden style="height:4px;border-radius:4px;background:var(--raise);overflow:hidden"><i style="display:block;height:100%;width:0;background:var(--red)"></i></div>
         <div class="msbtns"><button class="pill main" data-lo-up="${esc(t.track_id)}">Add file</button></div></div>`; }).join('')}</div>`).join('');
   };
   draw();
-  m.addEventListener('click', e => { const b = e.target.closest('[data-lo-up]'); if (b) { pickFor = b.dataset.loUp; $('#loFile').value = ''; $('#loFile').click(); } });
+  m.addEventListener('click', e => { const rb = e.target.closest('[data-lo-rel]'); if (rb) { closeModal(); renderRelease(rb.dataset.loRel); return; } const b = e.target.closest('[data-lo-up]'); if (b) { pickFor = b.dataset.loUp; $('#loFile').value = ''; $('#loFile').click(); } });
   $('#loFile').addEventListener('change', async e => {
     const f = e.target.files[0], tid = pickFor; if (!f || !tid) return;
     const row = [...$$('#loList [data-lo]')].find(x => x.dataset.lo === tid), t = S.lib.tracks.find(x => x.track_id === tid); if (!row || !t) return;

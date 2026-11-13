@@ -194,8 +194,10 @@ async function doUpload(btn) {
 
 /* ── previews for existing songs ── */
 
+// Now Playing is "open" when it is on screen. A YouTube or SoundCloud song's player lives inside it, so closing it PARKS it instead (kept on the page, invisible, still playing).
+const npOpen = () => { const n = $('#np'); return !!n && !n.hidden && !n.classList.contains('parked'); };
 function openNp() {
-  const np = $('#np'); np.hidden = false; np.classList.add('opening');
+  const np = $('#np'); np.hidden = false; np.classList.remove('parked'); np.classList.add('opening');
   setTimeout(() => np.classList.remove('opening'), 400);
   np.querySelector('[data-ctl="close"]').focus();
   document.body.style.overflow = 'hidden';
@@ -238,8 +240,11 @@ function watchVideo(tid) {
 function closeNp() {
   S.sync = null;
   if (S.videoMode && !S.ytSong) setMode('song');
-  if (S.ytSong && S.ytPlaying) { try { ytCommand('pauseVideo'); } catch (e) {} S.ytPlaying = false; setToggle(false); }   // a YouTube song only plays while its video is on screen
-  $('#np').hidden = true; document.body.style.overflow = ''; $('#openNp').focus(); }
+  const link = S.ytSong || S.scSong;   // these play inside Now Playing's page, so keep it on the page (parked) and the song keeps playing
+  if (link) $('#np').classList.add('parked'); else $('#np').hidden = true;
+  document.body.style.overflow = ''; $('#openNp').focus(); }
+// Really close it: nothing is playing in it any more.
+function hideNpFully() { const np = $('#np'); if (!np) return; np.classList.remove('parked'); np.hidden = true; document.body.style.overflow = ''; }
 
 // Swipe down on the now-playing screen to close it.
 (() => {
@@ -253,7 +258,7 @@ function closeNp() {
 
 // Keep keyboard focus inside whichever overlay is open.
 function trapFocus(e) {
-  const box = !$('#modal').hidden ? $('#modal') : (!$('#np').hidden ? $('#np') : null);
+  const box = !$('#modal').hidden ? $('#modal') : (npOpen() ? $('#np') : null);
   if (!box || e.key !== 'Tab') return;
   const f = [...box.querySelectorAll('button, a[href], input, select')].filter(el => !el.hidden && el.offsetParent);
   if (!f.length) return;

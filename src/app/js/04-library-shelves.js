@@ -203,7 +203,9 @@ function renderLibBody() {
   const q = S.q.trim().toLowerCase();
   const types = JSON.parse($('#libBody').dataset.types || '["All"]');
   if (TYPE_FILTERS.indexOf(S.filter) === -1) S.filter = 'All';
-  let rs = S.lib.releases.filter(r => (S.filter === 'All' || typeGroup(r) === S.filter) && (OWNER || !r.locked) && (OWNER || tracksOf(r.release_id).length));
+  const linkIds = q ? null : new Set(linkOnlySongs().map(t => t.track_id));   // songs added from a YouTube / SoundCloud link have no file of their own
+  const linkRel = r => { const ts = S.lib.tracks.filter(t => t.release_id === r.release_id && !hidden(t)); return ts.length > 0 && ts.every(t => linkIds.has(t.track_id)); };
+  let rs = S.lib.releases.filter(r => (S.filter === 'All' || typeGroup(r) === S.filter) && (OWNER || !r.locked) && (OWNER || tracksOf(r.release_id).length) && (q || !linkRel(r)));   // (a release moves into the Discography as soon as its songs have their own audio files)
   let songHits = [];
   if (q) {
     songHits = S.lib.tracks.filter(t => (String(t.title).toLowerCase().includes(q) || String(t.genre || '').toLowerCase().includes(q)) && !hidden(t) && primaryOf(t)).slice(0, 12);
