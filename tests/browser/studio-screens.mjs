@@ -133,24 +133,17 @@ await step('Music tab: the Unreleased area is its own secret-access area with it
   await page.evaluate(() => renderLibrary()); await page.waitForSelector('#unreleased .vsc');
   if (process.env.SHOT5) { await page.evaluate(() => document.querySelector('#unreleased').scrollIntoView()); await page.screenshot({ path: process.env.SHOT5 }); }
 });
-await step('Music tab: Features has one tab for my features and one for my guest spots, and every project lists its songs by name', async () => {
+await step('Music tab: Features lists only my guest spots (no "my features" tab): one project card each, songs by name, "by <artist>", same-height cards', async () => {
   await page.waitForSelector('#features .vsc');
-  const read = () => page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), tabs: [...el.querySelectorAll('.vs-tabs button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim() + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), chips: [...el.querySelectorAll('[data-secsel] option')].map((o) => o.textContent.trim()), cards: el.querySelectorAll('.vsc').length, tags: [...el.querySelectorAll('.vtag')].map((b) => b.textContent.trim()).sort(), songs: [...el.querySelectorAll('.vsc')].map((c) => [c.querySelector('.agt').textContent, [...c.querySelectorAll('.vsong')].map((x) => x.textContent).sort().join(' / ')].join(' => ')).sort(), view: (el.querySelector('[data-libmenu]') || {}).textContent }; });
-  let info = await read();
+  const info = await page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), tabs: el.querySelectorAll('.vs-tabs, [data-sectab]').length, chips: [...el.querySelectorAll('[data-secsel] option')].map((o) => o.textContent.trim()),
+    tags: [...el.querySelectorAll('.vtag')].map((b) => b.textContent.trim()), subs: [...el.querySelectorAll('.vsub2')].map((b) => b.textContent.trim()), titles: [...el.querySelectorAll('.vsc .agt')].map((b) => b.textContent.trim()), songs: [...el.querySelectorAll('.vsc')].map((c) => [...c.querySelectorAll('.vsong')].map((x) => x.textContent).join(' / ')) }; });
   assert.ok(/spot/.test(info.cls) && /features/.test(info.ribbon), 'its own look: ' + info.ribbon);
-  assert.deepEqual(info.tabs, ['My features*', 'Guest spots'], 'two tabs, my features first: ' + info.tabs.join(' | '));
-  assert.deepEqual(info.chips, ['Everyone (2)', 'Aziza (2)', 'Charlie, The Healer (1)', 'Khairro (1)'], 'one dropdown with only the people on my features: ' + info.chips.join(' | '));
-  assert.deepEqual(info.tags, ['1 feature', '3 features']); assert.equal(info.cards, 2, 'one card per project');
-  assert.ok(info.songs.some((s) => s === 'Group EP => G1 / G2 / G3'), 'each project lists its songs by name, without the "(feat. …)" tail: ' + info.songs.join(' | '));
+  assert.equal(info.tabs, 0, 'no tabs: Features is only my guest spots');
+  assert.ok(info.tags.length >= 1 && info.tags.every((t) => t === 'Guest spot'), 'every card is a guest spot: ' + info.tags.join(' | '));
+  assert.ok(info.subs.every((t) => /^by /.test(t)) && info.subs.some((t) => /Berhani/.test(t)), 'each card says whose song it is: ' + info.subs.join(' | '));
+  assert.ok(!info.titles.includes('Group EP') && !info.titles.includes('Open Album'), 'projects that only have guests on MY songs are not listed: ' + info.titles.join(' | '));
+  assert.ok(info.songs.some((s) => /^Song trk_sg$/.test(s)), 'a card names the song: ' + info.songs.join(' | '));
   assert.deepEqual(await page.evaluate(() => [featuresOf({ features: 'Charlie, The Healer' }), featuresOf({ features: 'Charlie & Aziza' }), featuresOf({ title: 'X (feat. The Healer)' }), featuresOf({ features: 'Charlie, The Healer, Charlie' })]), [['Charlie, The Healer'], ['Charlie, The Healer', 'Aziza'], ['Charlie, The Healer'], ['Charlie, The Healer']], 'Charlie and The Healer are one artist: Charlie, The Healer');
-  await page.selectOption('#features [data-secsel]', 'a:Khairro'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /Group EP/.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
-  await page.click('#features [data-sectab="features|spots"]');
-  await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /Berhani/.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
-  info = await read();
-  assert.deepEqual(info.tabs, ['My features', 'Guest spots*']); assert.deepEqual(info.chips, []);   // (one person: no dropdown) assert.deepEqual(info.tags, ['Guest spot']);
-  assert.match(info.songs[0], /Song trk_sg$/, 'a guest spot card names the song: ' + info.songs[0]);
-  await page.click('#features [data-sectab="features|mine"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 2, null, { timeout: 5000 });   // the person filter starts over
-  await page.selectOption('#features [data-secsel]', 'a:Aziza'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 2, null, { timeout: 5000 });
   const uni = await page.evaluate(() => { const c = [...document.querySelectorAll('#features .vsc')]; return { heights: [...new Set(c.map((e) => Math.round(e.getBoundingClientRect().height)))], overflow: c.some((e) => e.scrollWidth > e.clientWidth + 1) }; });
   assert.equal(uni.heights.length, 1, 'every project card is the same height: ' + uni.heights.join(', ')); assert.equal(uni.overflow, false, 'no text spills out of a card');
   assert.equal(await page.evaluate(() => document.querySelectorAll('#features [data-libmenu], #features .allgrid, #features .alllist').length), 0, 'Features has no View menu: one scrolling row');
@@ -515,8 +508,7 @@ await step('a song\'s Options (release page > Edit) has a guest-spot checkbox: i
   await page.evaluate((i) => { const a = document.querySelector('[data-tart="' + i + '"]'); a.value = 'Zeta Artist'; a.dispatchEvent(new Event('input', { bubbles: true })); }, idx);
   await page.evaluate(() => document.querySelector('[data-edit-save]').click());
   await page.waitForFunction((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); return x && x.feature_role === 'mine' && !S.editing; }, tid, { timeout: 15000 });
-  await page.evaluate(() => { S.filter = 'All'; renderLibrary(); }); await page.waitForSelector('#features .vs-tabs');
-  await page.click('#features [data-sectab="features|spots"]');
+  await page.evaluate(() => { S.filter = 'All'; renderLibrary(); }); await page.waitForSelector('#features .vsc');
   await page.waitForFunction(() => /Open Album/.test(document.querySelector('#features').innerText) && /Guest spot/.test(document.querySelector('#features .vtag').textContent), null, { timeout: 8000 });
   await page.evaluate((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); x.feature_role = ''; }, tid);
 });
@@ -556,10 +548,9 @@ await step('Music tab is calm: one line for the type filter + View, no "1 of N" 
   const m = await page.evaluate(() => { const q = (x) => document.querySelector(x), c = (e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; };
     const visible = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
     return { sameLine: Math.abs(c(q('.libbar [data-filtersel]')) - c(q('.libbar [data-libmenu]'))) < 12, counter: !!q('#shelfPos'), pills: document.querySelectorAll('#libBody [data-filter]').length, viewMenus: document.querySelectorAll('#libBody [data-libmenu]').length,
-      featLine: !!q('#features .vs-bar') && Math.abs(c(q('#features .vs-tabs')) - c(q('#features [data-secsel]'))) < 12, controls: [...document.querySelectorAll('#main button, #main select')].filter(visible).length }; });
+featLine: !q('#features .vs-tabs') && (!q('#features [data-secsel]') || (c(q('#features .vs-blurb')) < c(q('#features [data-secsel]')) && q('#features [data-secsel]').getBoundingClientRect().right <= innerWidth)), controls: [...document.querySelectorAll('#main button, #main select')].filter(visible).length }; });
   assert.deepEqual([m.sameLine, m.counter, m.pills, m.viewMenus], [true, false, 0, 1], 'one line, no counter, no type pills, a single View menu on the whole Music tab: ' + JSON.stringify(m));
-  assert.ok(m.featLine, 'Features: tabs and the guest dropdown share one line');
-  assert.equal(await page.evaluate(() => { const t = document.querySelector('#features .vs-tabs').getBoundingClientRect(), s = document.querySelector('#features [data-secsel]').getBoundingClientRect(); return t.right <= s.left + 1 && s.right <= innerWidth; }), true, 'the tabs and the dropdown do not overlap or run off the screen'); console.log('   (Music tab controls on screen: ' + m.controls + ')');
+  assert.ok(m.featLine, 'Features: no tabs, and the artist dropdown (when there is more than one artist) stays on screen');
   await page.selectOption('[data-filtersel]', 'EP'); await page.waitForFunction(() => S.filter === 'EP' && document.querySelectorAll('#all-releases .slide').length >= 0 && document.querySelector('[data-filtersel]').value === 'EP', null, { timeout: 5000 });
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('#all-releases .slide')].every((x) => /EP/.test(x.querySelector('.tag, .as, .cap') ? x.textContent : 'EP'))), true, 'the dropdown filters the shelf');
   await page.selectOption('[data-filtersel]', 'All');
