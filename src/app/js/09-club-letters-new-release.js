@@ -318,7 +318,7 @@ function niceTitle(name) {
 }
 function openNewRelease() {
   if (!OWNER) return;
-  S.nr = { files: [], cover: null, busy: false };
+  S.nr = { files: [], cover: null, busy: false, kind: 'own', main: '' };
   const year = new Date().getFullYear();
   $('#modal').innerHTML = `<div class="sheet wide nr" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <h2 id="mTitle">New release</h2>
@@ -337,6 +337,11 @@ function openNewRelease() {
     <input type="file" id="nrFiles" accept=".wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,audio/*" multiple hidden>
     <div class="nrdrop" id="nrDrop"><button class="pill soft" type="button" data-nr-add>${I.plus}Add songs</button><span class="cs"><span class="dragonly">or drag audio files here. </span>Pick them in track order, or reorder below.</span></div>
     <ol class="nrlist" id="nrList"></ol>
+    ${EDGE_UPLOADS() ? `<fieldset class="nrvis nrkind"><legend>Whose song is it?</legend>
+      <label class="row2"><input type="radio" name="nrKind" data-nr-kind="own" checked> My own music</label>
+      <label class="row2"><input type="radio" name="nrKind" data-nr-kind="feature"> A feature: my guest spot on someone else's song</label>
+      <input class="field" id="nrMain" maxlength="120" placeholder="Main artist (whose song it is)" aria-label="Main artist" autocomplete="off" hidden>
+    </fieldset>` : ''}
     <fieldset class="nrvis"><legend>Fan club</legend>
       <label class="row2"><input type="radio" name="nrVis" value="show" checked> Show it when the upload finishes</label>
       <label class="row2"><input type="radio" name="nrVis" value="hide"> Keep it hidden for now</label>
@@ -378,7 +383,7 @@ function nrRender(moved) {
     <span class="n">${i + 1}</span>
     <div class="nrmain"><input class="field" data-nr-title="${i}" value="${esc(x.title)}" maxlength="200" aria-label="Title of song ${i + 1}" ${S.nr.busy ? 'disabled' : ''}>
       <span class="cs nrmeta">${esc(x.file.name)}, ${(x.file.size / 1048576).toFixed(1)} MB${x.state ? ' · <b class="nrstate">' + esc(x.state) + '</b>' : ''}</span>
-      ${EDGE_UPLOADS() ? `<fieldset class="nrfeat"><legend>Features</legend>
+      ${EDGE_UPLOADS() && S.nr.kind !== 'feature' ? `<fieldset class="nrfeat"><legend>Features</legend>
         ${x.spot ? '' : `<input class="field" data-nr-feat="${i}" value="${esc(x.features)}" maxlength="200" placeholder="Guests on this song (e.g. Aziza, Khairro)" aria-label="Features on song ${i + 1}" ${S.nr.busy ? 'disabled' : ''}>`}
         <label class="row2"><input type="checkbox" data-nr-spot="${i}" ${x.spot ? 'checked' : ''} ${S.nr.busy ? 'disabled' : ''}> My guest spot on someone else's song</label>
         ${x.spot ? `<input class="field" data-nr-art="${i}" value="${esc(x.artist)}" maxlength="120" placeholder="Main artist (whose song it is)" aria-label="Main artist of song ${i + 1}" ${S.nr.busy ? 'disabled' : ''}>` : ''}</fieldset>` : ''}</div>
@@ -400,10 +405,12 @@ async function doNewRelease(btn) {
   if (!(year >= 1990 && year <= 2100)) return fail('Year should look like ' + new Date().getFullYear() + '.');
   if (!S.nr.files.length) return fail('Add at least one song.');
   if (S.nr.files.some(x => !x.title.trim())) return fail('Every song needs a title.');
-  if (S.nr.files.some(x => x.spot && !x.artist.trim())) return fail('For a guest spot, type the main artist (whose song it is).');
+  const isFeature = EDGE_UPLOADS() && S.nr.kind === 'feature', mainArtist = String(S.nr.main || '').trim();
+  if (isFeature && !mainArtist) return fail('For a feature, type the main artist (whose song it is).');
+  if (!isFeature && S.nr.files.some(x => x.spot && !x.artist.trim())) return fail('For a guest spot, type the main artist (whose song it is).');
   if (vis === 'seal' && !(sealAt && sealAt > new Date())) return fail('Pick a future date and time to seal it until.');
   S.nr.busy = true; btn.disabled = true; btn.textContent = 'Uploading…';
-  $$('#modal .nrtop input, #modal .nrtop select, #modal .nrtop button, #nrCancel, [data-nr-add], [name="nrVis"], #nrSeal').forEach(el => (el.disabled = true));
+  $$('#modal .nrtop input, #modal .nrtop select, #modal .nrtop button, #nrCancel, [data-nr-add], [name="nrVis"], [name="nrKind"], #nrMain, #nrSeal').forEach(el => (el.disabled = true));
   nrRender();
   $('#nrProg').hidden = false;
   const stat = t => ($('#nrStat').textContent = t), bar = p => $('#nrBar').style.setProperty('--p', Math.round(p * 100) + '%');
@@ -415,7 +422,7 @@ async function doNewRelease(btn) {
       stat('Creating the release…');
       let coverId = '';
       if (S.nr.cover) { coverId = newImgId('c'); try { stat('Uploading the cover…'); await uploadPicture(S.nr.cover, coverId, ['t', '1200']); } catch (e) { coverId = ''; failed.push('the cover'); } }
-      r = await run('studioNewRelease', BOOT.key, { title, type, year: String(year), coverId });
+      r = await run('studioNewRelease', BOOT.key, { title, type, year: String(year), coverId, artist_name: isFeature ? mainArtist : '' });
       (S.lib.releases = S.lib.releases || []).push(r);
       for (let i = 0; i < n; i++) {
         const x = S.nr.files[i], label = `${i + 1} of ${n}: ${x.title}`;
@@ -423,8 +430,9 @@ async function doNewRelease(btn) {
           x.state = 'Uploading'; nrRender();
           const out = await uploadSongToEdge(x.file, r.release_id, undefined, x.title.trim(), 'Original', true, t => stat(label + ' · ' + t), p => bar((i + p) / n));
           if (out.track) S.lib.tracks.push(out.track); S.lib.versions.push(out.version);
-          const fields = {}; if (!x.spot && x.features.trim()) fields.features = x.features.trim();
-          if (x.spot) { fields.feature_role = 'mine'; fields.artist = x.artist.trim(); }
+          const fields = {}; if (!isFeature && !x.spot && x.features.trim()) fields.features = x.features.trim();
+          if (isFeature) { fields.feature_role = 'mine'; fields.artist = mainArtist; }
+          else if (x.spot) { fields.feature_role = 'mine'; fields.artist = x.artist.trim(); }
           if (out.track && Object.keys(fields).length) { await run('studioSaveTrack', BOOT.key, out.track.track_id, { fields }); Object.assign(out.track, fields); }
           x.state = 'Done ✓';
         } catch (e) { x.state = 'Failed'; failed.push(x.title); }
@@ -499,7 +507,7 @@ async function doNewRelease(btn) {
     $('#nrCancel').dataset.openRel = r.release_id;
   } else {
     btn.disabled = false; btn.textContent = 'Try again';
-    $$('#modal .nrtop input, #modal .nrtop select, #modal .nrtop button, [data-nr-add], [name="nrVis"], #nrSeal').forEach(el => (el.disabled = false));
+    $$('#modal .nrtop input, #modal .nrtop select, #modal .nrtop button, [data-nr-add], [name="nrVis"], [name="nrKind"], #nrMain, #nrSeal').forEach(el => (el.disabled = false));
     nrRender();
   }
 }
