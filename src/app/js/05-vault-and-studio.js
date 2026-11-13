@@ -21,6 +21,7 @@ function renderVault() {
     ${group('Create &amp; edit', [
       row('data-nav="studio"', I.edit, 'Studio', 'Edit titles, songs, info and links'),
       row('data-newrel', I.plus, 'Upload a new release', 'Songs, cover and details'),
+      row('data-bio', I.text, 'Your bio', S.lib.artist_bio ? 'Edit the story fans read on Lore' : 'Write the story fans read on Lore'),
       edge ? row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio') : '',
       edge ? row('data-linkonly', I.link, 'Songs on links only', linkOnlySongs().length ? linkOnlySongs().length + ' depend on a YouTube or SoundCloud link' : 'All songs have their own file') : '',
     ])}
@@ -52,6 +53,7 @@ function renderVault() {
   if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
   if ($('[data-fans]')) $('[data-fans]').addEventListener('click', openFans);
   if ($('[data-missing]')) $('[data-missing]').addEventListener('click', openMissing);
+  if ($('[data-bio]')) $('[data-bio]').addEventListener('click', openBio);
   if ($('[data-linkonly]')) $('[data-linkonly]').addEventListener('click', openLinkOnly);
   if ($('[data-backups]')) $('[data-backups]').addEventListener('click', openBackups);
   $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });

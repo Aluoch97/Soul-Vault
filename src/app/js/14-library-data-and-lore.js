@@ -151,16 +151,12 @@ function renderLore() {
   let cat = cats.some(c => c[0] === S.loreCat) ? S.loreCat : (cats.find(c => c[2].size) || cats[0])[0];
   $('#main').innerHTML = `<div class="wrap lore">
     ${homeHeader(true)}
-    ${OWNER ? '<p class="cs" style="margin:6px 0 0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>' : ''}
     <section class="lorephotos${S.loreAll ? ' all' : ''}" aria-label="Photos">${SITE.photos.map((f, i) => `<button type="button" class="lph1${i >= 6 ? ' extra' : ''}" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</section>
     ${SITE.photos.length > 6 ? `<button type="button" class="pill soft lormore" data-lore-all>${S.loreAll ? 'Show fewer photos' : 'See all ' + SITE.photos.length + ' photos'}</button>` : ''}
     <div class="lorestats">
       <div class="kpi"><b>${t.releases}</b><span>Releases</span></div><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
       <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.toNow && t.toNow !== t.from ? '–' + t.toNow : ''}</b><span>Years</span></div></div>
     ${hi.length ? `<div class="lorehi">${hi.map(h => `<div class="hi"><span class="cs">${esc(h[0])}</span><b>${esc(h[1].name)}</b><span class="cs">${h[1].releases.size} ${h[1].releases.size === 1 ? 'release' : 'releases'}</span></div>`).join('')}</div>` : ''}
-    ${OWNER ? `<section class="lorebio"><h2 class="sh"><span><b>Bio:</b> Nicólas Soul</span></h2>
-      <textarea class="field" id="loreBio" maxlength="8000" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
-      <div class="end"><button class="pill soft" data-lore-copy>Copy all lore as text</button><button class="pill main" data-lore-bio>Save bio</button></div><p class="cs" style="margin:6px 0 0">Fans on the fan club link can read this bio and the whole Lore page.</p></section>` : `<section class="lorebio"><h2 class="sh"><span><b>About</b> Nicólas Soul</span></h2><p class="biotxt">${esc((S.lib.artist_bio || '').trim() || SITE.bio)}</p></section>`}
     <h2 class="sh"><span><b>Eras</b></span></h2>
     <div class="loreeras" role="list">${L.eras.map(e => { const c = /^#[0-9a-f]{6}$/i.test(e.r.world_color || '') ? e.r.world_color : '', nv = Object.values(e.vcount).reduce((a, b) => a + b, 0);
       return `<button type="button" role="listitem" class="loreera" data-rel="${esc(e.r.release_id)}"><span class="lc"${c ? ` style="background:${c}"` : ''}><img data-lcover="${esc(e.r.cover_file_id || '')}" alt="" loading="lazy"></span>
@@ -171,7 +167,7 @@ function renderLore() {
     ${phRels.length ? `<h2 class="sh"><span><b>Photos</b> from every release</span></h2>
     <div class="loreeras" role="list">${phRels.map(x => `<button type="button" role="listitem" class="loreera" data-lore-phrel="${esc(x.r.release_id)}"><span class="lc"><img data-ss-src="${esc(x.ph[0].file_id)}" alt="" loading="lazy"></span><b>${esc(x.r.title)}</b><span class="cs">${x.ph.length} ${x.ph.length === 1 ? 'photo' : 'photos'}</span></button>`).join('')}</div>` : ''}
     <h2 class="sh"><span><b>The people</b> behind it</span></h2>
-    <div class="seg lorecats" role="group" aria-label="Credits">${cats.map(c => `<button type="button" data-lcat="${c[0]}" aria-pressed="${c[0] === cat}">${esc(c[1])} <i>${c[2].size}</i></button>`).join('')}</div>
+    <label class="lorecatsel"><span class="sr-only">Credits</span><select class="field" data-lcatsel aria-label="Credits">${cats.map(c => `<option value="${c[0]}"${c[0] === cat ? ' selected' : ''}>${esc(c[1])} (${c[2].size})</option>`).join('')}</select></label>
     <div id="lorePeople"></div>
   </div>`;
   $$('[data-lphoto]').forEach(b => b.addEventListener('click', () => openLorePhoto(+b.dataset.lphoto)));
@@ -193,7 +189,7 @@ function renderLore() {
       d.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }));
   };
-  $$('[data-lcat]').forEach(b => b.addEventListener('click', () => { cat = b.dataset.lcat; S.loreCat = cat; S.lorePeopleAll = false; $$('[data-lcat]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawPeople(); }));
+  const catSel = $('[data-lcatsel]'); if (catSel) catSel.addEventListener('change', () => { cat = catSel.value; S.loreCat = cat; S.lorePeopleAll = false; drawPeople(); });
   drawPeople();
   window.scrollTo(0, 0);
 }
@@ -440,3 +436,14 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   @media (min-width: 0px) { .plhead { grid-template-columns: 1fr; justify-items: center; text-align: center; } .plhead .mosaic { width: min(220px, 62vw); } .plcard { flex-basis: 44%; } }
 ` }));
 
+
+// Settings > Your bio: the bio editor used to sit in the middle of the Lore page; fans read the bio, only you edit it.
+function openBio() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Your bio"><h2>Your bio</h2>
+    <p class="cs">Fans on the fan club link can read this bio and the whole Lore page.</p>
+    <textarea class="field" id="loreBio" maxlength="8000" rows="10" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
+    <div class="end"><button class="pill soft" data-lore-copy>Copy all lore as text</button><button class="pill main" data-lore-bio>Save bio</button></div>
+    <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
+  m.hidden = false; $('#loreBio').focus();
+}
