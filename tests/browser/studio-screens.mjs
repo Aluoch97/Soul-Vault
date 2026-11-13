@@ -36,7 +36,7 @@ assert.equal((await w.call('listeningNow', ['', 'FAN', 'liveA', 'ver_a1', 'phone
 assert.equal((await w.call('listeningNow', ['', 'PUB', 'liveB', 'ver_sg', 'desktop'])).result, true);
 // Music tab areas: two unreleased songs (one told it is an EP, one left to follow its release), and guests on both
 assert.equal((await w.owner('studioSaveTrack', 'trk_a1', { fields: { title: 'Song trk_a1 (feat. Aziza)', unrel_kind: 'EP' }, unreleased: true })).ok, true);
-assert.equal((await w.owner('studioSaveTrack', 'trk_sg', { fields: { features: 'Khairro & Aziza' }, unreleased: true })).ok, true);
+assert.equal((await w.owner('studioSaveTrack', 'trk_sg', { fields: { feature_role: 'mine', artist: 'Berhani' }, unreleased: true })).ok, true);   // a guest spot on someone else's song
 assert.equal((await w.owner('missingAdd', { versionId: 'ver_sg' })).result, true);   // a song whose file is missing (for the Missing files screens)
 const KEY = 'ownerkey0123456789';   // the app keeps only letters and digits from ?k= (the real key has no dashes)
 w.env.OWNER_KEY = KEY;
@@ -119,14 +119,15 @@ await step('Music tab: the Unreleased area is its own secret-access area with it
   await page.waitForSelector('#unreleased .hrow .vsc');
   if (process.env.SHOT5) { await page.evaluate(() => document.querySelector('#unreleased').scrollIntoView()); await page.screenshot({ path: process.env.SHOT5 }); }
 });
-await step('Music tab: a Features area, separate from Unreleased, with its own View menu and a chip for each guest', async () => {
+await step('Music tab: a Features area for guests on my songs AND my guest spots on others\' songs, with its own View menu and chips', async () => {
   await page.waitForSelector('#features .vsc');
   const info = await page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), chips: [...el.querySelectorAll('.vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), cards: el.querySelectorAll('.vsc').length, tags: [...el.querySelectorAll('.vtag')].map((e) => e.textContent).sort(), view: S.sec.features.view }; });
   assert.ok(/spot/.test(info.cls) && /features/.test(info.ribbon), 'its own look: ' + info.ribbon);
-  assert.deepEqual(info.chips, ['All 2', 'Aziza 2', 'Khairro 1'], 'a chip for each guest, most songs first: ' + info.chips.join(' | '));
-  assert.deepEqual(info.tags, ['feat. Aziza', 'feat. Khairro, Aziza'].sort(), 'each song names its guests: ' + info.tags.join(' | '));
+  assert.deepEqual(info.chips, ['All 2', 'Guests on my songs 1', 'My guest spots 1', 'Aziza 1', 'Berhani 1'], 'kind chips, then a chip for each person: ' + info.chips.join(' | '));
+  assert.deepEqual(info.tags, ['Guest spot', 'feat. Aziza'], 'each song says which kind it is: ' + info.tags.join(' | '));
   assert.equal(info.view, 'scroll', 'its View is separate from the Unreleased area (which is on list)');
-  await page.click('#features [data-secchip="features|Khairro"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1, null, { timeout: 5000 });
+  await page.click('#features [data-secchip="features|k:mine"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /Berhani/.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
+  await page.click('#features [data-secchip="features|a:Aziza"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /feat. Aziza/i.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
   await page.click('#features [data-libmenu]'); await tapAt('#features [data-secview="features|large"]');
   await page.waitForSelector('#features .allgrid.large .vsc'); await noSideways('features area');
 });
