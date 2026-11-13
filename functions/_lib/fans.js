@@ -1,5 +1,5 @@
 // Soul Tribe fan list in D1 (replaces the Google "The Soul Tribe" sheet for sign-ups). Rules match the old form.
-export const FAN_FNS = ['joinSubmit', 'getFans'];
+export const FAN_FNS = ['joinSubmit', 'getFans', 'updateFan', 'deleteFan'];
 const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
 const DDL = ['CREATE TABLE IF NOT EXISTS fans (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, first_name TEXT, last_name TEXT, email TEXT UNIQUE, consent INTEGER, city TEXT, birth_year TEXT, social TEXT, how_heard TEXT, favorite TEXT, source TEXT, ip_hash TEXT, news INTEGER DEFAULT 0)',
   'CREATE INDEX IF NOT EXISTS ix_fans_ip ON fans (ip_hash, at)'];
@@ -45,7 +45,30 @@ export async function joinSubmit(db, p, ip) {
 }
 export async function getFans(db) {
   await ensureFans(db);
-  return (await db.prepare('SELECT at, first_name, last_name, email, consent, city, birth_year, social, how_heard, favorite, source FROM fans ORDER BY at DESC').all()).results;
+  return (await db.prepare('SELECT id, at, first_name, last_name, email, consent, city, birth_year, social, how_heard, favorite, source, news FROM fans ORDER BY at DESC').all()).results;
+}
+// Owner edits one fan (name, email, location, birth year, social, how they heard, favourite release, newsletter on/off). What they agreed to
+// (consent), when they signed up and where from are never edited here. Throws a plain message for bad input.
+export async function updateFan(db, id, p) {
+  await ensureFans(db); p = p || {}; id = Number(id);
+  const cur = id ? await db.prepare('SELECT * FROM fans WHERE id = ?').bind(id).first() : null;
+  if (!cur) throw new Error('That fan was not found.');
+  const first = cut(p.first_name, 80), email = cut(p.email, 200).toLowerCase();
+  if (!first) throw new Error('A fan needs a first name.');
+  if (!EMAIL.test(email)) throw new Error("That email doesn't look right.");
+  if (email !== cur.email && await db.prepare('SELECT 1 AS x FROM fans WHERE email = ? AND id != ?').bind(email, id).first()) throw new Error('Another fan already has that email.');
+  let by = cut(p.birth_year, 4); if (by && !(/^\d{4}$/.test(by) && +by >= 1900 && +by <= new Date().getUTCFullYear())) throw new Error('Birth year should look like 1995.');
+  const news = p.news === true || p.news === 1 || p.news === '1' ? 1 : 0;
+  if (news && !cur.consent) throw new Error('This person never agreed to e-mails, so they cannot be switched on for the newsletter.');
+  await db.prepare('UPDATE fans SET first_name = ?, last_name = ?, email = ?, city = ?, birth_year = ?, social = ?, how_heard = ?, favorite = ?, news = ? WHERE id = ?')
+    .bind(first, cut(p.last_name, 80), email, cut(p.city, 120), by, cut(p.social, 120), cut(p.how_heard, 80), cut(p.favorite, 120), news, id).run();
+  return await db.prepare('SELECT id, at, first_name, last_name, email, consent, city, birth_year, social, how_heard, favorite, source, news FROM fans WHERE id = ?').bind(id).first();
+}
+export async function deleteFan(db, id) {
+  await ensureFans(db); id = Number(id);
+  const r = id ? await db.prepare('DELETE FROM fans WHERE id = ?').bind(id).run() : null;
+  if (!r || !(r.meta && r.meta.changes)) throw new Error('That fan was not found.');
+  return { deleted: true };
 }
 export async function importFans(db, rows) { // rows: arrays [at, first, last, email, consent, city, birth, social, how, fav, source]
   await ensureFans(db); let n = 0;
