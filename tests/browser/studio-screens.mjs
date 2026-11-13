@@ -36,6 +36,8 @@ assert.equal((await w.call('listeningNow', ['', 'FAN', 'liveA', 'ver_a1', 'phone
 assert.equal((await w.call('listeningNow', ['', 'PUB', 'liveB', 'ver_sg', 'desktop'])).result, true);
 w.youtube.videos.orig1111111 = 'x'; w.youtube.videos.orig2222222 = 'y'; w.youtube.stats = { orig1111111: { at: '2024-03-01T10:00:00Z', views: 5200, likes: 5 }, orig2222222: { at: '2025-06-01T10:00:00Z', views: 90, likes: 40 } };
 w.youtube.playlists.PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK = { title: 'Originals', videos: [{ id: 'orig1111111', title: 'Nicólas Soul - Original One (Official Audio)' }, { id: 'orig2222222', title: 'Zeta <i>Two</i>' }] };
+w.youtube.videos.musA1111111 = 'x'; w.youtube.videos.musB2222222 = 'y'; w.youtube.stats.musA1111111 = { at: '2025-09-01T10:00:00Z', views: 1000, likes: 10 }; w.youtube.stats.musB2222222 = { at: '2023-01-01T10:00:00Z', views: 50, likes: 1 };
+w.youtube.playlists.PLYYNnxWFsj1_wIe3c0Lyj4EL9tMs9GQYU = { title: 'Music videos', videos: [{ id: 'musA1111111', title: 'Nicólas Soul - Music Vid A (Official Music Video)' }, { id: 'musB2222222', title: 'Music Vid B' }] };
 w.youtube.playlists.PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV = { title: 'Remixes', videos: [{ id: 'remx1111111', title: 'Remix One' }] };
 w.youtube.playlists.PLgroups0123456789abcdefghijklmnop = { title: 'Group EP', videos: [{ id: 'vidCCCCCCC1', title: 'G1 (feat. Aziza)' }, { id: 'vidCCCCCCC2', title: 'G2 (feat. Khairro)' }, { id: 'vidCCCCCCC3', title: 'G3 (feat. Charlie, The Healer)' }] };
 const grp = (await w.owner('createReleaseFromYoutube', { url: 'https://www.youtube.com/playlist?list=PLgroups0123456789abcdefghijklmnop' })).result;   // a project with three songs, all unreleased
@@ -212,33 +214,39 @@ await step('the page reports each page view with the time on it, from a phone, w
   const bot = await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' }); await bot.route('**/*', (r) => r.abort());
   await bot.close();
 });
-await step('Video tab: a nav button with the Originals and Remixes playlists, tap to play, own address, no sideways scroll', async () => {
+await step('Video tab: Freestyles (originals + remixes together), Music Videos and Press; sorting; tap to play; own addresses; no sideways scroll', async () => {
   await page.click('#tabs [data-nav="video"]');
   await page.waitForSelector('.videopg .vidhero');
-  const hero = () => page.evaluate(() => ({ title: (document.querySelector('.vidhero .vidtitle') || {}).textContent, tag: (document.querySelector('.vidhero .vidtag') || {}).textContent, wall: [...document.querySelectorAll('.vidwall .vidname')].map((e) => e.textContent), playing: (document.querySelector('.vidhero iframe') || {}).src || '' }));
+  assert.equal(await page.evaluate(() => document.querySelectorAll('#tabs button').length), 6, 'six tabs');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#tabs button')].map((b) => b.dataset.nav)), ['home', 'library', 'video', 'tour', 'press', 'lore'], 'Video sits right next to Music');
+  const look = await page.evaluate(() => ({ bar: getComputedStyle(document.querySelector('.vidtabs')).backgroundColor, h1: getComputedStyle(document.querySelector('.vidh1')).textAlign, sub: getComputedStyle(document.querySelector('.vidhead .cs')).textAlign, tabs: [...document.querySelectorAll('[data-vidtab]')].map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')) }));
+  assert.equal(look.bar, 'rgba(0, 0, 0, 0)', 'no black bar behind the section buttons'); assert.deepEqual([look.h1, look.sub], ['center', 'center'], 'the title and the line under it are centred');
+  assert.deepEqual(look.tabs, ['Freestyles*', 'Music Videos', 'Press']);
+  const hero = () => page.evaluate(() => ({ title: (document.querySelector('.vidhero .vidtitle') || {}).textContent, tag: (document.querySelector('.vidhero .vidtag') || {}).textContent, wall: [...document.querySelectorAll('.vidwall .vidname')].map((e) => e.textContent), path: location.pathname }));
   const sortBtns = () => page.evaluate(() => [...document.querySelectorAll('[data-vidsort]')].map((b) => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')));
   let h = await hero();
   assert.deepEqual(await sortBtns(), ['Newest*', 'A–Z', 'Most viewed', 'Most liked'], 'sort buttons, newest first by default');
-  assert.deepEqual([h.title, h.tag, h.wall], ['Zeta <i>Two</i>', 'Original', ['Original One']], 'the newest video is featured, the rest below it, shown as plain text: ' + JSON.stringify(h));
+  assert.deepEqual([h.title, h.tag, h.wall, h.path], ['Zeta <i>Two</i>', 'Original', ['Original One', 'Remix One'], '/video'], 'originals and remixes in one list; the newest is featured; titles tidied and shown as plain text: ' + JSON.stringify(h));
   assert.match(await page.textContent('.vidhero .vidstat'), /90 views · Jun 2025/, 'views and month uploaded');
-  assert.match(await page.textContent('.vidwall .vidstat'), /5\.2K views · Mar 2024/);
   for (const [btn, expect] of [['A–Z', 'Original One'], ['Most viewed', 'Original One'], ['Most liked', 'Zeta <i>Two</i>'], ['Newest', 'Zeta <i>Two</i>']]) {
     await page.click('[data-vidsort]:has-text("' + btn + '")'); await page.waitForFunction((t) => document.querySelector('.vidhero .vidtitle').textContent === t, expect, { timeout: 5000 });
   }
-  await page.click('[data-vidsort]:has-text("A–Z")');
-  assert.equal((await hero()).title, 'Original One', 'A–Z starts with Original One');
-  assert.equal(await page.evaluate(() => location.pathname), '/video');
-  assert.equal(await page.evaluate(() => document.querySelectorAll('#tabs button').length), 6, 'six tabs');
-  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#tabs button')].map((b) => b.dataset.nav)), ['home', 'library', 'video', 'tour', 'press', 'lore'], 'Video sits right next to Music');
   await noSideways('video'); await tapAt('.vidstage');
-  await page.waitForSelector('.vidhero iframe[src*="youtube-nocookie.com/embed/orig1111111"]');
-  await page.click('.vidwall .vidcard');                                                                        // a poster loads into the featured spot and plays
-  await page.waitForSelector('.vidhero iframe[src*="youtube-nocookie.com/embed/orig2222222"]', { timeout: 5000 });
-  h = await hero(); assert.deepEqual([h.title, h.wall], ['Zeta <i>Two</i>', ['Original One']]);
-  await page.click('[data-vidtab="remixes"]'); await page.waitForFunction(() => /Remix One/.test((document.querySelector('.vidhero .vidtitle') || {}).textContent || '') && !document.querySelector('.vidwall') && location.pathname === '/video/remixes', null, { timeout: 5000 });
+  await page.waitForSelector('.vidhero iframe[src*="youtube-nocookie.com/embed/orig2222222"]');
+  await page.click('.vidwall .vidcard:has-text("Remix One")');                                                  // a poster loads into the featured spot and plays
+  await page.waitForSelector('.vidhero iframe[src*="youtube-nocookie.com/embed/remx1111111"]', { timeout: 5000 });
+  h = await hero(); assert.deepEqual([h.title, h.tag], ['Remix One', 'Remix'], 'a remix says so');
+  await page.click('[data-vidtab="music"]'); await page.waitForFunction(() => /Music Vid A/.test((document.querySelector('.vidhero .vidtitle') || {}).textContent || '') && location.pathname === '/video/music-videos', null, { timeout: 5000 });
+  h = await hero(); assert.deepEqual([h.tag, h.wall], ['Music video', ['Music Vid B']]); await noSideways('music videos');
+  await page.click('[data-vidtab="press"]'); await page.waitForFunction(() => location.pathname === '/video/press' && /Press/.test((document.querySelector('.vidhero .vidtag') || {}).textContent || ''), null, { timeout: 5000 });
+  h = await hero(); assert.equal(h.wall.length, 3, 'the four press interviews: one featured, three below'); assert.deepEqual(await sortBtns(), [], 'no dates or counts for press videos, so no sort buttons');
+  await noSideways('press videos');
+  assert.deepEqual(await page.evaluate(() => { history.pushState(null, '', '/press/video'); const r = parseRoute(); history.pushState(null, '', '/video/press'); return r; }), { v: 'video', tab: 'press' }, 'the old /press/video address opens the Video tab');
+  await page.click('#tabs [data-nav="press"]'); await page.waitForSelector('.presspg .pcards');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('[data-presstab]').length), 0, 'the Press page no longer has a Video tab');
   const tabs = await page.evaluate(() => [...document.querySelectorAll('#tabs button')].map((b) => { const r = b.getBoundingClientRect(); return [r.left >= 0 && r.right <= innerWidth, r.width >= 44, b.textContent.trim()]; }));
   assert.ok(tabs.every((t) => t[0] && t[1]), 'every tab button fits on screen and is tappable: ' + JSON.stringify(tabs));
-  await noSideways('video remixes');
+  await noSideways('press');
 });
 await step('Lore: only the new-release, share-links and Settings buttons are at the top (no Karibu tena / Soul Vault greeting)', async () => {
   await page.evaluate(() => renderLore());

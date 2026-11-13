@@ -176,3 +176,10 @@
   .vidsort button { min-height: 44px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--dim); }
   .vidsort button[aria-pressed="true"] { color: #0A0A0B; background: var(--text); border-color: var(--text); }
   .vidstat { font-size: 12px; font-weight: 600; color: var(--dim); }
+
+  .vidhead { text-align: center; } .vidhead .cs { margin-left: auto; margin-right: auto; max-width: 30em; }
+  .vidtabs { display: flex; justify-content: center; gap: 6px; padding: 10px 0 8px; background: none; }
+  .vidtabs button { min-height: 44px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--dim); background: rgba(255,255,255,.07); white-space: nowrap; }
+  .vidtabs button[aria-selected="true"] { color: #fff; background: var(--red); }
+  .vidsort { justify-content: center; }
+  .videopg .vidmore { justify-content: center; }

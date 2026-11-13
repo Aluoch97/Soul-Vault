@@ -881,7 +881,7 @@ test('listening now: your own phone is hidden unless you ask; one row per device
 test('Video tab: anyone can read the Originals and Remixes playlists; a missing key or a failed list never breaks the other', () => withWorld(async (w) => {
   const O = 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK', R = 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV';
   const noKey = await w.call('getVideoLists', []);                                              // no key yet: still answers, lists say they are not available
-  assert.equal(noKey.ok, true); assert.deepEqual(noKey.result.lists.map(l => [l.key, l.videos.length, l.error]), [['originals', 0, 'not-available'], ['remixes', 0, 'not-available']]);
+  assert.equal(noKey.ok, true); assert.deepEqual(noKey.result.lists.map(l => [l.key, l.videos.length, l.error]), [['originals', 0, 'not-available'], ['remixes', 0, 'not-available'], ['music', 0, 'not-available']]);
   w.env.YOUTUBE_API_KEY = 'test-yt-key';
   w.youtube.playlists = { [O]: { title: 'Originals', videos: [{ id: 'aaaaaaaaaaa', title: 'One <b>x</b>' }, { id: 'bbbbbbbbbbb', title: 'Private video' }] } };   // the Remixes list is missing at YouTube
   const half = (await w.call('getVideoLists', [])).result.lists;
@@ -889,7 +889,8 @@ test('Video tab: anyone can read the Originals and Remixes playlists; a missing 
   assert.equal(half[1].error, 'not-available'); assert.ok(!JSON.stringify(half).includes('test-yt-key'));
   w.youtube.playlists[R] = { title: 'Remixes', videos: [{ id: 'ccccccccccc', title: 'Remix' }] };
   const full = (await w.call('getVideoLists', [])).result.lists;
-  assert.deepEqual(full.map(l => [l.key, l.videos.length]), [['originals', 1], ['remixes', 1]]);
+  assert.deepEqual(full.map(l => [l.key, l.videos.length, l.error]).slice(0, 2), [['originals', 1, undefined], ['remixes', 1, undefined]]);
+  assert.equal(full[2].key, 'music', 'the music videos playlist is the third list'); assert.equal(full[2].id, 'PLYYNnxWFsj1_wIe3c0Lyj4EL9tMs9GQYU');
   assert.equal(full[0].videos[0].views, undefined, 'no statistics from YouTube: the list still works, just without them');
 }));
 

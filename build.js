@@ -45,7 +45,7 @@ page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta nam
 // Crawlable text: the app draws everything in the browser, so give crawlers that don't run it a plain-text version. The app replaces it as soon as it starts.
 const releases = JSON.parse(fs.readFileSync('releases.json', 'utf8'));   // refresh with: node tools/updatereleases.js
 if (!Array.isArray(releases) || !releases.length) throw new Error('releases.json is empty; run node tools/updatereleases.js');
-const pages = [['Music: every release and song', '/vault'], ['Tour: upcoming shows', '/tour'], ['Road to 100 Shows', '/tour/road-to-100'], ['Press', '/press'], ['Press videos', '/press/video'], ['Video: originals and remixes', '/video'], ['Lore: bio and story', '/lore'], ['Join the Soul Tribe', '/join'], ['Privacy policy', '/privacy-policy']];
+const pages = [['Music: every release and song', '/vault'], ['Tour: upcoming shows', '/tour'], ['Road to 100 Shows', '/tour/road-to-100'], ['Press', '/press'], ['Video: freestyles, music videos and press', '/video'], ['Music videos', '/video/music-videos'], ['Lore: bio and story', '/lore'], ['Join the Soul Tribe', '/join'], ['Privacy policy', '/privacy-policy']];
 const seo = '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden"><h1>' + attr(cfg.siteName) + '</h1><p>' + attr(cfg.description) + '</p><nav><ul>'
   + pages.map(p => '<li><a href="' + p[1] + '">' + attr(p[0]) + '</a></li>').join('') + releases.map(r => '<li><a href="/vault/' + r[1] + '">' + attr(r[0]) + '</a></li>').join('') + '</ul></nav></div>';
 if (!page.includes('<main id="main"></main>')) throw new Error('index.html: empty <main id="main"> not found, cannot add crawlable text');
@@ -96,7 +96,7 @@ const wix = [['/music', '/vault'], ['/pre2018', '/vault'], ['/soulless', '/vault
   ['/survivingthenuworld', '/vault/2020-bluu-redd'], ['/jambojacquetesphaye', '/vault/2022-jambo-jacque-tesphaye'], ['/alltc', '/vault/2020-a-love-letter-to-cali-ep'],
   ['/about', '/lore'], ['/bio', '/lore'], ['/roadto100', '/tour/road-to-100']];
 fs.writeFileSync('dist/_redirects', wix.map(r => r[0] + ' ' + r[1] + ' 301').join('\n') + '\n');
-const urls = ['/'].concat(pages.map(p => p[1]).filter(p => p !== '/press/video'), releases.map(r => '/vault/' + r[1]));
+const urls = ['/'].concat(pages.map(p => p[1]).filter(p => true), releases.map(r => '/vault/' + r[1]));
 fs.writeFileSync('dist/sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls.map(u => '  <url><loc>' + siteUrl + u + '</loc></url>').join('\n') + '\n</urlset>\n');
 fs.writeFileSync('dist/robots.txt', 'User-agent: *\nAllow: /\n\nSitemap: ' + siteUrl + '/sitemap.xml\n');
 console.log('built dist/ (build ' + build + ', ' + Math.round(code.length / 1024) + ' KB app.js' + (minified ? ', minified' : ', NOT minified') + ')');
