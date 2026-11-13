@@ -24,6 +24,7 @@ function renderVault() {
       edge ? row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio') : '',
     ])}
     ${group('Fans &amp; activity', [
+      row('data-nav="siteinsights"', I.chart, 'Website insights', 'Visitors, pages, cities and devices'),
       row('data-nav="insights"', I.chart, 'Listening insights', 'Plays and listeners'),
       edge ? row('data-fans', I.link, 'Soul Tribe fan list', 'Sign-ups from /join, to download') : '',
       row('data-jump="recent"', I.clock, 'Recently played', recentN ? recentN + ' songs' : 'Nothing yet'),

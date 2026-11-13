@@ -10,6 +10,7 @@ import * as YT from './_lib/youtube.js';
 import * as OW from './_lib/owned.js';
 import * as CT from './_lib/catalog.js';
 import * as AC from './_lib/activity.js';
+import * as ST from './_lib/site.js';
 import * as FN from './_lib/fans.js';
 import * as MS from './_lib/missing.js';
 import * as BK from './_lib/backup.js';
@@ -631,6 +632,13 @@ export async function onRequestPost(ctx) {
     } else if (fn === 'adoptDomain' || fn === 'releaseDomain') {
       try { return json({ ok: true, result: await adoptDomain(ctx, args, fn === 'adoptDomain') }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
+    } else if (env.DB && ST.SITE_FNS.indexOf(fn) > -1) {   // website insights: any visitor's browser sends page views; only the owner reads them
+      try {
+        const owner = isOwner(env, args[0]), lib = (await library(ctx)) || {};
+        if (fn === 'siteView') return json({ ok: true, result: await ST.recordView(env.DB, lib, { owner, token: args[1], deviceId: args[2], visitId: args[3], viewId: args[4], path: args[5], seconds: args[6], device: args[7], ref: args[8], cf: request.cf || {}, ua: request.headers.get('user-agent') }) });
+        if (!owner) return json({ ok: false, error: 'This link is missing its owner key. Open the app from your owner link.' });
+        return json({ ok: true, result: fn === 'getSiteLive' ? await ST.getSiteLive(env.DB, lib, !!args[1]) : await ST.getSiteInsights(env.DB, lib, args[1], !!args[2]) });
+      } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (env.DB && AC.ACTIVITY_FNS.indexOf(fn) > -1) {
       try { const r = await activityCall(ctx, fn, args); if (r !== undefined) return json({ ok: true, result: r }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }

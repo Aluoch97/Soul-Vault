@@ -612,6 +612,75 @@ test('features: a song can be marked as my guest spot on someone else\'s song, a
   assert.equal((await w.call('studioSaveTrack', ['wrong', 'trk_a1', { fields: { feature_role: 'mine' } }])).ok, false);   // owner only
 }));
 
+// ---------------------------------------------------------------- website insights (a Wix-style breakdown of who visits the site)
+const NASH = { city: 'Nashville', region: 'Tennessee', country: 'US' }, MEMPHIS = { city: 'Memphis', region: 'Tennessee', country: 'US' };
+let VN = 0;
+const pick = (o, k, d) => (k in o ? o[k] : d);
+const view = (w, o = {}) => w.call('siteView', [o.key || '', o.token || '', pick(o, 'dev', 'devA'), pick(o, 'visit', 'visitA'), pick(o, 'view', 'view' + (++VN)), pick(o, 'path', '/'), o.seconds == null ? 30 : o.seconds, o.device || 'phone', o.ref || ''], { cf: o.cf || NASH, ua: o.ua || 'Mozilla/5.0 (iPhone)' });
+const siteRows = w => w.db.prepare('SELECT * FROM site_views ORDER BY at').all().then(r => r.results);
+const seedSite = async (w, rows) => { await w.owner('getSiteLive', false); await seedSiteRows(w, rows); };   // (the first call makes the table)
+const seedSiteRows = (w, rows) => Promise.all(rows.map(([ago, dev, visit, path, sec = 20, device = 'phone', ref = '', tok = 'public', city = 'Nashville']) => w.db.prepare('INSERT INTO site_views (view_id, at, last, visit_id, device_id, share_token, path, device, city, region, country, ref, seconds) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+  .bind('seed' + (++VN), Date.now() - ago * DAY, Date.now() - ago * DAY, visit, dev, tok, path, device, city, 'Tennessee', 'US', ref, sec).run()));
+
+test('website insights: a page view is recorded with its city, device and referrer (never an address), and a repeat note only adds time', () => withWorld(async (w) => {
+  assert.equal((await view(w, { view: 'v1', path: '/vault/2019-soulless?x=1#top', seconds: 12, ref: 'l.instagram.com' })).result, true);
+  let r = (await siteRows(w))[0];
+  assert.deepEqual([r.path, r.city, r.region, r.country, r.device, r.ref, r.seconds, r.share_token], ['/vault/2019-soulless', 'Nashville', 'Tennessee', 'US', 'phone', 'l.instagram.com', 12, 'public']);
+  assert.ok(!JSON.stringify(r).includes('203.0.113.7'), 'no IP address is stored');
+  await view(w, { view: 'v1', path: '/vault/2019-soulless', seconds: 45 }); await view(w, { view: 'v1', path: '/vault/2019-soulless', seconds: 20 });   // still here (45), then an older note (20)
+  const rows = await siteRows(w); assert.equal(rows.length, 1); assert.equal(rows[0].seconds, 45);                                                  // one view; time only goes up
+}));
+test('website insights: robots, bad input and odd values are handled', () => withWorld(async (w) => {
+  assert.equal((await view(w, { ua: 'Googlebot/2.1' })).result, true); assert.equal((await view(w, { ua: 'HeadlessChrome/120' })).result, true);
+  assert.equal((await siteRows(w)).length, 0);                                                                // crawlers are not visitors
+  for (const bad of [{ path: 'no-slash' }, { path: '/<script>' }, { dev: '' }, { visit: '' }, { view: '' }]) assert.equal((await view(w, bad)).result, false, JSON.stringify(bad));
+  assert.equal((await view(w, { seconds: 999999, device: 'toaster', ref: 'evil host/<x>', cf: { city: 'X'.repeat(200), country: 'USA' } })).result, true);
+  const r = (await siteRows(w))[0]; assert.deepEqual([r.seconds, r.device, r.ref, r.city.length, r.country], [1800, 'desktop', '', 60, '']);   // clamped, defaulted, cleaned
+  assert.equal((await view(w, { ref: 'soulnicolas.com', view: 'self' })).result, true); assert.equal((await siteRows(w)).find(x => x.view_id === 'self').ref, '');   // our own site is not a source
+}));
+test('website insights: numbers, top pages with time on each, devices, cities and sources', () => withWorld(async (w) => {
+  await seedSite(w, [[1, 'a', 'v1', '/', 10, 'phone', 'l.instagram.com'], [1, 'a', 'v1', '/vault', 50], [1, 'a', 'v1', '/lore', 40], [2, 'b', 'v2', '/', 30, 'desktop', '', 'public', 'Memphis'], [2, 'b', 'v2', '/vault', 20, 'desktop', '', 'public', 'Memphis'], [3, 'c', 'v3', '/', 60, 'tablet', 'www.google.com']]);
+  const d = (await w.owner('getSiteInsights', 7, false)).result;
+  assert.deepEqual([d.totals.visitors, d.totals.visits, d.totals.views], [3, 3, 6]);
+  assert.equal(d.totals.avgVisit, 70); assert.equal(d.totals.avgPage, 35);                                     // (100 + 50 + 60) / 3 visits;  210 s / 6 views
+  const home = d.pages.find(p => p.path === '/'); assert.deepEqual([home.page, home.views, home.visitors, home.avg], ['Home', 3, 3, 33]);
+  assert.deepEqual(d.pages.map(p => p.page), ['Home', 'Music', 'Lore']); assert.equal(d.pages.find(p => p.page === 'Music').avg, 35);
+  assert.deepEqual(d.devices, { phone: 1, tablet: 1, desktop: 1 });                                            // one per visit
+  assert.deepEqual(d.cities.map(c => [c.city, c.visitors]), [['Nashville', 2], ['Memphis', 1]]);
+  assert.deepEqual(d.sources.map(s => [s.name, s.visits]), [['Direct', 1], ['Google', 1], ['Instagram', 1]]);
+  assert.ok(d.perDay.reduce((n, x) => n + x.n, 0) === 6 && d.perDay.every(x => x.v <= x.n));
+}));
+test('website insights: release pages are named by their title; the previous period and new vs returning are worked out', () => withWorld(async (w) => {
+  await seedSite(w, [[1, 'a', 'v1', '/vault/pub'], [1, 'new1', 'v2', '/'], [2, 'new2', 'v3', '/'], [9, 'a', 'v4', '/'], [30, 'a', 'v5', '/'], [10, 'z', 'v6', '/']]);
+  const d = (await w.owner('getSiteInsights', 7, false)).result;
+  assert.ok(d.pages.some(p => p.page === 'Open Album'), 'rel_pub reads as its title: ' + d.pages.map(p => p.page));
+  assert.deepEqual([d.totals.visitors, d.prev.visitors, d.prev.views], [3, 2, 2]);                          // the 7 days before: devices a (9 d ago) and z (10 d ago)
+  assert.deepEqual(d.audience, { newVisitors: 2, returning: 1 });                                            // a was here a month ago
+  assert.equal((await w.owner('getSiteInsights', 0, false)).result.prev, null);
+}));
+test('website insights: your own visits are left out unless you ask', () => withWorld(async (w) => {
+  assert.equal((await view(w, { key: OWNER_KEY, dev: 'me' })).result, true); await view(w, { dev: 'fan' });
+  assert.equal((await siteRows(w)).find(r => r.device_id === 'me').share_token, 'owner');
+  assert.equal((await w.owner('getSiteInsights', 7, false)).result.totals.visitors, 1); assert.equal((await w.owner('getSiteInsights', 7, true)).result.totals.visitors, 2);
+}));
+test('website insights: only the owner can read them; anyone can send a page view', () => withWorld(async (w) => {
+  await view(w);
+  for (const fn of ['getSiteInsights', 'getSiteLive']) for (const args of [[], [''], ['wrong', 7], [null]]) assert.equal((await w.call(fn, args)).ok, false, fn);
+  assert.equal((await w.owner('getSiteLive', false)).ok, true);
+}));
+test('website insights: who is on the site right now', () => withWorld(async (w) => {
+  await view(w, { dev: 'a', path: '/vault', cf: NASH }); await view(w, { dev: 'b', path: '/lore', device: 'desktop', cf: MEMPHIS }); await view(w, { dev: 'a', path: '/lore', view: 'second' });   // a moved to Lore
+  let live = (await w.owner('getSiteLive', false)).result; assert.equal(live.count, 2);
+  assert.deepEqual(live.now.map(x => [x.page, x.device, x.city]).sort(), [['Lore', 'desktop', 'Memphis, Tennessee'], ['Lore', 'phone', 'Nashville, Tennessee']]);
+  await w.db.prepare('UPDATE site_views SET last = ? WHERE device_id = ?').bind(Date.now() - 120000, 'b').run();   // went quiet 2 minutes ago
+  assert.equal((await w.owner('getSiteLive', false)).result.count, 1);
+}));
+test('website insights: one browser cannot flood the table', () => withWorld(async (w) => {
+  await seedSite(w, Array.from({ length: 300 }, (_, i) => [0.001, 'spam', 'vs', '/']));
+  assert.equal((await view(w, { dev: 'spam', view: 'extra' })).result, true); assert.ok(!(await siteRows(w)).some(r => r.view_id === 'extra'));
+  assert.ok((await siteRows(w)).length === 300);
+}));
+
 // ---------------------------------------------------------------- moving areas off the Sheet
 test('adopting an area: owner only, known areas only, and the app then answers those calls itself', () => withWorld(async (w) => {
   assert.equal((await w.call('adoptDomain', ['wrong', 'playlists'])).ok, false);
