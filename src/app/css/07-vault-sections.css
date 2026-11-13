@@ -47,3 +47,17 @@
   .vs-tabs button[aria-selected="true"] { color: #0A0A0B; background: var(--text); } .vs-tabs .n { opacity: .7; font-weight: 600; }
   .vsongs { display: grid; gap: 2px; margin-top: 4px; text-align: left; }
   .vsong { font-size: 13px; line-height: 1.3; color: var(--text); opacity: .85; overflow-wrap: anywhere; } .vsong.more { opacity: .6; }
+
+  /* Uniform project cards: same shape whatever the text, text never spills */
+  .vsc { display: flex; flex-direction: column; align-items: stretch; gap: 0; text-align: left; min-width: 0; }
+  .vsc .agt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 8px; min-height: 2.5em; line-height: 1.25; overflow-wrap: anywhere; }
+  .vsc .vsub2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 3px; min-height: 2.6em; line-height: 1.3; overflow-wrap: anywhere; }
+  .vsongs { display: grid; gap: 3px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); min-width: 0; }
+  .vsc .vsongs { min-height: calc(4 * 1.35em + 9px); align-content: start; }   /* room for 3 songs and a "+N more" line, so all cards match */
+  .vsong { display: block; min-width: 0; font-size: 13px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); opacity: .9; }
+  .vsong b { font-weight: 600; } .vsong i { font-style: normal; color: var(--dim); } .vsong.more { color: var(--dim); }
+  .vrow .vsc { flex-basis: 168px; }
+  .vrow { align-items: stretch; }
+  .alr .alt { min-width: 0; } .alr .vsongs { margin-top: 6px; padding-top: 6px; }
+  .vs-who { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; margin: 0 0 14px; font-size: 14px; font-weight: 700; color: var(--dim); }
+  .vs-who select { width: 100%; min-height: 44px; font-size: 16px; }

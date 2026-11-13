@@ -208,27 +208,58 @@ function renderPress() {
 }
 
 
-// Video tab: the two YouTube playlists (Originals, Remixes). The list is read at the edge (getVideoLists); if that fails, a button still opens the playlist on YouTube.
+// Video tab: an artist's video wall. One big featured video, then the rest of the playlist as a grid of posters; tapping a poster loads it into the featured spot.
+// The playlists (Originals, Remixes) are read at the edge (getVideoLists); if that fails, a button still opens them on YouTube.
 const VIDEO_PL = { originals: 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK', remixes: 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV' };
+const VIDEO_NAME = { originals: ['Originals', 'Original'], remixes: ['Remixes', 'Remix'] };
+// "Nicólas Soul - spiderman (feat. Bryson Garrett) (Official Audio)" shows as "spiderman (feat. Bryson Garrett)".
+const vidTitle = t => { const c = String(t || '').replace(/^\s*Nic[oó]las Soul\s*[-–—:]\s*/i, '').replace(/\s*[(\[]\s*(official\s+)?(music\s+video|audio|video|visuali[sz]er|lyric\s+video)\s*[)\]]\s*$/i, '').replace(/\s+#\S+/g, '').trim(); return c || String(t || ''); };
+const VIDEO_SORTS = [['new', 'Newest'], ['az', 'A–Z'], ['views', 'Most viewed'], ['likes', 'Most liked']];
+const vidField = { new: 'at', views: 'views', likes: 'likes' };
+// Sorts a copy of the list (ties keep the playlist order); a video with no number for the field (for example hidden likes) goes last.
+function sortVids(vs, how) {
+  const f = vidField[how], out = vs.slice();
+  if (how === 'az') return out.sort((a, b) => vidTitle(a.title).localeCompare(vidTitle(b.title), undefined, { sensitivity: 'base', numeric: true }));
+  if (!f) return out;
+  const n = x => { const v = f === 'at' ? Date.parse(x.at) : x[f]; return v == null || isNaN(v) ? -1 : Number(v); };
+  return out.sort((a, b) => n(b) - n(a));
+}
+const vidCount = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n);
+const vidMeta = v => [v.views != null ? vidCount(v.views) + ' views' : '', v.at ? new Date(v.at).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : ''].filter(Boolean).join(' · ');
 function renderVideo() {
   clearPageBg(); S.view = 'video'; renderChrome();
   if (S.videoTab !== 'originals' && S.videoTab !== 'remixes') S.videoTab = 'originals';
   $('#main').innerHTML = `<div class="wrap sitepg presspg videopg">
+    <header class="vidhead"><h1 class="vidh1">Soul <span>Videos</span></h1><p class="cs">Originals and freestyles, straight from the channel.</p></header>
     <div class="tourseg pseg" role="tablist" aria-label="Video"><button role="tab" data-vidtab="originals">Originals</button><button role="tab" data-vidtab="remixes">Remixes</button></div>
+    <div id="videoSort"></div>
     <div id="videoBody"><p class="cs">Loading videos…</p></div></div>`;
   const body = $('#videoBody'), btns = [...$$('[data-vidtab]')];
-  const draw = k => {
+  const draw = (k, idx, autoplay) => {
     const L = S.videoLists && S.videoLists.find(x => x.key === k), yt = 'https://www.youtube.com/playlist?list=' + VIDEO_PL[k];
     if (!S.videoLists) { body.innerHTML = '<p class="cs">Loading videos…</p>'; return; }
     if (!L || !L.videos || !L.videos.length) { body.innerHTML = `<p class="cs">The videos could not load right now.</p><p><a class="pill" href="${esc(yt)}" target="_blank" rel="noopener">Open on YouTube</a></p>`; return; }
-    body.innerHTML = `<div class="vidgrid">${L.videos.map(v => `<div class="vid">
-      <button class="thumb" data-yt="${esc(v.id)}" aria-label="Play ${esc(v.title)}"><img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></button><span class="vt">${esc(v.title)}</span></div>`).join('')}</div>
-      <p class="cs sitefoot"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the whole playlist on YouTube</a></p>`;
+    const have = h => L.videos.some(v => v[vidField[h]] != null);
+    const opts = VIDEO_SORTS.filter(o => o[0] === 'az' || have(o[0]));
+    if (!opts.some(o => o[0] === S.videoSort)) S.videoSort = opts[0][0];   // newest first when YouTube told us the dates, else A-Z
+    $('#videoSort').innerHTML = opts.length > 1 ? `<div class="vidsort" role="group" aria-label="Sort videos">${opts.map(o => `<button type="button" data-vidsort="${o[0]}" aria-pressed="${o[0] === S.videoSort}">${o[1]}</button>`).join('')}</div>` : '';
+    const vs = sortVids(L.videos, S.videoSort), cur = Math.min(Math.max(+idx || 0, 0), vs.length - 1), f = vs[cur], tag = VIDEO_NAME[k][1];
+    const hero = `<section class="vidhero" aria-label="Featured video">
+      <button class="vidstage" type="button" data-yt="${esc(f.id)}" aria-label="Play ${esc(vidTitle(f.title))}"><img src="https://i.ytimg.com/vi/${esc(f.id)}/hqdefault.jpg" alt="" onerror="this.remove()"><i class="vidplay">${I.play}</i></button>
+      <div class="vidmeta"><span class="vidtag">${esc(tag)}</span><h2 class="vidtitle">${esc(vidTitle(f.title))}</h2>${vidMeta(f) ? `<span class="vidstat">${esc(vidMeta(f))}</span>` : ''}
+        <a class="vidyt" href="https://www.youtube.com/watch?v=${esc(f.id)}" target="_blank" rel="noopener">Watch on YouTube</a></div></section>`;
+    const rest = vs.map((v, i) => i === cur ? '' : `<button type="button" class="vidcard" data-vidpick="${i}" aria-label="Play ${esc(vidTitle(v.title))}">
+      <span class="vidpost"><img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i class="vidplay sm">${I.play}</i></span><span class="vidname">${esc(vidTitle(v.title))}</span>${vidMeta(v) ? `<span class="vidstat">${esc(vidMeta(v))}</span>` : ''}</button>`).join('');
+    body.innerHTML = hero + (vs.length > 1 ? `<h2 class="vidmore">More <b>${esc(VIDEO_NAME[k][0].toLowerCase())}</b> <span>${vs.length - 1}</span></h2><div class="vidwall">${rest}</div>` : '')
+      + `<p class="cs sitefoot"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the whole playlist on YouTube</a></p>`;
     wireYt(body);
+    if (autoplay) { const st = $('.vidstage', body); if (st) st.click(); }
+    $$('[data-vidsort]').forEach(b => b.addEventListener('click', () => { S.videoSort = b.dataset.vidsort; draw(k, 0); }));
+    $$('[data-vidpick]', body).forEach(b => b.addEventListener('click', () => { draw(k, +b.dataset.vidpick, true); window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }));
   };
-  const pick = k => { S.videoTab = k; syncUrl(); btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.vidtab === k))); draw(k); };
+  const pick = k => { S.videoTab = k; syncUrl(); btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.vidtab === k))); draw(k, 0); };
   btns.forEach(b => b.addEventListener('click', () => { pick(b.dataset.vidtab); window.scrollTo(0, 0); }));
   pick(S.videoTab);
-  if (!S.videoLists) runBase('getVideoLists').then(r => { S.videoLists = (r && r.lists) || []; if (S.view === 'video') draw(S.videoTab); }).catch(() => { S.videoLists = []; if (S.view === 'video') draw(S.videoTab); });
+  if (!S.videoLists) runBase('getVideoLists').then(r => { S.videoLists = (r && r.lists) || []; if (S.view === 'video') draw(S.videoTab, 0); }).catch(() => { S.videoLists = []; if (S.view === 'video') draw(S.videoTab, 0); });
   window.scrollTo(0, 0);
 }
