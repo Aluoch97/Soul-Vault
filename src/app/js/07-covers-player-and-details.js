@@ -393,14 +393,17 @@ function openManage(tid) {
     prog.hidden = false; err('');
     li.querySelectorAll('button').forEach(x => (x.disabled = true));
     try {
-      const duration = await audioDuration(file);
-      stat.textContent = 'Connecting to Drive…';
-      const ticket = await run('getUploadTicket', BOOT.key, t.release_id);
-      stat.textContent = 'Uploading ' + file.name + '…';
-      const fileId = await driveUpload(file, file.name, file.type || 'audio/wav', ticket, p => bar.style.setProperty('--p', Math.round(p * 90) + '%'));
-      stat.textContent = 'Swapping it in…';
       const old = ver(vid), oldFid = old && old.audio;
-      const o = await run('updateVersion', BOOT.key, vid, { fileId, duration });
+      let o = EDGE_UPLOADS() ? await replaceAudioOnEdge(file, old, t, s => (stat.textContent = s), p => bar.style.setProperty('--p', Math.round(p * 100) + '%')) : null;
+      if (!o) {   // the Google Drive way (the catalog is still on the Sheet)
+        const duration = await audioDuration(file);
+        stat.textContent = 'Connecting to Drive…';
+        const ticket = await run('getUploadTicket', BOOT.key, t.release_id);
+        stat.textContent = 'Uploading ' + file.name + '…';
+        const fileId = await driveUpload(file, file.name, file.type || 'audio/wav', ticket, p => bar.style.setProperty('--p', Math.round(p * 90) + '%'));
+        stat.textContent = 'Swapping it in…';
+        o = await run('updateVersion', BOOT.key, vid, { fileId, duration });
+      }
       if (S.now && S.now.v.version_id === vid) stopPlayback();
       if (oldFid) { delete S.mem[oldFid]; if (S.rescues) delete S.rescues[oldFid]; }
       applyVersion(o); libCacheSet(S.lib); toast('File replaced'); openManage(tid);

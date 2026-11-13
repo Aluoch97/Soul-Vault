@@ -309,16 +309,42 @@ async function studio(ctx, fn, a) {
     if (!/^[A-Za-z0-9_-]{6,80}$/.test(coverId)) throw new Error('Bad cover.');
     const kind = String(o.kind || 'cover');
     if (['cover', 'bg', 'clean', 'song'].indexOf(kind) < 0) throw new Error('Unknown picture type.');
-    if (env.MEDIA && !(await env.MEDIA.head('img/' + coverId + '/' + (kind === 'bg' ? '1600' : '1200')))) throw new Error('The picture did not arrive. Try again.');
+    const animated = o.animated === true;   // a GIF cover: the GIF itself is img/<id>/1200 and /1600, the grid uses the still sizes
+    if (animated && kind !== 'cover') throw new Error('Only the main cover can be animated.');
+    if (animated && !cat) throw new Error(NO_CATALOG);
+    if (o.preflight === true) return true;   // "would this work?": lets the app check before it uploads anything
+    const head = env.MEDIA ? await env.MEDIA.head('img/' + coverId + '/' + (kind === 'bg' ? '1600' : '1200')) : null;
+    if (env.MEDIA && !head) throw new Error('The picture did not arrive. Try again.');
+    if (animated && head && !/^image\/gif$/i.test((head.httpMetadata && head.httpMetadata.contentType) || '')) throw new Error('Animated covers need to be GIF files.');
     if (kind !== 'cover') {   // page background, clean cover, song cover: stored on the row, so they need the catalog to be on Cloudflare
       if (!cat) throw new Error(NO_CATALOG);
       if (kind === 'song') { const tid = String(o.trackId || ''); if (!all.tracks.some(t => t.track_id === tid && t.release_id === rid)) throw new Error('Song not found in this release.'); patchRow(store, 'tracks', 'track_id', tid, { track_cover: coverId }); }
       else patchRow(store, 'releases', 'release_id', rid, kind === 'bg' ? { bg_file_id: coverId } : { clean_cover_file_id: coverId, clean_cover_thumb: '' });
       await saveNat(); return true;
     }
-    if (isNat('releases', 'release_id', rid)) { patchRow(store, 'releases', 'release_id', rid, { cover_file_id: coverId }); await saveNat(); }
+    if (isNat('releases', 'release_id', rid)) {
+      // an animated cover keeps a small inline still (a JPEG data address, under 45 KB) that shows at once while the GIF loads; any other cover clears the type and the still
+      const thumb = animated && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(String(o.thumb || '')) && String(o.thumb).length < 45000 ? String(o.thumb) : '';
+      patchRow(store, 'releases', 'release_id', rid, { cover_file_id: coverId, cover_type: animated ? 'gif' : '', cover_thumb: thumb }); await saveNat();
+      return animated ? { fileId: coverId, thumb } : true;
+    }
     else { ov.cover[rid] = coverId; await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; await forgetCached(all); }
     return true;
+  }
+  if (fn === 'studioReplaceAudio') {
+    // Swap the audio file of a version (a new upload from studioPlanUpload) and keep everything else about it: its name, order, comments, share links and plays.
+    const o = a[1] || {}, vid = String(o.versionId || ''), key = String(o.key || '');
+    const v = all.versions.find(x => x.version_id === vid); if (!v) throw new Error('That version was not found. It may have been deleted.');
+    const t = all.tracks.find(x => x.track_id === v.track_id), rid = t ? t.release_id : '';
+    if (!cat) throw new Error(NO_CATALOG);
+    if (o.preflight === true) return true;   // "would this work?": lets the app check before it uploads anything
+    if (!env.MEDIA) throw new Error('Uploads are not set up yet.');
+    if (key.indexOf(relSlug(rid) + '/') !== 0 || key.indexOf(relSlug(rid) + '/voice-') === 0 || /\.\./.test(key)) throw new Error('That file does not belong to this release.');
+    const head = await env.MEDIA.head(key); if (!head) throw new Error('The upload did not arrive. Try again.');
+    const nv = newVersion(v.track_id, v.label, v.is_primary, key, key.split('.').pop(), head.size, o.seconds);
+    patchRow(store, 'versions', 'version_id', vid, { audio: nv.audio, format: nv.format, duration: nv.duration, size_mb: nv.size_mb, url: nv.url, preview: '', specs: '' });
+    await saveNat();
+    return store.versions.find(x => x.version_id === vid);
   }
   if (fn === 'studioSetVoice') {
     // Attach an uploaded voice memo to a song (key from studioPlanUpload with kind 'voice'), or remove it (key ''). The file itself is never deleted: uploads are permanent.
@@ -526,7 +552,7 @@ export async function onRequestPost(ctx) {
       return res;
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {

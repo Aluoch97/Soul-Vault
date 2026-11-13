@@ -6,7 +6,7 @@ import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpe
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
 const OWNER_ONLY = ['setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
-  'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioAddPhoto',
+  'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
 
@@ -293,6 +293,80 @@ test('Voice notes: the app plays "r2:" notes from our storage address and uses t
   assert.match(app, /\/\^r2:\/\.test\(t\.voice_note_id\) \? MEDIA_BASE \+ t\.voice_note_id\.slice\(3\)/);
   assert.match(app, /studioPlanUpload', BOOT\.key, \{ relId: t\.release_id, trackId: tid, kind: 'voice'/);
   assert.match(app, /studioSetVoice/);
+});
+
+test('Animated covers: a GIF kept on our storage with a still preview, only once the catalog is on Cloudflare; any other cover clears it', () => withWorld(async (w) => {
+  const set = (extra) => w.owner('studioSetCover', { relId: 'rel_pub', coverId: 'gifcover1', kind: 'cover', animated: true, ...extra });
+  const rel = async () => (await w.call('getShare', ['PUB'])).result.releases.find(r => r.release_id === 'rel_pub');
+  assert.match((await set({ preflight: true })).error, /Switch the catalog/);                              // catalog still on the Sheet: the app uses the Drive way and uploads nothing here
+  assert.match((await set({})).error, /Switch the catalog/);
+  assert.equal((await w.owner('adoptDomain', 'catalog')).ok, true);
+  assert.equal((await set({ preflight: true })).result, true);                                             // asks only: needs no file and changes nothing
+  assert.equal((await rel()).cover_type || '', '');
+  assert.match((await w.owner('studioSetCover', { relId: 'rel_pub', coverId: 'gifcover1', kind: 'bg', animated: true })).error, /Only the main cover/);
+  assert.match((await set({ coverId: '../x' })).error, /Bad cover/);
+  assert.match((await set({ relId: 'ghost' })).error, /not found/);
+  assert.match((await set({})).error, /did not arrive/);
+  assert.equal((await w.put('img/notagif01/1200', { type: 'image/jpeg' })).status, 200);
+  assert.match((await set({ coverId: 'notagif01' })).error, /need to be GIF/);                               // a picture that is not a GIF is not an animated cover
+  assert.equal((await w.put('img/gifcover1/1200', { type: 'image/gif', bytes: new Uint8Array(100) })).status, 200);
+  const thumb = 'data:image/jpeg;base64,/9j/4AAQSkZJRgAB';
+  assert.deepEqual((await set({ thumb })).result, { fileId: 'gifcover1', thumb });
+  const r1 = await rel(); assert.deepEqual([r1.cover_file_id, r1.cover_type, r1.cover_thumb], ['gifcover1', 'gif', thumb]);   // fans get the GIF, its type and its still preview
+  assert.equal((await w.put('img/gifcover2/1200', { type: 'image/gif' })).status, 200);
+  assert.equal((await set({ coverId: 'gifcover2', thumb: 'javascript:alert(1)' })).result.thumb, '');         // a preview that is not a small JPEG picture is dropped
+  assert.equal((await w.put('img/gifcover3/1200', { type: 'image/gif' })).status, 200);
+  assert.equal((await set({ coverId: 'gifcover3', thumb: 'data:image/jpeg;base64,' + 'A'.repeat(45000) })).result.thumb, '');   // so is one over 45 KB
+  assert.equal((await w.put('img/stillcov1/1200', { type: 'image/jpeg' })).status, 200);
+  assert.equal((await w.owner('studioSetCover', { relId: 'rel_pub', coverId: 'stillcov1' })).result, true);      // an ordinary cover afterwards clears the animation
+  const r2 = await rel(); assert.deepEqual([r2.cover_file_id, r2.cover_type || '', r2.cover_thumb || ''], ['stillcov1', '', '']);
+  assert.deepEqual(w.appsCalls(), []);                                                                       // none of it went to Apps Script
+}));
+
+test('Animated covers: the app sends the GIF as the big sizes, still pictures for the grid, and falls back to Drive on the old catalog', () => {
+  const gif = readFileSync(new URL('../src/app/js/10-release-extras-and-song-covers.js', import.meta.url), 'utf8');
+  const studio = readFileSync(new URL('../src/app/js/05-vault-and-studio.js', import.meta.url), 'utf8');
+  assert.match(gif, /preflight: true/);                                                                       // asks before uploading
+  assert.match(gif, /uploadPicture\(file, id, \['t', '160', '400'\]\)/);
+  assert.match(gif, /putFile\('img\/' \+ id \+ '\/1200', file, 'image\/gif'\); await putFile\('img\/' \+ id \+ '\/1600', file, 'image\/gif'\)/);
+  assert.match(gif, /animated: true, thumb/);
+  assert.match(gif, /getUploadTicket[\s\S]*setAnimatedCover/);                                               // the Drive way is still there for the old catalog
+  assert.match(studio, /f\.type === 'image\/gif'\) \{ await uploadGifCover\(f, rid\)/);                         // Studio keeps a GIF animated too
+});
+
+test('Replace audio: a version keeps its name, order and links but plays the new file; only on the Cloudflare catalog, only from its own release', () => withWorld(async (w) => {
+  const plan = { relId: 'rel_pub', trackId: 'trk_a1', label: 'Original', ext: 'mp3' };
+  const ver = async () => (await w.call('getShare', ['PUB'])).result.versions.find(v => v.version_id === 'ver_a1');
+  assert.match((await w.owner('studioReplaceAudio', { versionId: 'ver_a1', preflight: true })).error, /Switch the catalog/);   // catalog still on the Sheet: the app uses the Drive way and uploads nothing here
+  assert.match((await w.owner('studioReplaceAudio', { versionId: 'ver_a1', key: 'pub/x.mp3' })).error, /Switch the catalog/);
+  assert.equal((await w.owner('adoptDomain', 'catalog')).ok, true);
+  const before = await ver(), countBefore = (await w.owner('studioGet')).result.versions.filter(v => v.track_id === 'trk_a1').length;
+  assert.equal((await w.owner('studioReplaceAudio', { versionId: 'ver_a1', preflight: true })).result, true);   // asks only: no file needed, nothing changes
+  assert.deepEqual(await ver(), before);
+  assert.match((await w.owner('studioReplaceAudio', { versionId: 'ghost', preflight: true })).error, /not found/);
+  const key = (await w.owner('studioPlanUpload', plan)).result.key;
+  assert.match((await w.owner('studioReplaceAudio', { versionId: 'ver_a1', key })).error, /did not arrive/);
+  for (const bad of ['other/01-x-aaaa.mp3', 'pub/../other/01-x.mp3', 'pub/voice-01-x-aaaa.mp3', '']) assert.match((await w.owner('studioReplaceAudio', { versionId: 'ver_a1', key: bad })).error, /does not belong/, bad);
+  assert.equal((await w.put(key, { type: 'audio/mpeg', bytes: new Uint8Array(2 * 1048576) })).status, 200);
+  const r = (await w.owner('studioReplaceAudio', { versionId: 'ver_a1', key, seconds: 125 })).result;
+  assert.equal(r.version_id, 'ver_a1'); assert.equal(r.track_id, 'trk_a1'); assert.equal(r.label, before.label); assert.equal(r.is_primary, before.is_primary);   // same version, same name and order
+  assert.equal(r.audio, 'r2:' + key); assert.equal(r.url, 'https://media.soulnicolas.com/' + key); assert.equal(r.duration, '2:05'); assert.equal(r.size_mb, 2); assert.equal(r.format, 'MP3');
+  const after = await ver(); assert.deepEqual([after.url, after.audio, after.duration], [r.url, r.audio, '2:05']);   // fans get the new file
+  assert.equal((await w.owner('studioGet')).result.versions.filter(v => v.track_id === 'trk_a1').length, countBefore);   // replaced in place: no extra version
+  const key2 = (await w.owner('studioPlanUpload', plan)).result.key; assert.notEqual(key2, key);              // a second replacement gets its own name
+  assert.equal((await w.put(key2, { type: 'audio/mpeg' })).status, 200);
+  assert.equal((await w.owner('studioReplaceAudio', { versionId: 'ver_a1', key: key2 })).result.audio, 'r2:' + key2);
+  assert.ok(await w.env.MEDIA.head(key), 'the earlier file is never deleted');
+  assert.deepEqual(w.appsCalls(), []);                                                                         // none of it went to Apps Script
+}));
+
+test('Replace audio: the app uses the Cloudflare way when it is on and the Drive way on the old catalog; one streaming-copy step is shared with adding songs', () => {
+  const m = readFileSync(new URL('../src/app/js/07-covers-player-and-details.js', import.meta.url), 'utf8');
+  const st = readFileSync(new URL('../src/app/js/05-vault-and-studio.js', import.meta.url), 'utf8');
+  assert.match(m, /EDGE_UPLOADS\(\) \? await replaceAudioOnEdge\(file, old, t,/);
+  assert.match(m, /if \(!o\) \{[\s\S]*getUploadTicket[\s\S]*updateVersion/);
+  assert.match(st, /studioReplaceAudio', BOOT\.key, \{ versionId: v\.version_id, preflight: true \}/);
+  assert.equal((st.match(/await streamingCopy\(file, stat, bar\)/g) || []).length, 2);                      // adding a song and replacing audio make the same streaming copy
 });
 
 test('Studio: the missing-files list - add, hide a broken version from fans, resolve with a new upload', () => withWorld(async (w) => {
