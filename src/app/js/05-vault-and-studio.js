@@ -224,7 +224,7 @@ function openStudioNewRelease() {
 const STU_SERVICES = ['Spotify', 'Apple Music', 'YouTube Music', 'YouTube', 'Bandcamp', 'SoundCloud', 'DatPiff', 'Audiomack', 'Tidal', 'Amazon Music', 'Deezer'];
 async function renderStudio() {
   clearPageBg(); S.view = 'studio'; renderChrome();
-  const head = '<header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>';
+  const head = '<button class="back" data-nav="vault">' + I.back + 'Settings</button><header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>';
   $('#main').innerHTML = `<div class="wrap studio">${head}<p class="cs">Loading your catalog…</p></div>`;
   try { S.stu = await run('studioGet', BOOT.key); }
   catch (e) { $('#main').innerHTML = `<div class="wrap studio">${head}<p class="status">${esc(e.message || 'Studio could not load.')}</p><button class="pill main" data-nav="studio">Try again</button></div>`; return; }
@@ -255,6 +255,7 @@ function drawStudio() {
       <div class="save"><button type="button" class="pill main" data-stu-savesong>Save song</button>${EDGE_UPLOADS() ? `<button type="button" class="pill soft" data-stu-songcover="${esc(t.track_id)}">${I.img}Song cover</button>` : ''}<span class="st" role="status"></span></div></div>`;
   }).join('');
   $('#main').innerHTML = `<div class="wrap studio">
+    <button class="back" data-nav="vault">${I.back}Settings</button>
     <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>
     <p class="cs">Pick a release, change what you need, and press Save in that section. Changes show on the site within about a minute.</p>
     <div style="display:flex;gap:8px;align-items:center;margin:6px 0 14px"><select class="field stusel" id="stuRel" aria-label="Release" style="margin:0;flex:1;min-width:0">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
