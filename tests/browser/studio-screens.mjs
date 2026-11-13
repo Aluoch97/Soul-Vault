@@ -549,6 +549,9 @@ await step('on a computer the scrolling shelves (discography, Unreleased, Featur
   assert.deepEqual(await d.evaluate(() => { const row = document.querySelector('#main .shelf .ctrack'), w = row.closest('.scrollwrap'); return [!!w, !w.querySelector('.sarrow.r').hidden === (row.scrollWidth - row.clientWidth > 4)]; }), [true, true], 'the shelf has arrows on a computer (shown only when it can scroll)');
   assert.ok(m.slideW >= 240 && m.slideW <= 300, 'phone-style cards, not big covers: ' + m.slideW + 'px'); assert.ok(m.arrows, 'with arrows on the shelf');
   assert.deepEqual([m.vrowDisplay, m.vrowOverflow, m.cardW], ['flex', 'auto', 180], 'the Unreleased row is a scrolling row of small cards');
+  const bars = await d.evaluate(() => [...document.querySelectorAll('#main .shelf .ctrack, #main .hrow.vrow')].map((r) => { const cs = getComputedStyle(r), pb = getComputedStyle(r, '::-webkit-scrollbar'); return { sb: cs.scrollbarWidth, wk: pb.display }; }));
+  assert.ok(bars.length >= 2 && bars.every((b) => b.sb === 'none' || b.wk === 'none'), 'no grey scroll bars under the rows: ' + JSON.stringify(bars));
+  assert.deepEqual(await d.evaluate(() => [document.querySelectorAll('.rowwrap, .rowarr').length, [...document.querySelectorAll('#main .scrollwrap')].map((w) => w.querySelectorAll('.sarrow').length).filter((n) => n !== 2).length]), [0, 0], 'one pair of arrows per row, not two');
   assert.ok(m.sw <= m.iw + 1, 'the page itself does not scroll sideways: ' + m.sw + ' vs ' + m.iw);
   await dctx.close();
 });

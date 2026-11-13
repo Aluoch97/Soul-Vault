@@ -42,39 +42,9 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .xfilter button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--dim); }
   .xfilter button[aria-pressed="true"] { color: #0A0A0B; background: var(--text); border-color: var(--text); } .xfilter .n { opacity: .7; font-weight: 600; }
   .hrow, .ctrack, .sparts, .eranav, .seg, .songtabs { overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
-  .rowwrap { position: relative; }
-  .rowarr { position: absolute; top: 50%; transform: translateY(-50%); z-index: 4; width: 44px; height: 44px; border-radius: 50%;
-            display: none; place-items: center; background: rgba(12,12,13,.88); color: #fff; border: 1px solid var(--line);
-            box-shadow: 0 8px 20px -6px #000; }
-  .rowarr.prev { left: 4px; } .rowarr.next { right: 4px; }
-  .rowarr[disabled] { display: none !important; }
-  .rowarr svg { width: 20px; height: 20px; }
-  .rowarr.next svg { transform: scaleX(-1); }
-  @media (hover: hover) and (pointer: fine) { .rowwrap.over .rowarr { display: grid; } }
 ` }));
-// Adds ‹ › buttons to any sideways row that has more to show (desktop only; phones swipe).
-function wireRows(root) {
-  (root || document).querySelectorAll('.hrow').forEach(row => {
-    if (row.parentElement.classList.contains('rowwrap')) return;
-    const wrap = document.createElement('div'); wrap.className = 'rowwrap';
-    row.parentNode.insertBefore(wrap, row); wrap.appendChild(row);
-    const label = (wrap.previousElementSibling && wrap.previousElementSibling.textContent.trim()) || 'this row';
-    const mk = (dir, cls, name) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'rowarr ' + cls;
-      b.setAttribute('aria-label', `${name} in ${label}`); b.innerHTML = I.back;
-      b.addEventListener('click', () => row.scrollBy({ left: dir * row.clientWidth * 0.85, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
-      wrap.appendChild(b); return b; };
-    const prev = mk(-1, 'prev', 'Scroll back'), next = mk(1, 'next', 'Scroll forward');
-    const update = () => {
-      const over = row.scrollWidth > row.clientWidth + 4;
-      wrap.classList.toggle('over', over);
-      prev.disabled = !over || row.scrollLeft < 4;
-      next.disabled = !over || row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
-    };
-    row.addEventListener('scroll', () => { clearTimeout(row._rt); row._rt = setTimeout(update, 60); }, { passive: true });
-    if ('ResizeObserver' in window) new ResizeObserver(update).observe(row);
-    update(); setTimeout(update, 400);
-  });
-}
+// (The ‹ › buttons on sideways rows now come from js/18-scroll-arrows.js, for every row and every device; this stays so older callers still work.)
+function wireRows() {}
 
 
 /* ═════════ Build 43: video order + types + playlist, compact Edit panels ═════════ */
