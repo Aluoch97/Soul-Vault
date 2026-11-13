@@ -629,6 +629,7 @@ await step('downloads are for the owner link only: no download button for fans (
   const fctx = await phoneContext(), fan = await fctx.newPage(); fan.on('pageerror', (e) => problems.push('fan page error: ' + e.message));
   await fan.goto('https://soulnicolas.com/?s=FAN'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });
   assert.equal(await fan.evaluate(() => S.share && S.share.allow_download), false, 'the app is told downloads are off, even for a link saved with them on');
+  assert.deepEqual([await fan.evaluate(() => canDownload()), await page.evaluate(() => canDownload())], [false, true], 'only the owner link can download');
   await fan.evaluate(() => { const v = S.lib.versions.find((x) => x.audio || x.url); S.__v = v && v.version_id; if (v) play(v.version_id); });
   await fan.waitForTimeout(1500);
   assert.equal(await fan.evaluate(() => [(S.now && S.now.dl) || '', document.querySelector('#npDl') ? document.querySelector('#npDl').hidden : true].join('|')), '|true', 'no download link for a fan');
