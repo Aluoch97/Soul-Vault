@@ -6,7 +6,7 @@ const base = (process.argv[2] || 'http://localhost:8788').replace(/\/$/, ''), ke
 const post = (url, fn, args) => fetch(url, { method: 'POST', body: JSON.stringify({ fn, args }), redirect: 'follow', headers: { 'user-agent': 'Mozilla/5.0 (edgecheck)' } }).then(r => r.json());
 const same = (a, b, path, out) => {
   if (a === b) return;
-  if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object') { out.push(path + ': ' + JSON.stringify(a).slice(0, 80) + ' vs ' + JSON.stringify(b).slice(0, 80)); return; }
+  if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object') { out.push(path + ': ' + String(JSON.stringify(a)).slice(0, 80) + ' vs ' + String(JSON.stringify(b)).slice(0, 80)); return; }
   if (Array.isArray(a) !== Array.isArray(b)) { out.push(path + ': array vs object'); return; }
   if (Array.isArray(a) && a.length !== b.length) out.push(path + ': length ' + a.length + ' vs ' + b.length);
   new Set(Object.keys(a).concat(Object.keys(b))).forEach(k => same(a[k], b[k], path + '.' + k, out));
