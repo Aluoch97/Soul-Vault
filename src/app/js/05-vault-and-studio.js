@@ -249,6 +249,7 @@ function drawStudio() {
       <div class="sf2">${f('', 'Engineer', t.engineer, 'data-k="engineer"')}${f('', 'Music video (YouTube link)', t.video_url, 'data-k="video_url" type="url"')}</div>
       ${hasSR ? f('', 'Slowed + reverb video (YouTube link)', ov.sr[t.track_id] || '', 'data-sr type="url"') : ''}
       <label class="chk"><input type="checkbox" data-unrel ${tu ? 'checked' : ''}> Unreleased song</label>
+      <label class="stf">If unreleased, it counts as <select class="field" data-k="unrel_kind"><option value="">Same as its release</option>${UNREL_KINDS.map(k => `<option${t.unrel_kind === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select></label>
       <div class="save"><button type="button" class="pill main" data-stu-savesong>Save song</button>${EDGE_UPLOADS() ? `<button type="button" class="pill soft" data-stu-songcover="${esc(t.track_id)}">${I.img}Song cover</button>` : ''}<span class="st" role="status"></span></div></div>`;
   }).join('');
   $('#main').innerHTML = `<div class="wrap studio">

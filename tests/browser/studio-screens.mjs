@@ -34,15 +34,19 @@ for (const [ago, v, dev, out, tok, device] of [[0.2, 'ver_a1', 'devA', 'complete
   await w.db.prepare('INSERT INTO listens (at, track_id, version_id, release_id, share_token, device_id, seconds, pct, outcome, device) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(Date.now() - ago * DAYMS, ver[v][0], v, ver[v][1], tok, dev, out === 'skip' ? 5 : 120, out === 'skip' ? 4 : 100, out, device).run();
 assert.equal((await w.call('listeningNow', ['', 'FAN', 'liveA', 'ver_a1', 'phone'])).result, true);
 assert.equal((await w.call('listeningNow', ['', 'PUB', 'liveB', 'ver_sg', 'desktop'])).result, true);
+// Music tab areas: two unreleased songs (one told it is an EP, one left to follow its release), and guests on both
+assert.equal((await w.owner('studioSaveTrack', 'trk_a1', { fields: { title: 'Song trk_a1 (feat. Aziza)', unrel_kind: 'EP' }, unreleased: true })).ok, true);
+assert.equal((await w.owner('studioSaveTrack', 'trk_sg', { fields: { features: 'Khairro & Aziza' }, unreleased: true })).ok, true);
 assert.equal((await w.owner('missingAdd', { versionId: 'ver_sg' })).result, true);   // a song whose file is missing (for the Missing files screens)
 const KEY = 'ownerkey0123456789';   // the app keeps only letters and digits from ?k= (the real key has no dashes)
 w.env.OWNER_KEY = KEY;
 const store = async () => { const o = await w.kv('owned'); return o && o.domains && o.domains.catalog ? o : await w.kv('native'); };   // the catalog is owned by Cloudflare, so new releases are stored there
 let failures = 0; const problems = [];
-const step = async (name, fn) => { try { await fn(); console.log('  ok   ' + name); } catch (e) { failures++; console.log('  FAIL ' + name + '\n       ' + String(e.message || e).split('\n')[0]); } };
+const step = async (name, fn) => { try { await fn(); console.log('  ok   ' + name); } catch (e) { failures++; console.log('  FAIL ' + name + '\n       ' + String(e.message || e).split('\n').slice(0, process.env.DEBUG ? 6 : 1).join(' / ')); } };
 
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined, args: ['--no-sandbox'] });
-const ctx = await browser.newContext({ viewport: { width: Number(process.env.PHONE_W || 390), height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+async function phoneContext() {
+  const ctx = await browser.newContext({ viewport: { width: Number(process.env.PHONE_W || 390), height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
 await ctx.route('**/*', r => r.abort());                                                     // nothing leaves the machine unless allowed below
 await ctx.route('https://media.soulnicolas.com/**', r => r.fulfill({ status: 404, body: '' }));
 await ctx.route('https://soulnicolas.com/**', async (route) => {
@@ -62,16 +66,22 @@ await ctx.route('https://soulnicolas.com/**', async (route) => {
   if (!file.startsWith(DIST) || !existsSync(file) || statSync(file).isDirectory()) file = join(DIST, 'index.html');
   return route.fulfill({ status: 200, headers: { 'content-type': TYPES[extname(file)] || 'application/octet-stream' }, body: readFileSync(file) });
 });
-
+  return ctx;
+}
+const ctx = await phoneContext();
 const page = await ctx.newPage();
-if (process.env.DEBUG) { page.on('requestfailed', r => console.log('   [failed]', r.url().slice(0, 100))); page.on('console', m => console.log('   [console]', m.type(), m.text().slice(0, 200))); page.on('response', async r => { if (r.url().includes('/api')) { let b = ''; try { b = (await r.text()).slice(0, 160); } catch (e) { /* gone */ } console.log('   [api]', r.status(), (r.request().postData() || '').slice(0, 60).replace(KEY, '<key>'), '=>', b); } }); }
 page.on('pageerror', e => problems.push('page error: ' + e.message));
 page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|net::ERR_FAILED|404/.test(m.text())) problems.push('console error: ' + m.text()); });
 const noSideways = async (label) => { const o = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth })); assert.ok(o.sw <= o.iw + 1, `${label}: page scrolls sideways (${o.sw} > ${o.iw})`); };
+// a real tap at the middle of an element, so something covering it would be hit instead (and the test would notice)
+const tapAt = async (sel) => { const r = await page.evaluate((q) => { const e = document.querySelector(q); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }, sel); assert.ok(r, 'not found: ' + sel); await page.mouse.click(r.x, r.y); };
 const seen = (text, ms = 8000) => page.waitForFunction(t => document.body.innerText.includes(t), text, { timeout: ms });
 
 console.log('Soul Vault owner screens, 390px wide, real backend code:');
 await step('opens as the owner and shows the library', async () => { await page.goto('https://soulnicolas.com/?k=' + KEY); await page.waitForSelector('.avatar[data-nav="vault"]', { timeout: 15000 }).catch(async e => { if (process.env.DEBUG) console.log('   [body]', (await page.evaluate(() => document.body.innerText)).slice(0, 400)); throw e; }); await noSideways('library'); });
+await step('at start-up the owner app loads Studio\'s saved settings (unreleased flags, listen links)', async () => {
+  await page.waitForFunction(() => S.links && S.links.flags && S.links.flags.tracks && S.links.flags.tracks.trk_a1 === true, null, { timeout: 8000 });
+});
 await step('Settings opens and lists the owner tools', async () => { await page.click('.avatar[data-nav="vault"]'); await seen('Check YouTube setup'); await seen('Upload a new release'); await noSideways('settings'); if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true }); });
 await step('Settings rows are tidy: grouped, one-line titles, same height, same layout', async () => {
   const m = await page.evaluate(() => { const rows = [...document.querySelectorAll('.acts-list button')].map((b) => ({ h: Math.round(b.getBoundingClientRect().height), t: Math.round(b.querySelector('b').getBoundingClientRect().height), x: Math.round(b.querySelector('.si').getBoundingClientRect().left), title: b.querySelector('b').textContent }));
@@ -82,7 +92,64 @@ await step('Settings rows are tidy: grouped, one-line titles, same height, same 
   assert.equal(new Set(m.rows.map((r) => r.x)).size, 1, 'icons line up in one column');
   assert.ok(new Set(m.rows.map((r) => r.h)).size <= (m.narrow ? 4 : 2), 'rows are all the same height (within one note line): ' + [...new Set(m.rows.map((r) => r.h))].join(', '));
 });
+await step('Music tab: the Unreleased area is its own secret-access area with its own View menu and classification chips', async () => {
+  await page.evaluate(() => renderLibrary());
+  await page.waitForSelector('#unreleased .vsc', { timeout: 10000 }).catch(async (e) => { throw new Error('no Unreleased area: ' + JSON.stringify(await page.evaluate(() => ({ n: unreleasedSongs().length, view: S.view, a1: (({ track_id, unreleased, hidden, title }) => ({ track_id, unreleased, hidden, title }))(S.lib.tracks.find((t) => t.track_id === 'trk_a1') || {}), body: document.querySelector('#main').innerText.slice(0, 200).replace(/\s+/g, ' ') })))); });
+  const info = await page.evaluate(() => { const el = document.querySelector('#unreleased'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), chips: [...el.querySelectorAll('.vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), cards: el.querySelectorAll('.vsc').length,
+    glow: getComputedStyle(el, '::before').content, sheen: getComputedStyle(el.querySelector('.vart'), '::after').animationName, menu: !!el.querySelector('[data-secview]'), libView: S.libView, hint: !!el.querySelector('.vs-hint') }; });
+  assert.ok(/secret/.test(info.cls) && /access granted/.test(info.ribbon) && /unreleased vault/.test(info.ribbon), 'it has the secret-access ribbon: ' + info.ribbon);
+  assert.notEqual(info.glow, 'none', 'it has the glowing border'); assert.ok(info.menu, 'it has its own View menu');
+  assert.deepEqual(info.chips, ['All 2', 'Singles 1', 'EPs 1'], 'classified by what each song counts as: ' + info.chips.join(' | '));
+  assert.equal(info.cards, 2); assert.equal(info.hint, false, 'nothing is unsorted');
+  await noSideways('music tab with the unreleased area');
+  for (const v of ['large', 'small', 'list']) {
+    await page.click('#unreleased [data-libmenu]', { timeout: 6000 }).catch(async (e) => { throw new Error('menu button: ' + JSON.stringify(await page.evaluate(() => { const b = document.querySelector('#unreleased [data-libmenu]'); if (!b) return 'none'; const r = b.getBoundingClientRect(), at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return { rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)], vis: getComputedStyle(b).visibility, at: at ? at.tagName + '.' + at.className : null, scrollY: scrollY }; }))); });
+    if (process.env.DEBUG) console.log('   menu:', JSON.stringify(await page.evaluate(() => { const m = document.querySelector('#unreleased .viewmenu'), r = m.getBoundingClientRect(); const cs = getComputedStyle(m); return { hidden: m.hidden, display: cs.display, vis: cs.visibility, pos: cs.position, rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)], parent: m.parentElement.className, expanded: document.querySelector('#unreleased [data-libmenu]').getAttribute('aria-expanded') }; })));
+    await tapAt(`#unreleased [data-secview="unreleased|${v}"]`);
+    await page.waitForFunction((x) => document.querySelector('#unreleased').innerHTML.length > 0 && (x === 'list' ? document.querySelector('#unreleased ol.tracks li') : document.querySelector('#unreleased .allgrid.' + x)), v, { timeout: 5000 });
+    await noSideways('unreleased area in ' + v);
+  }
+  const rows = await page.evaluate(() => [...document.querySelectorAll('#unreleased ol.tracks li')].map((e) => e.querySelector('.xkind') ? e.querySelector('.xkind').textContent : '').sort());
+  assert.deepEqual(rows, ['EP', 'Single'], 'in the list, each song says what it counts as');
+  assert.equal(await page.evaluate(() => [S.libView, ls.get('sv_secview_unreleased', ''), ls.get('sv_libview', 'scroll')].join('|')), 'scroll|list|scroll', "the area's View is its own: the releases' View is unchanged");
+  await page.click('#unreleased [data-secchip="unreleased|EP"]');
+  await page.waitForFunction(() => document.querySelectorAll('#unreleased ol.tracks li').length === 1, null, { timeout: 5000 });
+  await page.click('#unreleased [data-secchip="unreleased|all"]');
+  await page.click('#unreleased [data-libmenu]'); await tapAt('#unreleased [data-secview="unreleased|scroll"]');
+  await page.waitForSelector('#unreleased .hrow .vsc');
+  if (process.env.SHOT5) { await page.evaluate(() => document.querySelector('#unreleased').scrollIntoView()); await page.screenshot({ path: process.env.SHOT5 }); }
+});
+await step('Music tab: a Features area, separate from Unreleased, with its own View menu and a chip for each guest', async () => {
+  await page.waitForSelector('#features .vsc');
+  const info = await page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), chips: [...el.querySelectorAll('.vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), cards: el.querySelectorAll('.vsc').length, tags: [...el.querySelectorAll('.vtag')].map((e) => e.textContent).sort(), view: S.sec.features.view }; });
+  assert.ok(/spot/.test(info.cls) && /features/.test(info.ribbon), 'its own look: ' + info.ribbon);
+  assert.deepEqual(info.chips, ['All 2', 'Aziza 2', 'Khairro 1'], 'a chip for each guest, most songs first: ' + info.chips.join(' | '));
+  assert.deepEqual(info.tags, ['feat. Aziza', 'feat. Khairro, Aziza'].sort(), 'each song names its guests: ' + info.tags.join(' | '));
+  assert.equal(info.view, 'scroll', 'its View is separate from the Unreleased area (which is on list)');
+  await page.click('#features [data-secchip="features|Khairro"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1, null, { timeout: 5000 });
+  await page.click('#features [data-libmenu]'); await tapAt('#features [data-secview="features|large"]');
+  await page.waitForSelector('#features .allgrid.large .vsc'); await noSideways('features area');
+});
+await step('Studio: tell an unreleased song what it counts as, and the Unreleased area re-sorts it', async () => {
+  await page.evaluate(() => { S.stuRel = 'rel_single'; renderStudio(); });
+  await page.waitForSelector('[data-k="unrel_kind"]', { state: 'attached', timeout: 10000 });
+  await page.evaluate(() => { const sel = document.querySelector('[data-stu-song="trk_sg"] [data-k="unrel_kind"]'); sel.value = 'Album'; document.querySelector('[data-stu-song="trk_sg"] [data-stu-savesong]').click(); });
+  for (let i = 0; i < 50; i++) { const t = (await store()).tracks.find((x) => x.track_id === 'trk_sg'); if (t && t.unrel_kind === 'Album') break; await new Promise((r) => setTimeout(r, 100)); }
+  assert.equal((await store()).tracks.find((x) => x.track_id === 'trk_sg').unrel_kind, 'Album', 'saved on the server');
+  await page.waitForFunction(() => trk('trk_sg').unrel_kind === 'Album', null, { timeout: 8000 });   // the page has taken the saved answer
+  await page.evaluate(() => { S.sec.unreleased.chip = 'all'; renderLibrary(); });
+  await page.waitForSelector('#unreleased .vs-chips');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#unreleased .vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim())), ['All 2', 'Albums 1', 'EPs 1']);
+});
+await step('fans see the Unreleased and Features areas too (without the owner hint)', async () => {
+  const fctx = await phoneContext(), fan = await fctx.newPage(); fan.on('pageerror', (e) => problems.push('fan page error: ' + e.message));
+  await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLibrary()); await fan.waitForSelector('#unreleased .vsc', { timeout: 15000 });
+  const t = await fan.evaluate(() => ({ chips: [...document.querySelectorAll('#unreleased .vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), feat: !!document.querySelector('#features .vsc'), hint: !!document.querySelector('.vs-hint'), sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+  assert.deepEqual(t.chips, ['All 2', 'Albums 1', 'EPs 1']); assert.ok(t.feat && !t.hint && t.sw <= t.iw + 1);
+  await fctx.close();
+});
 await step('Listening insights: who is listening now, unique listeners, arrows, charts, no sideways scroll', async () => {
+  await page.evaluate(() => renderVault());
   await page.click('[data-nav="insights"]:visible');
   await page.waitForFunction(() => /2 listening now/.test(document.body.innerText), null, { timeout: 8000 });
   const t = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
@@ -120,6 +187,7 @@ await step('the player tells the site it is playing (about every 30 s) and says 
   await page.evaluate(() => { delete audio.paused; S.now = null; });
 });
 await step('every Settings screen that used to be a grey pop-up now opens as a full page with a back link and a big title', async () => {
+  await page.evaluate(() => renderVault());
   const rows = [['[data-missing]', 'Missing files', 'missing'], ['[data-fans]', 'Soul Tribe fan list', 'tribe'], ['[data-backups]', 'Backups', 'backups'], ['[data-areas]', 'Move off the Sheet', 'sheet'], ['[data-ownerpw]', 'Set owner password', 'password'], ['[data-problems]', 'Problems reported', 'problems'], ['[data-check-yt]', 'Check YouTube setup', 'youtube']];
   for (const [sel, name, word] of rows) {
    try {
@@ -137,7 +205,7 @@ await step('every Settings screen that used to be a grey pop-up now opens as a f
    } finally { await page.evaluate(() => { const m = document.querySelector('#modal'); if (m && !m.hidden) { m.hidden = true; m.innerHTML = ''; } }); }   // never leave a page open for the next steps
   }
 });
-await step('"Check YouTube setup" says YouTube is connected', async () => { await page.click('[data-check-yt]:visible'); await seen('YouTube is connected').catch(async e => { throw new Error('modal says: ' + (await page.evaluate(() => (document.querySelector('#modal') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await noSideways('youtube check'); await page.click('#modal [data-close]'); });
+await step('"Check YouTube setup" says YouTube is connected', async () => { await page.evaluate(() => renderVault()); await page.click('[data-check-yt]:visible'); await seen('YouTube is connected').catch(async e => { throw new Error('modal says: ' + (await page.evaluate(() => (document.querySelector('#modal') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await noSideways('youtube check'); await page.click('#modal [data-close]'); });
 let releaseId = null;
 await step('a new release from a YouTube playlist is created, hidden, with its songs', async () => {
   await page.click('[data-newrel]:visible'); await seen('Start from a YouTube link instead').catch(async e => { throw new Error('screen says: ' + (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await page.click('[data-nr-yt]:visible');

@@ -53,7 +53,9 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Two ways to reach the server: Google's built-in channel, or plain web requests (the backup).
-let TRANSPORT = 'gas';
+// Outside Google's own page there is no google.script, so go straight to the fetch connection. (It used to stay on 'gas' until the first library call, so the
+// owner's first request at start-up, the Studio settings that carry the unreleased flags and listen links, failed silently and those were never loaded.)
+let TRANSPORT = (typeof google === 'undefined' || !google.script) ? 'fetch' : 'gas';
 const runGas = (fn, ...a) => new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...a));
 async function runFetch(fn, ...a) {
   if (!BOOT.api) throw new Error('The backup connection needs app_url in the Settings tab.');

@@ -35,12 +35,14 @@ export function cleanWorldPart(w) {
   if (w.genre != null) out.genre = cleanGenre(w.genre);
   return out;
 }
+export const UNREL_KINDS = ['Single', 'Album', 'EP', 'Mixtape', 'Compilation'];   // what an unreleased song is meant to be
 export function cleanTrack(f) {
   const out = {};
   if (f.video_url != null) { const v = cut(f.video_url, 200); if (v && !ytOk(v)) throw new Error("That doesn't look like a YouTube link. Paste the full link from YouTube's Share button."); out.video_url = v; }
   if (f.title != null) { const t = cut(f.title, 200); if (!t) throw new Error('A song needs a title.'); out.title = t; }
   ['features', 'producer', 'engineer', 'bpm', 'key'].forEach(k => { if (f[k] != null) out[k] = cut(f[k], 200); });
   if (f.artist != null) out.artist = cut(f.artist, 120);
+  if (f.unrel_kind != null) out.unrel_kind = UNREL_KINDS.indexOf(f.unrel_kind) > -1 ? f.unrel_kind : '';
   return out;
 }
 export function cleanLinks(o) {

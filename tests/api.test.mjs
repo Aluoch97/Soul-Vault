@@ -588,6 +588,19 @@ test('extras: each extra song keeps its label (draft, audio note, remix, cover, 
   assert.equal((await w.call('saveTracklist', ['wrong', 'rel_pub', 'x', [], false, 'Album'])).ok, false);   // owner only
 }));
 
+test('unreleased songs: what a song counts as (single, album, EP, mixtape, compilation) is saved, checked, and shown to fans', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'catalog');
+  const fan = async () => (await w.call('getShare', ['PUB'])).result.tracks.find(t => t.track_id === 'trk_a1');
+  for (const kind of ['Single', 'Album', 'EP', 'Mixtape', 'Compilation']) {
+    assert.equal((await w.owner('studioSaveTrack', 'trk_a1', { fields: { unrel_kind: kind }, unreleased: true })).ok, true);
+    assert.equal((await fan()).unrel_kind, kind);
+  }
+  await w.owner('studioSaveTrack', 'trk_a1', { fields: { unrel_kind: 'Not a kind' } }); assert.equal((await fan()).unrel_kind, '');   // only the five are accepted
+  await w.owner('studioSaveTrack', 'trk_a1', { fields: { unrel_kind: 'EP' } }); await w.owner('studioSaveTrack', 'trk_a1', { fields: { unrel_kind: '' } });
+  assert.equal((await fan()).unrel_kind, '');                                                                  // "same as its release" clears it
+  assert.equal((await w.call('studioSaveTrack', ['wrong', 'trk_a1', { fields: { unrel_kind: 'EP' } }])).ok, false);   // owner only
+}));
+
 // ---------------------------------------------------------------- moving areas off the Sheet
 test('adopting an area: owner only, known areas only, and the app then answers those calls itself', () => withWorld(async (w) => {
   assert.equal((await w.call('adoptDomain', ['wrong', 'playlists'])).ok, false);
