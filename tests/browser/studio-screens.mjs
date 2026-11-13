@@ -518,6 +518,21 @@ await step('Start from a SoundCloud link in the New release form; Songs on links
   assert.deepEqual(await page.evaluate((id) => S.lib.versions.filter((v) => v.track_id === id).map((v) => [v.format === 'SOUNDCLOUD', !!v.is_primary]).sort(), trk.track_id), [[false, true], [true, false]], 'in the open app too, the file plays first');
   await page.evaluate(() => closeModal());
 });
+await step('a song\'s Options (release page > Edit) has a guest-spot checkbox: it needs the main artist and the song then shows under Features > Guest spots', async () => {
+  const rid = 'rel_pub', tid = 'trk_a1';
+  await page.evaluate((id) => { S.releaseId = id; S.editing = true; renderRelease(id); }, rid); await page.waitForSelector('#editList [data-guest-track]', { state: 'attached' });
+  const idx = await page.evaluate((t) => S.draft.findIndex((d) => d.track_id === t), tid);
+  await page.evaluate((i) => { const c = document.querySelector('[data-guest-track="' + i + '"]'); c.closest('details').open = true; c.click(); }, idx);
+  assert.match(await page.evaluate((i) => document.querySelector('[data-guest-track="' + i + '"]').closest('details').querySelector('summary').textContent, idx), /Guest spot/, 'the Options tags say Guest spot');
+  await page.evaluate(() => document.querySelector('[data-edit-save]').click()); await seen('type the main artist');               // no main artist: refused
+  await page.evaluate((i) => { const a = document.querySelector('[data-tart="' + i + '"]'); a.value = 'Zeta Artist'; a.dispatchEvent(new Event('input', { bubbles: true })); }, idx);
+  await page.evaluate(() => document.querySelector('[data-edit-save]').click());
+  await page.waitForFunction((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); return x && x.feature_role === 'mine' && !S.editing; }, tid, { timeout: 15000 });
+  await page.evaluate(() => { S.filter = 'All'; renderLibrary(); }); await page.waitForSelector('#features .vs-tabs');
+  await page.click('#features [data-sectab="features|spots"]');
+  await page.waitForFunction(() => /Open Album/.test(document.querySelector('#features').innerText) && /Guest spot/.test(document.querySelector('#features .vtag').textContent), null, { timeout: 8000 });
+  await page.evaluate((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); x.feature_role = ''; }, tid);
+});
 await step('Unreleased is not in the type lists (filters, new release, Studio); unreleased work can still be marked and labelled Single, Album, ...', async () => {
   await page.evaluate(() => renderLibrary()); await page.waitForSelector('#libBody [data-filter]');
   assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#libBody [data-filter]')].map((b) => b.textContent.trim())), ['All', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation'], 'no Unreleased filter chip');
