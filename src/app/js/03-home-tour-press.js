@@ -207,3 +207,28 @@ function renderPress() {
   window.scrollTo(0, 0);
 }
 
+
+// Video tab: the two YouTube playlists (Originals, Remixes). The list is read at the edge (getVideoLists); if that fails, a button still opens the playlist on YouTube.
+const VIDEO_PL = { originals: 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK', remixes: 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV' };
+function renderVideo() {
+  clearPageBg(); S.view = 'video'; renderChrome();
+  if (S.videoTab !== 'originals' && S.videoTab !== 'remixes') S.videoTab = 'originals';
+  $('#main').innerHTML = `<div class="wrap sitepg presspg videopg">
+    <div class="tourseg pseg" role="tablist" aria-label="Video"><button role="tab" data-vidtab="originals">Originals</button><button role="tab" data-vidtab="remixes">Remixes</button></div>
+    <div id="videoBody"><p class="cs">Loading videos…</p></div></div>`;
+  const body = $('#videoBody'), btns = [...$$('[data-vidtab]')];
+  const draw = k => {
+    const L = S.videoLists && S.videoLists.find(x => x.key === k), yt = 'https://www.youtube.com/playlist?list=' + VIDEO_PL[k];
+    if (!S.videoLists) { body.innerHTML = '<p class="cs">Loading videos…</p>'; return; }
+    if (!L || !L.videos || !L.videos.length) { body.innerHTML = `<p class="cs">The videos could not load right now.</p><p><a class="pill" href="${esc(yt)}" target="_blank" rel="noopener">Open on YouTube</a></p>`; return; }
+    body.innerHTML = `<div class="vidgrid">${L.videos.map(v => `<div class="vid">
+      <button class="thumb" data-yt="${esc(v.id)}" aria-label="Play ${esc(v.title)}"><img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></button><span class="vt">${esc(v.title)}</span></div>`).join('')}</div>
+      <p class="cs sitefoot"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the whole playlist on YouTube</a></p>`;
+    wireYt(body);
+  };
+  const pick = k => { S.videoTab = k; syncUrl(); btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.vidtab === k))); draw(k); };
+  btns.forEach(b => b.addEventListener('click', () => { pick(b.dataset.vidtab); window.scrollTo(0, 0); }));
+  pick(S.videoTab);
+  if (!S.videoLists) runBase('getVideoLists').then(r => { S.videoLists = (r && r.lists) || []; if (S.view === 'video') draw(S.videoTab); }).catch(() => { S.videoLists = []; if (S.view === 'video') draw(S.videoTab); });
+  window.scrollTo(0, 0);
+}

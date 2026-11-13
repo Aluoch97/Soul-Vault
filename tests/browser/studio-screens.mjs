@@ -34,7 +34,9 @@ for (const [ago, v, dev, out, tok, device] of [[0.2, 'ver_a1', 'devA', 'complete
   await w.db.prepare('INSERT INTO listens (at, track_id, version_id, release_id, share_token, device_id, seconds, pct, outcome, device) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(Date.now() - ago * DAYMS, ver[v][0], v, ver[v][1], tok, dev, out === 'skip' ? 5 : 120, out === 'skip' ? 4 : 100, out, device).run();
 assert.equal((await w.call('listeningNow', ['', 'FAN', 'liveA', 'ver_a1', 'phone'])).result, true);
 assert.equal((await w.call('listeningNow', ['', 'PUB', 'liveB', 'ver_sg', 'desktop'])).result, true);
-w.youtube.playlists.PLgroups0123456789abcdefghijklmnop = { title: 'Group EP', videos: [{ id: 'vidCCCCCCC1', title: 'G1 (feat. Aziza)' }, { id: 'vidCCCCCCC2', title: 'G2 (feat. Khairro)' }, { id: 'vidCCCCCCC3', title: 'G3' }] };
+w.youtube.playlists.PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK = { title: 'Originals', videos: [{ id: 'orig1111111', title: 'Original One' }, { id: 'orig2222222', title: 'Original <i>Two</i>' }] };
+w.youtube.playlists.PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV = { title: 'Remixes', videos: [{ id: 'remx1111111', title: 'Remix One' }] };
+w.youtube.playlists.PLgroups0123456789abcdefghijklmnop = { title: 'Group EP', videos: [{ id: 'vidCCCCCCC1', title: 'G1 (feat. Aziza)' }, { id: 'vidCCCCCCC2', title: 'G2 (feat. Khairro)' }, { id: 'vidCCCCCCC3', title: 'G3 (feat. Charlie, The Healer)' }] };
 const grp = (await w.owner('createReleaseFromYoutube', { url: 'https://www.youtube.com/playlist?list=PLgroups0123456789abcdefghijklmnop' })).result;   // a project with three songs, all unreleased
 assert.equal((await w.owner('studioSaveRelease', grp.release.release_id, { basics: { hidden: false } })).ok, true);
 for (const t of grp.tracks) assert.equal((await w.owner('studioSaveTrack', t.track_id, { fields: {}, unreleased: true })).ok, true);
@@ -142,9 +144,10 @@ await step('Music tab: a Features area for guests on my songs AND my guest spots
   await page.waitForSelector('#features .vsc');
   const info = await page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), chips: [...el.querySelectorAll('.vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), cards: el.querySelectorAll('.vsc').length, tags: [...el.querySelectorAll('.vtag')].map((e) => e.textContent).sort(), view: S.sec.features.view }; });
   assert.ok(/spot/.test(info.cls) && /features/.test(info.ribbon), 'its own look: ' + info.ribbon);
-  assert.deepEqual(info.chips, ['All 3', 'Guests on my songs 2', 'My guest spots 1', 'Aziza 2', 'Berhani 1', 'Khairro 1'], 'kind chips, then a chip for each person (counting projects): ' + info.chips.join(' | '));
-  assert.deepEqual(info.tags, ['1 feature', '2 features', 'Guest spot'], 'each project says what it holds: ' + info.tags.join(' | '));
+  assert.deepEqual(info.chips, ['All 3', 'Guests on my songs 2', 'My guest spots 1', 'Aziza 2', 'Berhani 1', 'Charlie, The Healer 1', 'Khairro 1'], 'kind chips, then a chip for each person (counting projects): ' + info.chips.join(' | '));
+  assert.deepEqual(info.tags, ['1 feature', '3 features', 'Guest spot'], 'each project says what it holds: ' + info.tags.join(' | '));
   assert.equal(info.cards, 3, 'one card per project, not per song');
+  assert.deepEqual(await page.evaluate(() => [featuresOf({ features: 'Charlie, The Healer' }), featuresOf({ features: 'Charlie & Aziza' }), featuresOf({ title: 'X (feat. The Healer)' }), featuresOf({ features: 'Charlie, The Healer, Charlie' })]), [['Charlie, The Healer'], ['Charlie, The Healer', 'Aziza'], ['Charlie, The Healer'], ['Charlie, The Healer']], 'Charlie and The Healer are one artist: Charlie, The Healer');
   assert.equal(info.view, 'scroll', 'its View is separate from the Unreleased area (which is on list)');
   await page.click('#features [data-secchip="features|k:mine"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /Berhani/.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
   await page.click('#features [data-secchip="features|a:Aziza"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 2 && /Open Album/.test(document.querySelector('#features').innerText) && /Group EP/.test(document.querySelector('#features').innerText), null, { timeout: 5000 });
@@ -195,6 +198,19 @@ await step('the page reports each page view with the time on it, from a phone, w
   assert.equal((await rowsOf(dev2)).length, 0, 'a browser that says Do Not Track is not counted'); await dnt.close();
   const bot = await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' }); await bot.route('**/*', (r) => r.abort());
   await bot.close();
+});
+await step('Video tab: a nav button with the Originals and Remixes playlists, tap to play, own address, no sideways scroll', async () => {
+  await page.click('#tabs [data-nav="video"]');
+  await page.waitForSelector('.videopg .vid');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.videopg .vt')].map((e) => e.textContent)), ['Original One', 'Original <i>Two</i>'], 'Originals, with titles shown as plain text');
+  assert.equal(await page.evaluate(() => location.pathname), '/video');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('#tabs button').length), 6, 'six tabs');
+  await noSideways('video'); await tapAt('.videopg .thumb');
+  await page.waitForSelector('.videopg iframe[src*="youtube-nocookie.com/embed/orig1111111"]');
+  await page.click('[data-vidtab="remixes"]'); await page.waitForFunction(() => document.querySelectorAll('.videopg .vid').length === 1 && location.pathname === '/video/remixes', null, { timeout: 5000 });
+  const tabs = await page.evaluate(() => [...document.querySelectorAll('#tabs button')].map((b) => { const r = b.getBoundingClientRect(); return [r.left >= 0 && r.right <= innerWidth, r.width >= 44, b.textContent.trim()]; }));
+  assert.ok(tabs.every((t) => t[0] && t[1]), 'every tab button fits on screen and is tappable: ' + JSON.stringify(tabs));
+  await noSideways('video remixes');
 });
 await step('Lore: the Karibu tena / Soul Vault header with the new-release, share-links and Settings buttons is at the top', async () => {
   await page.evaluate(() => renderLore());

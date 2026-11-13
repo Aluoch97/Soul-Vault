@@ -14,12 +14,12 @@ async function init() {
     if (BOOT.token) {
       const cached = libCacheGet();
       const show = d => { if (CLUB()) { document.body.classList.add('club-mode'); const r1 = parseRoute();
-                            if ((r1.v === 'tour' || r1.v === 'press') && S.view === r1.v && $('#main .tourpg, #main .presspg')) renderChrome(true);   // already on screen (drawn before the data came): do not reload it
+                            if ((r1.v === 'tour' || r1.v === 'press' || r1.v === 'video') && S.view === r1.v && $('#main .tourpg, #main .presspg, #main .videopg')) renderChrome(true);   // already on screen (drawn before the data came): do not reload it
                             else routeTo(r1); }
                           else { document.body.classList.add('share-mode'); renderRelease(d.releases[0].release_id); } };
       if (cached && cached.releases && cached.releases.length) { S.lib = normalizeLib(cached); S.share = cached.share; primeThumbs(); S.streamKey = cached.stream_key || ''; S.stale = true; show(cached); }
       else if (BOOT.pub) {
-        document.body.classList.add('club-mode'); const r0 = parseRoute(); if (r0.v === 'tour' || r0.v === 'press') routeTo(r0); else if (r0.v !== 'home') { S.view = r0.v === 'lore' ? 'lore' : 'library'; renderChrome(true); paintSkeleton(); } else if (r0.v === 'home') {
+        document.body.classList.add('club-mode'); const r0 = parseRoute(); if (r0.v === 'tour' || r0.v === 'press' || r0.v === 'video') routeTo(r0); else if (r0.v !== 'home') { S.view = r0.v === 'lore' ? 'lore' : 'library'; renderChrome(true); paintSkeleton(); } else if (r0.v === 'home') {
           paintHomeShell();
           firstCall('getHome', BOOT.token).then(h => { if (!S.lib && h && h.picks) paintHomeLite(h.picks); }).catch(() => {});   // small and quick: the two covers, before the whole library
         }
@@ -66,6 +66,7 @@ function parseRoute() {
   if (p[0] === 'vault') return p[1] ? { v: 'release', slug: p.slice(1).join('/') } : { v: 'library' };
   if (p[0] === 'tour') return { v: 'tour', tab: p[1] === 'road-to-100' ? 'road' : 'shows' };
   if (p[0] === 'press') return { v: 'press', tab: p[1] === 'video' ? 'video' : 'articles' };
+  if (p[0] === 'video') return { v: 'video', tab: p[1] === 'remixes' ? 'remixes' : 'originals' };
   if (p[0] === 'lore') return { v: 'lore' };
   return { v: 'home', unknown: p.length > 0 };   // an address nobody made: show Home, but tell search engines not to index it
 }
@@ -76,6 +77,7 @@ function pathFor() {
   if (v === 'release' && S.releaseId) return '/vault/' + relSlug(S.releaseId);
   if (v === 'tour') return S.tourTab === 'road' ? '/tour/road-to-100' : '/tour';
   if (v === 'press') return S.pressTab === 'video' ? '/press/video' : '/press';
+  if (v === 'video') return S.videoTab === 'remixes' ? '/video/remixes' : '/video';
   if (v === 'lore') return '/lore';
   return null;   // owner screens (settings, share links, insights) have no address
 }
@@ -97,7 +99,7 @@ function syncUrl() {
   if (S.urlInit && location.pathname !== p) setRobots(false);   // the visitor moved on from an unknown address
   setCanonical(p);
   const r = S.lib && S.view === 'release' ? rel(S.releaseId) : null;
-  const names = { home: '', library: 'Music', tour: 'Tour', press: 'Press', lore: 'Lore' };
+  const names = { home: '', library: 'Music', tour: 'Tour', press: 'Press', video: 'Video', lore: 'Lore' };
   S.siteName = S.siteName || document.title.split(' | ')[0] || 'Nicólas Soul';
   const t = S.view === 'release' ? (r ? r.title : 'Release') : names[S.view];
   document.title = t ? t + ' | ' + S.siteName : S.siteName;
@@ -110,6 +112,7 @@ function routeTo(r) {
   try {
     if (r.v === 'tour') { S.tourTab = r.tab; renderTour(); }
     else if (r.v === 'press') { S.pressTab = r.tab; renderPress(); }
+    else if (r.v === 'video') { S.videoTab = r.tab; renderVideo(); }
     else if (r.v === 'lore' && (OWNER || CLUB())) renderLore();
     else if (r.v === 'library' && S.lib) renderLibrary();
     else if (r.v === 'release' && S.lib) {
@@ -120,12 +123,12 @@ function routeTo(r) {
     else renderHome();
   } finally { S.fromPop = false; }
 }
-window.addEventListener('popstate', () => { if (S.lib || ['tour', 'press'].indexOf(parseRoute().v) > -1) routeTo(parseRoute()); });
+window.addEventListener('popstate', () => { if (S.lib || ['tour', 'press', 'video'].indexOf(parseRoute().v) > -1) routeTo(parseRoute()); });
 
 function paintSkeleton() { $('#main').innerHTML = '<div class="wrap skelpg" aria-busy="true"><i class="skelhead"></i><div class="skelgrid">' + '<i></i>'.repeat(8) + '</div></div>'; }
 // One moving background behind Home, Vault, Tour, Press and Lore. It lives outside #main, so the video keeps playing when you change tabs.
 function syncSiteBg() {
-  const on = ['home', 'library', 'tour', 'press', 'lore'].indexOf(S.view) > -1;
+  const on = ['home', 'library', 'tour', 'press', 'video', 'lore'].indexOf(S.view) > -1;
   let el = $('#sitebg');
   if (on && !el) { el = Object.assign(document.createElement('div'), { id: 'sitebg' }); el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<video muted loop playsinline preload="none" poster="/home-bg-hd-poster.jpg"></video>'; document.body.prepend(el); }
   document.body.classList.toggle('vbg', on);
@@ -135,11 +138,11 @@ function syncSiteBg() {
 function renderChrome(noUrl) {
   const v = S.view;
   syncSiteBg();
-  const cur = ['home', 'tour', 'press', 'lore'].indexOf(v) > -1 ? v : (['shares', 'vault'].indexOf(v) > -1 ? v : 'library');
+  const cur = ['home', 'tour', 'press', 'video', 'lore'].indexOf(v) > -1 ? v : (['shares', 'vault'].indexOf(v) > -1 ? v : 'library');
   const years = [...new Set(((S.lib && S.lib.releases) || []).map(r => r.year))].sort((a, b) => b - a);
   const cc = n => n === cur ? 'aria-current="page"' : '';
   const club = !OWNER;
-  const main = [['home', I.home, 'Home'], ['library', I.vault, 'Music'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['lore', I.layers, 'Lore']];
+  const main = [['home', I.home, 'Home'], ['library', I.vault, 'Music'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['video', I.play, 'Video'], ['lore', I.layers, 'Lore']];
   $('#side').innerHTML = `
     <div class="brand">Soul <span>Vault</span><i class="flagband" aria-hidden="true"></i></div>
     <nav>

@@ -62,8 +62,11 @@ const UNREL_KINDS = ['Single', 'Album', 'EP', 'Mixtape', 'Compilation'];
 // What an unreleased song is meant to be: the one you set on the song in Studio, else its release's type, else "Unsorted".
 const unrelKindOf = t => UNREL_KINDS.indexOf(t.unrel_kind) > -1 ? t.unrel_kind : (UNREL_KINDS.indexOf(typeOf(rel(t.release_id) || {})) > -1 ? typeOf(rel(t.release_id)) : '');
 // Guests on a song: the Features field, or "(feat. X)" / "(ft. X)" in the title.
+// One artist whose name has a comma in it, and nicknames for the same person: all become that one name.
+const ARTIST_FULL = 'Charlie, The Healer';
+const sameArtist = x => /^(charlie|the healer|charlie\s*,?\s*the healer)$/i.test(x) ? ARTIST_FULL : x;
 function featuresOf(t) {
-  const out = [], add = s => String(s || '').split(/\s*(?:,|&|\band\b|\+)\s*/i).map(x => x.replace(/^(feat\.?|ft\.?|featuring|with)\s+/i, '').trim()).filter(x => x && x.length < 60).forEach(x => { if (out.indexOf(x) < 0) out.push(x); });
+  const out = [], add = s => String(s || '').replace(/charlie\s*,\s*the healer/ig, 'Charlie\u0001The Healer').split(/\s*(?:,|&|\band\b|\+)\s*/i).map(x => sameArtist(x.replace(/\u0001/g, ' ').replace(/^(feat\.?|ft\.?|featuring|with)\s+/i, '').trim())).filter(x => x && x.length < 60).forEach(x => { if (out.indexOf(x) < 0) out.push(x); });
   add(t.features);
   const m = String(t.title || '').match(/[(\[]\s*(?:feat\.?|ft\.?|featuring)\s+([^)\]]+)[)\]]/i); if (m) add(m[1]);
   return out;
@@ -123,7 +126,7 @@ function featuresSection() {
   if (!ts.length) return '';
   const mine = ts.filter(isGuestSpot), guests = ts.filter(t => !isGuestSpot(t) && featuresOf(t).length);
   const mainArtist = t => String(t.artist || (rel(t.release_id) || {}).artist_name || '').trim();
-  const who = t => isGuestSpot(t) ? [mainArtist(t)].filter(Boolean) : featuresOf(t);
+  const who = t => isGuestSpot(t) ? [sameArtist(mainArtist(t))].filter(Boolean) : featuresOf(t);
   const byPerson = {}; ts.forEach(t => who(t).forEach(n => { (byPerson[n] = byPerson[n] || []).push(t); }));
   const names = Object.keys(byPerson).sort((a, b) => nProjects(byPerson[b]) - nProjects(byPerson[a]) || a.localeCompare(b)).slice(0, 10);
   const chips = [['all', 'All', nProjects(ts)]].concat(guests.length && mine.length ? [['k:guests', 'Guests on my songs', nProjects(guests)], ['k:mine', 'My guest spots', nProjects(mine)]] : []).concat(names.map(n => ['a:' + n, n, nProjects(byPerson[n])]));

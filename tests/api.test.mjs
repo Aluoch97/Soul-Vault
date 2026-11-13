@@ -876,3 +876,18 @@ test('listening now: your own phone is hidden unless you ask; one row per device
   assert.equal((await w.db.prepare("SELECT COUNT(*) AS n FROM live WHERE device_id = 'meDev'").first()).n, 0);   // stale rows are deleted, never kept as history
   assert.equal((await w.db.prepare('SELECT COUNT(*) AS n FROM listens').first()).n, 0);                        // and "now" never touches the listening history
 }));
+
+// ---------------------------------------------------------------- the Video tab (two public YouTube playlists)
+test('Video tab: anyone can read the Originals and Remixes playlists; a missing key or a failed list never breaks the other', () => withWorld(async (w) => {
+  const O = 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK', R = 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV';
+  const noKey = await w.call('getVideoLists', []);                                              // no key yet: still answers, lists say they are not available
+  assert.equal(noKey.ok, true); assert.deepEqual(noKey.result.lists.map(l => [l.key, l.videos.length, l.error]), [['originals', 0, 'not-available'], ['remixes', 0, 'not-available']]);
+  w.env.YOUTUBE_API_KEY = 'test-yt-key';
+  w.youtube.playlists = { [O]: { title: 'Originals', videos: [{ id: 'aaaaaaaaaaa', title: 'One <b>x</b>' }, { id: 'bbbbbbbbbbb', title: 'Private video' }] } };   // the Remixes list is missing at YouTube
+  const half = (await w.call('getVideoLists', [])).result.lists;
+  assert.deepEqual(half[0].videos, [{ id: 'aaaaaaaaaaa', title: 'One <b>x</b>' }]);             // private videos are skipped
+  assert.equal(half[1].error, 'not-available'); assert.ok(!JSON.stringify(half).includes('test-yt-key'));
+  w.youtube.playlists[R] = { title: 'Remixes', videos: [{ id: 'ccccccccccc', title: 'Remix' }] };
+  const full = (await w.call('getVideoLists', [])).result.lists;
+  assert.deepEqual(full.map(l => [l.key, l.videos.length]), [['originals', 1], ['remixes', 1]]);
+}));

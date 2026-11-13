@@ -311,6 +311,7 @@ document.addEventListener('click', e => {
     else if (d.nav === 'home') renderHome();
     else if (d.nav === 'tour') renderTour();
     else if (d.nav === 'press') renderPress();
+    else if (d.nav === 'video') renderVideo();
     else if (d.nav === 'lore' && (OWNER || CLUB())) renderLore();
     else if (d.nav === 'worlds') { S.filter = 'All'; S.q = ''; renderLibrary(); const a = $('#all-releases'); if (a) a.scrollIntoView(); }
     else if (d.nav === 'recent') { if (S.view !== 'library') renderLibrary(); const t = $('#recent'); if (t) t.scrollIntoView(); else toast('Play something first'); }
