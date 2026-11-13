@@ -516,6 +516,21 @@ await step('Start from a SoundCloud link in the New release form; Songs on links
   assert.deepEqual(await page.evaluate((id) => S.lib.versions.filter((v) => v.track_id === id).map((v) => [v.format === 'SOUNDCLOUD', !!v.is_primary]).sort(), trk.track_id), [[false, true], [true, false]], 'in the open app too, the file plays first');
   await page.evaluate(() => closeModal());
 });
+await step('on a computer the scrolling shelves (discography, Unreleased, Features) look like the phone: a row of cards that scrolls sideways', async () => {
+  const dctx = await phoneContext(undefined, { viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false }), d = await dctx.newPage(); d.on('pageerror', (e) => problems.push('desktop page error: ' + e.message));
+  await d.goto('https://soulnicolas.com/?s=PUB'); await d.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });
+  await d.evaluate(() => renderLibrary()); await d.waitForSelector('#unreleased .vsc', { timeout: 15000 });
+  const m = await d.evaluate(() => {
+    const row = document.querySelector('#unreleased .hrow.vrow'), shelf = document.querySelector('#main .shelf .ctrack'), card = row && row.querySelector('.vsc'), slide = shelf && shelf.querySelector('.slide');
+    const bar = document.querySelector('#main .shelfbar');
+    return { vrowDisplay: row && getComputedStyle(row).display, vrowOverflow: row && getComputedStyle(row).overflowX, cardW: card && Math.round(card.getBoundingClientRect().width), shelf: !!shelf, shelfDisplay: shelf && getComputedStyle(shelf).display, shelfOverflow: shelf && getComputedStyle(shelf).overflowX, slideW: slide && Math.round(slide.getBoundingClientRect().width), arrows: !!bar && getComputedStyle(bar).display !== 'none', sw: document.documentElement.scrollWidth, iw: window.innerWidth };
+  });
+  assert.ok(m.shelf && m.shelfDisplay === 'flex' && m.shelfOverflow === 'auto', 'the discography shelf scrolls sideways on a computer: ' + JSON.stringify(m));
+  assert.ok(m.slideW >= 240 && m.slideW <= 300, 'phone-style cards, not big covers: ' + m.slideW + 'px'); assert.ok(m.arrows, 'with arrows on the shelf');
+  assert.deepEqual([m.vrowDisplay, m.vrowOverflow, m.cardW], ['flex', 'auto', 180], 'the Unreleased row is a scrolling row of small cards');
+  assert.ok(m.sw <= m.iw + 1, 'the page itself does not scroll sideways: ' + m.sw + ' vs ' + m.iw);
+  await dctx.close();
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
