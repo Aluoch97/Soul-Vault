@@ -148,6 +148,19 @@ await step('fans see the Unreleased and Features areas too (without the owner hi
   assert.deepEqual(t.chips, ['All 2', 'Albums 1', 'EPs 1']); assert.ok(t.feat && !t.hint && t.sw <= t.iw + 1);
   await fctx.close();
 });
+await step('Lore: the Karibu tena / Soul Vault header with the new-release, share-links and Settings buttons is at the top', async () => {
+  await page.evaluate(() => renderLore());
+  await page.waitForSelector('.wrap.lore .home-h');
+  const t = await page.evaluate(() => { const w = document.querySelector('.wrap.lore'), h = w.querySelector('.home-h'); return { first: w.firstElementChild === h, hello: h.querySelector('.hello').textContent, brand: h.querySelector('.brand').textContent.replace(/\s+/g, ' '), btns: ['[data-newrel]', '[data-nav="shares"]', '.avatar[data-nav="vault"]'].map((q) => !!h.querySelector(q)) }; });
+  assert.ok(t.first, 'it is the very first thing on the Lore page'); assert.equal(t.hello, 'Karibu tena'); assert.equal(t.brand, 'Soul Vault'); assert.deepEqual(t.btns, [true, true, true]);
+  await noSideways('lore page'); await page.click('.wrap.lore .home-h .avatar');
+  await seen('Check YouTube setup');                                                                         // the avatar opens Settings
+  const fctx = await phoneContext(), fan = await fctx.newPage();
+  await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLore()); await fan.waitForSelector('.wrap.lore .home-h');
+  const f = await fan.evaluate(() => { const h = document.querySelector('.wrap.lore .home-h'); return { hello: h.querySelector('.hello').textContent, buttons: h.querySelectorAll('button').length }; });
+  assert.ok(/^Karibu, /.test(f.hello) && f.buttons === 0, 'fans get the greeting and name, without the owner buttons: ' + JSON.stringify(f));
+  await fctx.close();
+});
 await step('Listening insights: who is listening now, unique listeners, arrows, charts, no sideways scroll', async () => {
   await page.evaluate(() => renderVault());
   await page.click('[data-nav="insights"]:visible');
