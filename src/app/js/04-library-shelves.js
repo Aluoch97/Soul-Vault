@@ -109,6 +109,8 @@ document.addEventListener('click', e => {
   if (m) { const menu = m.nextElementSibling, open = menu.hidden; menu.hidden = !open; m.setAttribute('aria-expanded', String(open)); return; }
   const sc = e.target.closest && e.target.closest('[data-secchip]');
   if (sc) { const [id, k] = sc.dataset.secchip.split('|'); secState(id).chip = k; redrawSection(id); return; }
+  const ext = e.target.closest && e.target.closest('[data-extab]');
+  if (ext) { secState('extras').tab = ext.dataset.extab; redrawSection('extras'); return; }
   const stb = e.target.closest && e.target.closest('[data-sectab]');
   if (stb) { const [id, k] = stb.dataset.sectab.split('|'); const q = secState(id); q.tab = k; q.chip = 'all'; redrawSection(id); return; }
   const o = e.target.closest && e.target.closest('[data-libview]');
@@ -225,9 +227,9 @@ function renderLibBody() {
   const view = S.libView = S.libView || ls.get('sv_libview', 'scroll');
   const allMode = view !== 'scroll' && !q;
   const viewBtn = q ? '' : viewMenu(view);
-  // Order on the Music tab: Recently played, Discography, Features, Unreleased, Series, Playlists (then coming attractions).
+  // Order on the Music tab: Recently played, Discography, Extras (tabs: Unreleased, Features, Series), Playlists (then coming attractions).
   $('#libBody').innerHTML = (!q ? resumeCard() : '') + (!q && !allMode ? recentRow() : '') + (!q ? '<h2 class="sh" id="discography"><span><b>Discography</b></span></h2>' : '') + `<div class="libbar">${chips}${viewBtn}</div>` + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
-    (!q ? featuresSection() + unreleasedSection() : '') + (!q && !allMode ? seriesRow() + playlistsRow() + dropsRow() : '') +
+    (!q ? extrasSection() : '') + (!q && !allMode ? playlistsRow() + dropsRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
   wireShelf();

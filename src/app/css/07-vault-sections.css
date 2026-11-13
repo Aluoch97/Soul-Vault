@@ -75,3 +75,9 @@
 
   /* Now Playing "parked": a YouTube or SoundCloud song keeps playing after you close Now Playing (the player stays on the page, just not drawn) */
   #np.parked { visibility: hidden; pointer-events: none; }
+
+  /* Extras: one area, three tabs (Unreleased / Features / Series); the inner sections keep their look but not their own big heading */
+  .extras { margin: 28px 0; }
+  .extras > .sh { margin-bottom: 4px; }
+  .extras .ex-tabs { margin: 2px 0 12px; }
+  .extras .vsec { margin: 0 0 12px; } .extras .vs-head { display: none; }
