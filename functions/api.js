@@ -5,7 +5,8 @@ import cfg from '../site.config.json';
 import { ERR_LINK, findShare, shareScope, shareBody, bodyTtl, shareBlock, overlayFor } from './_lib/share.js';
 import { loadLib, saveLib, readMeta, loadOverlay, saveOverlay } from './_lib/mirror.js';
 import { makeRecord, checkPassword, PW_MIN, MAX_TRIES, LOGIN_LOCK_MS, failKey } from './_lib/auth.js';
-import { loadNative, saveNative, mergeNative, newRelease, newTrack, newVersion, relSlug, slug, MEDIA_BASE } from './_lib/native.js';
+import { loadNative, saveNative, mergeNative, newRelease, newTrack, newVersion, newYoutubeVersion, relSlug, slug, MEDIA_BASE, rid as rand } from './_lib/native.js';
+import * as YT from './_lib/youtube.js';
 import * as OW from './_lib/owned.js';
 import * as CT from './_lib/catalog.js';
 import * as AC from './_lib/activity.js';
@@ -331,6 +332,73 @@ async function studio(ctx, fn, a) {
     else { ov.cover[rid] = coverId; await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; await forgetCached(all); }
     return true;
   }
+  // ───── YouTube: songs, whole releases and playlist videos from a link, and keeping their titles fresh (the key is the Cloudflare secret YOUTUBE_API_KEY) ─────
+  const extrasStore = own.domains.extras ? own.extras : nat.extras;   // where videos added to release pages live
+  // songs live in the owned data once the catalog is switched over (else in the native data), videos on release pages in the owned data once the extras are: save whichever hold something
+  const saveAll = async () => { if (cat || own.domains.extras) await OW.saveOwned(env.DB, own); if (!cat || !own.domains.extras) await saveNative(env.DB, nat); mem.lib = null; await forgetCached(all); };
+  const today10 = () => new Date().toISOString().slice(0, 10);
+  if (fn === 'checkYoutube') return YT.check(env);
+  if (fn === 'youtubeTitleStatus') return YT.status(YT.titleRows(store.tracks, extrasStore));
+  if (fn === 'refreshYoutubeTitles') {
+    const out = await YT.refresh(env, YT.titleRows(store.tracks, extrasStore), a[1] === true);
+    if (out.checked) { await saveAll(); }
+    return out;
+  }
+  if (fn === 'addYoutubeSong') {
+    const o = a[1] || {}, url = String(o.url || '').trim(), vid = YT.ytId(url), relId = String(o.releaseId || '');
+    if (!vid) throw new Error("That doesn't look like a YouTube video link.");
+    if (!relOf(relId)) throw new Error('Release not found.');
+    if (all.tracks.some(t => t.release_id === relId && YT.ytId(t.video_url) === vid && all.versions.some(v => v.track_id === t.track_id && v.format === 'YOUTUBE'))) throw new Error('That video is already a song in this release.');
+    let title = String(o.title || '').trim().slice(0, 200), fromApi = false;
+    if (!title && env.YOUTUBE_API_KEY) { try { title = String((((await YT.api(env, 'videos', { part: 'snippet', id: vid })).items || [])[0] || { snippet: {} }).snippet.title || '').trim().slice(0, 200); fromApi = !!title; } catch (e) { /* the title is a nicety: fall back below */ } }
+    if (!title) title = (await YT.oembedTitle(vid)).slice(0, 200);   // no key needed (and not marked as refreshable, because only the key can refresh it)
+    if (!title) title = 'YouTube song';
+    const no = Math.max(0, ...all.tracks.filter(t => t.release_id === relId).map(t => Number(t.track_no) || 0)) + 1;
+    const track = Object.assign(newTrack(relId, no, title), { video_url: 'https://youtu.be/' + vid }); if (fromApi) track.title_src = YT.srcTag();
+    const version = newYoutubeVersion(track.track_id, vid, url);
+    store.tracks.push(track); store.versions.push(version); await saveNat();
+    return { track, version };
+  }
+  if (fn === 'createReleaseFromYoutube') {
+    const o = a[1] || {}, src = await YT.source(env, o.url);
+    const title = String(o.title || src.title || '').trim().slice(0, 120) || 'From YouTube';
+    const type = RELEASE_TYPES.indexOf(o.type) > -1 ? o.type : (src.kind === 'video' ? 'Single' : 'Album');
+    const year = Math.round(Number(o.year)) || new Date().getFullYear();
+    let coverId = '';
+    if (env.MEDIA && src.videos[0]) {   // the first video's picture becomes the cover (kept at every size the app asks for; YouTube's own picture, as it is)
+      for (const u of ['https://i.ytimg.com/vi/' + src.videos[0].id + '/maxresdefault.jpg', 'https://i.ytimg.com/vi/' + src.videos[0].id + '/hqdefault.jpg']) {
+        try {
+          const res = await fetch(u); if (!res.ok) continue;
+          const buf = await res.arrayBuffer(); if (buf.byteLength < 4000) continue;
+          const id = 'c' + rand() + rand().slice(0, 4);
+          for (const size of ['t', '160', '400', '1200', '1600']) await env.MEDIA.put('img/' + id + '/' + size, buf, { httpMetadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000, immutable' } });
+          coverId = id; break;
+        } catch (e) { /* no cover this time: the release is still made */ }
+      }
+    }
+    const release = newRelease({ title, type, year: String(year), coverId });
+    const tracks = [], versions = [], tag = YT.srcTag();
+    src.videos.slice(0, 100).forEach((v, i) => {
+      const t = Object.assign(newTrack(release.release_id, i + 1, String(v.title || 'YouTube song').slice(0, 200)), { video_url: 'https://youtu.be/' + v.id, title_src: tag });
+      tracks.push(t); versions.push(newYoutubeVersion(t.track_id, v.id, o.url));
+    });
+    store.releases.push(release); tracks.forEach(t => store.tracks.push(t)); versions.forEach(v => store.versions.push(v)); await saveNat();
+    return { release, tracks, versions, playlist: src.title, total: src.videos.length, truncated: src.videos.length > 100 };   // hidden from fans until you show it
+  }
+  if (fn === 'addYoutubePlaylistVideos') {
+    const relId = String(a[1] || ''); if (!relOf(relId)) throw new Error('Release not found.');
+    const src = await YT.source(env, a[2]);
+    const have = {}; all.extras.filter(x => x.release_id === relId && x.kind === 'video').forEach(x => { const id = YT.ytId(x.url); if (id) have[id] = 1; });
+    const added = []; let skipped = 0;
+    src.videos.slice(0, 100).forEach(v => {
+      if (have[v.id]) { skipped++; return; }
+      have[v.id] = 1;
+      added.push({ extra_id: 'ext_' + rand(), release_id: relId, kind: 'video', url: 'https://youtu.be/' + v.id, title: String(v.title || 'Video').slice(0, 200), title_src: YT.srcTag(), description: '',
+                   image: 'https://i.ytimg.com/vi/' + v.id + '/hqdefault.jpg', site: 'YouTube', file_id: '', created: new Date().toISOString() });
+    });
+    if (added.length) { added.forEach(x => extrasStore.push(x)); if (own.domains.extras) await OW.saveOwned(env.DB, own); else await saveNative(env.DB, nat); mem.lib = null; await forgetCached(all); }
+    return { added, skipped, total: src.videos.length, playlist: src.title, truncated: src.videos.length > 100 };
+  }
   if (fn === 'studioReplaceAudio') {
     // Swap the audio file of a version (a new upload from studioPlanUpload) and keep everything else about it: its name, order, comments, share links and plays.
     const o = a[1] || {}, vid = String(o.versionId || ''), key = String(o.key || '');
@@ -372,6 +440,10 @@ async function studio(ctx, fn, a) {
   }
   throw new Error('Unknown action.');
 }
+
+// The YouTube tools run on Cloudflare once the catalog or the extras are switched over (the old script's versions are refused after that);
+// before that the old script keeps doing it, so nothing changes until then.
+async function youtubeOnEdge(env) { const own = await OW.loadOwned(env.DB); return !!(own.domains.catalog || own.domains.extras); }
 
 // ───────── Owner password ─────────
 async function kvGet(db, k) { try { const r = await db.prepare('SELECT v FROM kv WHERE k = ?').bind(k).first(); return r ? JSON.parse(r.v) : null; } catch (e) { return null; } }
@@ -552,6 +624,9 @@ export async function onRequestPost(ctx) {
       return res;
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
+    } else if (env.DB && /^(addYoutubeSong|createReleaseFromYoutube|addYoutubePlaylistVideos|refreshYoutubeTitles|youtubeTitleStatus|checkYoutube)$/.test(fn) && await youtubeOnEdge(env)) {
+      try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
+      catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }

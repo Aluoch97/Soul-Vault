@@ -43,6 +43,11 @@ export function newTrack(relId, no, title) {
   return { track_id: 'trk_' + rid(), release_id: relId, track_no: no, title, category: 'Main', features: '', bpm: '', key: '', notes: '', artist: '', hidden: false, producer: '', engineer: '',
     video_url: '', lyrics: '', voice_note_id: '', chapter: '', is_single: false, track_cover: '', number_label: '', genre: '', unreleased: false, native: true };
 }
+/** A song that plays through YouTube: no audio file, format YOUTUBE, the video is the song's video_url. */
+export function newYoutubeVersion(trackId, vid, srcUrl) {
+  return { version_id: 'ver_' + rid(), track_id: trackId, label: 'YouTube', is_primary: true, audio: '', preview: '', format: 'YOUTUBE', duration: '', specs: 'Added from YouTube: ' + String(srcUrl || ('https://youtu.be/' + vid)).slice(0, 200),
+    size_mb: 0, hidden: false, url: '', native: true };
+}
 export function newVersion(trackId, label, primary, key, ext, sizeBytes, seconds) {
   return { version_id: 'ver_' + rid(), track_id: trackId, label, is_primary: !!primary, audio: 'r2:' + key, preview: '', format: String(ext).toUpperCase(), duration: fmtDur(seconds), specs: '',
     size_mb: Math.round(sizeBytes / 1048576 * 10) / 10, hidden: false, url: MEDIA_BASE + key.split('/').map(encodeURIComponent).join('/'), native: true };

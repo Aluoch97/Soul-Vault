@@ -30,8 +30,8 @@ export function applyOwned(lib, o) {
 export const OWNED_FNS = { savePlaylist: 'playlists', deletePlaylist: 'playlists', getPlaylists: 'playlists',
   addExtra: 'extras', updateExtra: 'extras', deleteExtra: 'extras', saveLetter: 'settings', saveBio: 'settings', saveArtistLinks: 'settings',
   saveTracklist: 'catalog', saveTrackDetails: 'catalog', saveWorld: 'catalog', saveLyrics: 'catalog', saveUnlock: 'catalog', saveVideosMeta: 'catalog', updateVersion: 'catalog', setDuration: 'catalog', deleteTrack: 'catalog', deleteVersion: 'catalog', deleteRelease: 'catalog' };
-export const BLOCKED_AFTER = { extras: ['addPhoto', 'addAudioNote', 'addYoutubePlaylistVideos', 'createReleaseFromYoutube', 'addYoutubeSong', 'refreshYoutubeTitles', 'youtubeTitleStatus'],
-  catalog: ['uploadCover', 'registerUpload', 'setPreview', 'setVoiceNote', 'createRelease', 'setAnimatedCover', 'setTrackCover', 'setReleaseBg', 'uploadCleanCover', 'addCover', 'removeCover', 'setMainCover', 'addYoutubeSong', 'addYoutubePlaylistVideos', 'createReleaseFromYoutube', 'getUploadTicket', 'addAudioNote', 'addPhoto', 'refreshYoutubeTitles', 'youtubeTitleStatus'] };
+export const BLOCKED_AFTER = { extras: ['addPhoto', 'addAudioNote'],
+  catalog: ['uploadCover', 'registerUpload', 'setPreview', 'setVoiceNote', 'createRelease', 'setAnimatedCover', 'setTrackCover', 'setReleaseBg', 'uploadCleanCover', 'addCover', 'removeCover', 'setMainCover', 'getUploadTicket', 'addAudioNote', 'addPhoto'] };
 
 const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
 const hex = n => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
