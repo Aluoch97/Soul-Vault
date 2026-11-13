@@ -140,19 +140,29 @@ await step('Music tab: the Unreleased area is its own secret-access area with it
   await page.evaluate(() => renderLibrary()); await page.waitForSelector('#unreleased .vsc');
   if (process.env.SHOT5) { await page.evaluate(() => document.querySelector('#unreleased').scrollIntoView()); await page.screenshot({ path: process.env.SHOT5 }); }
 });
-await step('Music tab: a Features area for guests on my songs AND my guest spots on others\' songs, with its own View menu and chips', async () => {
+await step('Music tab: Features has one tab for my features and one for my guest spots, and every project lists its songs by name', async () => {
   await page.waitForSelector('#features .vsc');
-  const info = await page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), chips: [...el.querySelectorAll('.vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), cards: el.querySelectorAll('.vsc').length, tags: [...el.querySelectorAll('.vtag')].map((e) => e.textContent).sort(), view: S.sec.features.view }; });
+  const read = () => page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), tabs: [...el.querySelectorAll('.vs-tabs button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim() + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), chips: [...el.querySelectorAll('.vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), cards: el.querySelectorAll('.vsc').length, tags: [...el.querySelectorAll('.vtag')].map((b) => b.textContent.trim()).sort(), songs: [...el.querySelectorAll('.vsc')].map((c) => [c.querySelector('.agt').textContent, [...c.querySelectorAll('.vsong')].map((x) => x.textContent).sort().join(' / ')].join(' => ')).sort(), view: (el.querySelector('[data-libmenu]') || {}).textContent }; });
+  let info = await read();
   assert.ok(/spot/.test(info.cls) && /features/.test(info.ribbon), 'its own look: ' + info.ribbon);
-  assert.deepEqual(info.chips, ['All 3', 'Guests on my songs 2', 'My guest spots 1', 'Aziza 2', 'Berhani 1', 'Charlie, The Healer 1', 'Khairro 1'], 'kind chips, then a chip for each person (counting projects): ' + info.chips.join(' | '));
-  assert.deepEqual(info.tags, ['1 feature', '3 features', 'Guest spot'], 'each project says what it holds: ' + info.tags.join(' | '));
-  assert.equal(info.cards, 3, 'one card per project, not per song');
+  assert.deepEqual(info.tabs, ['My features 2*', 'Guest spots 1'], 'two tabs, my features first: ' + info.tabs.join(' | '));
+  assert.deepEqual(info.chips, ['All 2', 'Aziza 2', 'Charlie, The Healer 1', 'Khairro 1'], 'only the people on my features: ' + info.chips.join(' | '));
+  assert.deepEqual(info.tags, ['1 feature', '3 features']); assert.equal(info.cards, 2, 'one card per project');
+  assert.ok(info.songs.some((s) => s === 'Group EP => G1 (feat. Aziza) / G2 (feat. Khairro) / G3 (feat. Charlie, The Healer)'), 'each project lists its songs by name: ' + info.songs.join(' | '));
   assert.deepEqual(await page.evaluate(() => [featuresOf({ features: 'Charlie, The Healer' }), featuresOf({ features: 'Charlie & Aziza' }), featuresOf({ title: 'X (feat. The Healer)' }), featuresOf({ features: 'Charlie, The Healer, Charlie' })]), [['Charlie, The Healer'], ['Charlie, The Healer', 'Aziza'], ['Charlie, The Healer'], ['Charlie, The Healer']], 'Charlie and The Healer are one artist: Charlie, The Healer');
-  assert.equal(info.view, 'scroll', 'its View is separate from the Unreleased area (which is on list)');
-  await page.click('#features [data-secchip="features|k:mine"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /Berhani/.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
-  await page.click('#features [data-secchip="features|a:Aziza"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 2 && /Open Album/.test(document.querySelector('#features').innerText) && /Group EP/.test(document.querySelector('#features').innerText), null, { timeout: 5000 });
+  await page.click('#features [data-secchip="features|a:Khairro"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /Group EP/.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
+  await page.click('#features [data-sectab="features|spots"]');
+  await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /Berhani/.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
+  info = await read();
+  assert.deepEqual(info.tabs, ['My features 2', 'Guest spots 1*']); assert.deepEqual(info.chips, []); assert.deepEqual(info.tags, ['Guest spot']);
+  assert.match(info.songs[0], /Song trk_sg · by Berhani/, 'a guest spot names the song and whose song it is: ' + info.songs[0]);
+  await page.click('#features [data-sectab="features|mine"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 2, null, { timeout: 5000 });   // the person filter starts over
+  await page.click('#features [data-secchip="features|a:Aziza"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 2, null, { timeout: 5000 });
   await page.click('#features [data-libmenu]'); await tapAt('#features [data-secview="features|large"]');
   await page.waitForSelector('#features .allgrid.large .vsc'); await noSideways('features area');
+  await page.click('#features [data-libmenu]'); await tapAt('#features [data-secview="features|list"]');
+  await page.waitForSelector('#features .alllist .alr .vsong'); assert.ok(await page.evaluate(() => /G1 \(feat\. Aziza\)/.test(document.querySelector('#features .alllist').innerText)), 'the list view names the songs too'); await noSideways('features list');
+  await page.click('#features [data-libmenu]'); await tapAt('#features [data-secview="features|scroll"]');
 });
 await step('Studio: tell an unreleased song what it counts as, and the Unreleased area re-sorts it', async () => {
   await page.evaluate(() => { S.stuRel = 'rel_single'; renderStudio(); });
@@ -212,17 +222,17 @@ await step('Video tab: a nav button with the Originals and Remixes playlists, ta
   assert.ok(tabs.every((t) => t[0] && t[1]), 'every tab button fits on screen and is tappable: ' + JSON.stringify(tabs));
   await noSideways('video remixes');
 });
-await step('Lore: the Karibu tena / Soul Vault header with the new-release, share-links and Settings buttons is at the top', async () => {
+await step('Lore: only the new-release, share-links and Settings buttons are at the top (no Karibu tena / Soul Vault greeting)', async () => {
   await page.evaluate(() => renderLore());
   await page.waitForSelector('.wrap.lore .home-h');
-  const t = await page.evaluate(() => { const w = document.querySelector('.wrap.lore'), h = w.querySelector('.home-h'); return { first: w.firstElementChild === h, hello: h.querySelector('.hello').textContent, brand: h.querySelector('.brand').textContent.replace(/\s+/g, ' '), btns: ['[data-newrel]', '[data-nav="shares"]', '.avatar[data-nav="vault"]'].map((q) => !!h.querySelector(q)) }; });
-  assert.ok(t.first, 'it is the very first thing on the Lore page'); assert.equal(t.hello, 'Karibu tena'); assert.equal(t.brand, 'Soul Vault'); assert.deepEqual(t.btns, [true, true, true]);
+  const t = await page.evaluate(() => { const w = document.querySelector('.wrap.lore'), h = w.querySelector('.home-h'); return { first: w.firstElementChild === h, hello: !!h.querySelector('.hello'), brand: !!h.querySelector('.brand'), btns: ['[data-newrel]', '[data-nav="shares"]', '.avatar[data-nav="vault"]'].map((q) => !!h.querySelector(q)) }; });
+  assert.ok(t.first, 'it is the very first thing on the Lore page'); assert.equal(t.hello, false, 'no greeting on Lore'); assert.equal(t.brand, false, 'no Soul Vault name on Lore'); assert.deepEqual(t.btns, [true, true, true]);
   await noSideways('lore page'); await page.click('.wrap.lore .home-h .avatar');
   await seen('Check YouTube setup');                                                                         // the avatar opens Settings
   const fctx = await phoneContext(), fan = await fctx.newPage();
-  await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLore()); await fan.waitForSelector('.wrap.lore .home-h');
-  const f = await fan.evaluate(() => { const h = document.querySelector('.wrap.lore .home-h'); return { hello: h.querySelector('.hello').textContent, buttons: h.querySelectorAll('button').length }; });
-  assert.ok(/^Karibu, /.test(f.hello) && f.buttons === 0, 'fans get the greeting and name, without the owner buttons: ' + JSON.stringify(f));
+  await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLore()); await fan.waitForSelector('.wrap.lore .lorephotos');
+  const f = await fan.evaluate(() => ({ header: !!document.querySelector('.wrap.lore .home-h'), buttons: document.querySelectorAll('.wrap.lore .round, .wrap.lore .avatar').length }));
+  assert.ok(!f.header && f.buttons === 0, 'fans get no greeting and no owner buttons on Lore: ' + JSON.stringify(f));
   await fctx.close();
 });
 await step('Website insights: visitors, pages with time on each, devices, cities, sources, and who is on the site now', async () => {
