@@ -134,8 +134,9 @@ async function playVoice(tid) {
   if (S.videoMode) setMode('song');
   $('#vbT').textContent = 'On ' + t.title; $('#voicebar').hidden = false;
   try {
-    const src = await run('prepareAudio', t.voice_note_id, BOOT.key, BOOT.token);
-    vn.src = src.stream; await vn.play(); award('voice');
+    // a note kept on our own storage is "r2:<file>" and plays straight from there; an older one is a Google Drive file
+    vn.src = /^r2:/.test(t.voice_note_id) ? MEDIA_BASE + t.voice_note_id.slice(3) : (await run('prepareAudio', t.voice_note_id, BOOT.key, BOOT.token)).stream;
+    await vn.play(); award('voice');
   } catch (e) { $('#vbT').textContent = 'This voice note could not be played right now.'; }
 }
 vn.addEventListener('timeupdate', () => $('#vnBar').style.setProperty('--p', (vn.duration ? vn.currentTime / vn.duration * 100 : 0) + '%'));
@@ -158,17 +159,34 @@ async function uploadVoice(btn) {
   if (!f) { err.hidden = false; err.textContent = 'Choose a voice memo first.'; return; }
   btn.disabled = true; $('#vnProg').hidden = false; $('#vnStat').textContent = 'Uploading…';
   try {
-    const ticket = await run('getUploadTicket', BOOT.key, t.release_id);
-    const id = await driveUpload(f, `Voice note - ${t.title}.${(f.name.split('.').pop() || 'm4a')}`, f.type || 'audio/mp4', ticket,
-                                 p => $('#vnUpBar').style.setProperty('--p', Math.round(p * 100) + '%'));
-    await run('setVoiceNote', BOOT.key, tid, id);
+    const bar = p => $('#vnUpBar').style.setProperty('--p', Math.round(p * 100) + '%');
+    let id = '';
+    if (EDGE_UPLOADS()) {   // our own storage: nothing goes through Google Drive
+      const ext = (f.name.split('.').pop() || 'm4a').toLowerCase();
+      let plan = null;
+      try { plan = await run('studioPlanUpload', BOOT.key, { relId: t.release_id, trackId: tid, kind: 'voice', ext }); }
+      catch (e) { if (!/Switch the catalog/.test(e.message || '')) throw e; }   // catalog still on the Sheet: use the Drive way below
+      if (plan) {
+        await putFile(plan.key, f, f.type || (ext === 'mp3' ? 'audio/mpeg' : 'audio/mp4'), bar);
+        id = (await run('studioSetVoice', BOOT.key, { relId: t.release_id, trackId: tid, key: plan.key })).voice_note_id;
+      }
+    }
+    if (!id) {
+      const ticket = await run('getUploadTicket', BOOT.key, t.release_id);
+      id = await driveUpload(f, `Voice note - ${t.title}.${(f.name.split('.').pop() || 'm4a')}`, f.type || 'audio/mp4', ticket, bar);
+      await run('setVoiceNote', BOOT.key, tid, id);
+    }
     t.voice_note_id = id; closeModal(); toast('Voice note added');
     if (S.view === 'release') renderRelease(S.releaseId); if (S.now) updateNowUI();
   } catch (e) { btn.disabled = false; err.hidden = false; err.textContent = e.message || 'Upload failed.'; }
 }
 async function removeVoice(tid) {
   if (!confirm('Remove the voice note from this song?')) return;
-  try { await run('setVoiceNote', BOOT.key, tid, ''); trk(tid).voice_note_id = ''; toast('Voice note removed'); if (S.view === 'release') renderRelease(S.releaseId); if (S.now) updateNowUI(); }
+  try {
+    let done = false;
+    if (EDGE_UPLOADS()) { try { await run('studioSetVoice', BOOT.key, { relId: trk(tid).release_id, trackId: tid, key: '' }); done = true; } catch (e) { if (!/Switch the catalog/.test(e.message || '')) throw e; } }
+    if (!done) await run('setVoiceNote', BOOT.key, tid, '');
+    trk(tid).voice_note_id = ''; toast('Voice note removed'); if (S.view === 'release') renderRelease(S.releaseId); if (S.now) updateNowUI(); }
   catch (e) { toast('Could not remove'); }
 }
 
