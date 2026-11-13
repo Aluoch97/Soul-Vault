@@ -612,7 +612,7 @@ await step('songs added by link: they stay out of the Discography (until they ha
   await page.evaluate(() => { try { stopPlayback(); } catch (e) {} });
   assert.equal(await page.evaluate(() => { const t = document.createElement('div'); t.innerHTML = I.note; return document.querySelector('#tabs [data-nav="library"] svg').innerHTML === t.firstElementChild.innerHTML; }), true, 'the Music tab icon is a music note');
 });
-await step('downloads are for the owner link only: no download button for fans (even on a link saved with downloads on), no "let them download" choice on share links, no photo download for fans', async () => {
+await step('song downloads are for the owner link only: no song download for fans (even on a link saved with downloads on), no "let them download" choice on share links; Lore photo downloads stay open to everyone', async () => {
   // the owner still has them
   await page.evaluate(() => { S.releaseId = 'rel_pub'; renderRelease('rel_pub'); });
   assert.equal(await page.evaluate(() => { openShare('all', 'all'); const has = !!document.querySelector('#mDl'); closeModal(); return has; }), false, 'no "Let them download the WAV" choice');
@@ -624,7 +624,7 @@ await step('downloads are for the owner link only: no download button for fans (
   await fan.evaluate(() => { const v = S.lib.versions.find((x) => x.audio || x.url); S.__v = v && v.version_id; if (v) play(v.version_id); });
   await fan.waitForTimeout(1500);
   assert.equal(await fan.evaluate(() => [(S.now && S.now.dl) || '', document.querySelector('#npDl') ? document.querySelector('#npDl').hidden : true].join('|')), '|true', 'no download link for a fan');
-  await fan.evaluate(() => { renderLore(); openLorePhoto(0); }); await fan.waitForSelector('#lbStage'); assert.equal(await fan.evaluate(() => !!document.querySelector('#lbDl')), false, 'no photo download for a fan');
+  await fan.evaluate(() => { renderLore(); openLorePhoto(0); }); await fan.waitForSelector('#lbStage'); assert.equal(await fan.evaluate(() => !!document.querySelector('#lbDl')), true, 'fans can still download the Lore photos (only SONG downloads are owner-only)');
   await fctx.close();
 });
 await step('fans never see the hidden test release', async () => {
