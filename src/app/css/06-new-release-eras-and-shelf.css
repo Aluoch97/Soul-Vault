@@ -148,3 +148,7 @@
                background: rgba(8,122,59,.85); color: #fff; letter-spacing: .02em; }
   .datewhere input[type=date] { color-scheme: dark; }
   @media (min-width: 0px) { .hero .recorded { justify-content: center; } .datewhere { grid-template-columns: 1fr; } }
+
+  .nrfeat { display: grid; gap: 6px; margin: 4px 0 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  .nrfeat legend { padding: 0 6px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+  .nrfeat .row2 { font-size: 14px; min-height: 44px; }

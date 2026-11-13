@@ -364,7 +364,7 @@ function nrAdd(files) {
   files.forEach(f => {
     if (!AUDIO_OK.test(f.name) && !/^audio\//.test(f.type)) { skipped.push(f.name); return; }
     if (S.nr.files.some(x => x.file.name === f.name && x.file.size === f.size)) return;
-    S.nr.files.push({ file: f, title: niceTitle(f.name), state: '' });
+    S.nr.files.push({ file: f, title: niceTitle(f.name), state: '', features: '', spot: false, artist: '' });
   });
   nrRender();
   if (skipped.length) toast('Skipped (not audio): ' + skipped.slice(0, 2).join(', ') + (skipped.length > 2 ? '…' : ''));
@@ -375,7 +375,11 @@ function nrRender(moved) {
   $('#nrList').innerHTML = S.nr.files.map((x, i) => `<li class="nritem sortrow${moved === i ? ' moved' : ''}">
     <span class="n">${i + 1}</span>
     <div class="nrmain"><input class="field" data-nr-title="${i}" value="${esc(x.title)}" maxlength="200" aria-label="Title of song ${i + 1}" ${S.nr.busy ? 'disabled' : ''}>
-      <span class="cs nrmeta">${esc(x.file.name)}, ${(x.file.size / 1048576).toFixed(1)} MB${x.state ? ' · <b class="nrstate">' + esc(x.state) + '</b>' : ''}</span></div>
+      <span class="cs nrmeta">${esc(x.file.name)}, ${(x.file.size / 1048576).toFixed(1)} MB${x.state ? ' · <b class="nrstate">' + esc(x.state) + '</b>' : ''}</span>
+      ${EDGE_UPLOADS() ? `<fieldset class="nrfeat"><legend>Features</legend>
+        ${x.spot ? '' : `<input class="field" data-nr-feat="${i}" value="${esc(x.features)}" maxlength="200" placeholder="Guests on this song (e.g. Aziza, Khairro)" aria-label="Features on song ${i + 1}" ${S.nr.busy ? 'disabled' : ''}>`}
+        <label class="row2"><input type="checkbox" data-nr-spot="${i}" ${x.spot ? 'checked' : ''} ${S.nr.busy ? 'disabled' : ''}> My guest spot on someone else's song</label>
+        ${x.spot ? `<input class="field" data-nr-art="${i}" value="${esc(x.artist)}" maxlength="120" placeholder="Main artist (whose song it is)" aria-label="Main artist of song ${i + 1}" ${S.nr.busy ? 'disabled' : ''}>` : ''}</fieldset>` : ''}</div>
     <div class="moves">
       <button class="grip" type="button" data-grip="${i}" ${S.nr.busy ? 'disabled' : ''} aria-label="Reorder ${esc(x.title)}, position ${i + 1} of ${n}. Drag, or use the up and down arrow keys." title="Drag to reorder">${I.grip}</button>
       <button class="ib" data-nr-del="${i}" ${S.nr.busy ? 'disabled' : ''} aria-label="Remove ${esc(x.title)}">${I.trash}</button>
@@ -394,6 +398,7 @@ async function doNewRelease(btn) {
   if (!(year >= 1990 && year <= 2100)) return fail('Year should look like ' + new Date().getFullYear() + '.');
   if (!S.nr.files.length) return fail('Add at least one song.');
   if (S.nr.files.some(x => !x.title.trim())) return fail('Every song needs a title.');
+  if (S.nr.files.some(x => x.spot && !x.artist.trim())) return fail('For a guest spot, type the main artist (whose song it is).');
   if (vis === 'seal' && !(sealAt && sealAt > new Date())) return fail('Pick a future date and time to seal it until.');
   S.nr.busy = true; btn.disabled = true; btn.textContent = 'Uploading…';
   $$('#modal .nrtop input, #modal .nrtop select, #modal .nrtop button, #nrCancel, [data-nr-add], [name="nrVis"], #nrSeal').forEach(el => (el.disabled = true));
@@ -403,6 +408,35 @@ async function doNewRelease(btn) {
   const n = S.nr.files.length, failed = [];
   let r;
   try {
+    nr_flow: {
+    if (EDGE_UPLOADS()) {   // our own storage: no Drive, and the Features you typed are saved with each song
+      stat('Creating the release…');
+      let coverId = '';
+      if (S.nr.cover) { coverId = newImgId('c'); try { stat('Uploading the cover…'); await uploadPicture(S.nr.cover, coverId, ['t', '1200']); } catch (e) { coverId = ''; failed.push('the cover'); } }
+      r = await run('studioNewRelease', BOOT.key, { title, type, year: String(year), coverId });
+      (S.lib.releases = S.lib.releases || []).push(r);
+      for (let i = 0; i < n; i++) {
+        const x = S.nr.files[i], label = `${i + 1} of ${n}: ${x.title}`;
+        try {
+          x.state = 'Uploading'; nrRender();
+          const out = await uploadSongToEdge(x.file, r.release_id, undefined, x.title.trim(), 'Original', true, t => stat(label + ' · ' + t), p => bar((i + p) / n));
+          if (out.track) S.lib.tracks.push(out.track); S.lib.versions.push(out.version);
+          const fields = {}; if (!x.spot && x.features.trim()) fields.features = x.features.trim();
+          if (x.spot) { fields.feature_role = 'mine'; fields.artist = x.artist.trim(); }
+          if (out.track && Object.keys(fields).length) { await run('studioSaveTrack', BOOT.key, out.track.track_id, { fields }); Object.assign(out.track, fields); }
+          x.state = 'Done ✓';
+        } catch (e) { x.state = 'Failed'; failed.push(x.title); }
+        nrRender(); bar((i + 1) / n);
+      }
+      const songsFailed = failed.filter(f => f !== 'the cover');
+      if (songsFailed.length) { stat(`${n - songsFailed.length} of ${n} songs uploaded.`); fail(`Didn't upload: ${songsFailed.join(', ')}. The release stays hidden from the fan club. Open it in Studio, add the song again, then un-hide it under Release info.`); }
+      else {
+        if (vis === 'seal') r.unlock_at = await run('saveUnlock', BOOT.key, r.release_id, sealAt.toISOString());
+        if (vis !== 'hide') { await run('studioSaveRelease', BOOT.key, r.release_id, { basics: { hidden: false } }); r.hidden = false; }
+        stat('Done.');
+      }
+      break nr_flow;   // the old Drive way follows below
+    }
     stat('Creating the release…');
     r = await run('createRelease', BOOT.key, { title, type, year });
     S.lib.releases.push(r);
@@ -446,6 +480,7 @@ async function doNewRelease(btn) {
       if (vis === 'seal') { r.unlock_at = await run('saveUnlock', BOOT.key, r.release_id, sealAt.toISOString()); }
       if (vis !== 'hide') { await run('saveTracklist', BOOT.key, r.release_id, '', [], false); r.hidden = false; }
       stat('Done.');
+    }
     }
   } catch (e) {
     fail((e && e.message) || 'The release could not be created.');
