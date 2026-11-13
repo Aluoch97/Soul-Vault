@@ -684,6 +684,13 @@ export async function onRequestPost(ctx) {
   const fn = req && req.fn, args = Array.isArray(req && req.args) ? req.args : [];
   if (env.DB && env.BACKUPS && fn !== 'edgeStatus') ctx.waitUntil(BK.maybeBackup(env).catch(() => {}));   // a daily backup, started by normal visits
   try {
+    if (fn === 'mediaManifest') {   // every music and picture file in our storage, so an offsite copy can be made (tools/download-media.py)
+      if (!isOwner(env, args[0])) return json({ ok: false, error: 'Not allowed.' });
+      if (!env.MEDIA) return json({ ok: false, error: 'File storage is not connected.' });
+      const files = []; let cursor;
+      for (let i = 0; i < 100; i++) { const r = await env.MEDIA.list({ limit: 1000, cursor }); (r.objects || []).forEach(o => files.push({ key: o.key, size: o.size, at: o.uploaded })); if (!r.truncated) break; cursor = r.cursor; }
+      return json({ ok: true, result: { base: MEDIA_BASE, made: new Date().toISOString(), count: files.length, bytes: files.reduce((n, f) => n + (f.size || 0), 0), files } });
+    }
     if (/^backup(Status|Now|Get)$/.test(fn)) {
       if (!isOwner(env, args[0])) return json({ ok: false, error: 'Not allowed.' });
       if (!env.BACKUPS || !env.DB) return json({ ok: false, error: 'Backups are not set up yet.' });

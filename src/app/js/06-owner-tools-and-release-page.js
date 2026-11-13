@@ -161,6 +161,9 @@ async function openBackups() {
   m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Backups"><h2>Backups</h2><p class="cs" id="bkSt">Loading…</p>
     <div id="bkList" class="cs" style="display:grid;gap:4px;max-height:34vh;overflow:auto"></div>
     <p class="cs" style="margin:10px 0 0">What is saved: releases, songs, versions, extras, playlists, letter and bio, share links, plays, comments, the fan list and the missing-files list. Not included: the music and picture files themselves (your masters stay on your own drive).</p>
+    <div class="bkfiles"><h3>Your music and picture files</h3>
+      <p class="cs" style="margin:0">They live only in Cloudflare storage, so keep your own copy. Tap the button to save a list of every file, then on your computer run <b>python3 tools/download-media.py soul-vault-files.json ~/SoulVaultFiles</b>. Run it again any time: it only fetches what's new.</p>
+      <p class="cs" id="bkFilesSt" style="margin:0"></p><button class="pill soft" id="bkFiles">Download the file list</button></div>
     <div class="end"><button class="pill soft" data-close>Close</button><button class="pill soft" id="bkNow">Back up now</button><button class="pill main" id="bkDl">Download a copy</button></div></div>`;
   m.hidden = false;
   const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
@@ -173,6 +176,15 @@ async function openBackups() {
   };
   await draw();
   $('#bkNow').addEventListener('click', async e => { const b = e.currentTarget; b.disabled = true; try { await run('backupNow', BOOT.key); toast('Backed up'); await draw(); } catch (er) { toast((er && er.message) || 'Backup failed.'); } b.disabled = false; });
+  $('#bkFiles').addEventListener('click', async e => {
+    const btn = e.currentTarget; btn.disabled = true; $('#bkFilesSt').textContent = 'Reading the list…';
+    try {
+      const d = await run('mediaManifest', BOOT.key);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d)], { type: 'application/json' })); a.download = 'soul-vault-files.json'; a.click();
+      $('#bkFilesSt').textContent = `${d.count} files, ${(d.bytes / 1048576).toFixed(1)} MB. Saved as soul-vault-files.json.`;
+    } catch (er) { $('#bkFilesSt').textContent = (er && er.message) || 'Could not read the list.'; }
+    btn.disabled = false;
+  });
   $('#bkDl').addEventListener('click', async e => {
     const b = e.currentTarget; b.disabled = true;
     try {

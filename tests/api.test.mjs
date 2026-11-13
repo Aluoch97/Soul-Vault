@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpers.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
-const OWNER_ONLY = ['updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
+const OWNER_ONLY = ['mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
@@ -987,4 +987,11 @@ test('fan list: the owner sees everything a fan submitted, can edit it (with che
   assert.match((await w.owner('updateFan', 99999, { first_name: 'A', email: 'a@b.co' })).error, /not found/);
   assert.equal((await w.owner('deleteFan', bo.id)).ok, true); assert.deepEqual((await w.owner('getFans')).result.map((f) => f.email), ['anna@example.com']);
   assert.match((await w.owner('deleteFan', bo.id)).error, /not found/);
+}));
+
+test('file list for an offsite copy: owner only, every file with its size and the public address', () => withWorld(async (w) => {
+  await w.media.put('rise/01-song.m4a', Buffer.from('AAAA')); await w.media.put('img/c1/400', Buffer.from('BB'));
+  assert.equal((await w.call('mediaManifest', ['wrong'])).ok, false); assert.equal((await w.call('mediaManifest', [])).ok, false);
+  const r = (await w.owner('mediaManifest')).result;
+  assert.equal(r.count, 2); assert.equal(r.bytes, 6); assert.deepEqual(r.files.map((f) => [f.key, f.size]).sort(), [['img/c1/400', 2], ['rise/01-song.m4a', 4]]); assert.match(r.base, /^https:\/\/media\.soulnicolas\.com\/$/);
 }));

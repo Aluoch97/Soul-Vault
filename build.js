@@ -59,6 +59,8 @@ catch (e) { console.log('minify skipped (' + String(e.message || e).split('\n')[
 const appHash = require('crypto').createHash('sha1').update(code).digest('hex').slice(0, 8);
 page = page.replace('APPHASH', appHash);
 fs.writeFileSync('dist/index.html', page); fs.writeFileSync('dist/app.js', code);
+// The service worker (saved copy of the app for fast opening and offline). Its file changes with every app version, so a new deploy replaces the old saved copy.
+fs.writeFileSync('dist/sw.js', fs.readFileSync('src/sw.template.js', 'utf8').replace(/__VERSION__/g, build + '-' + appHash).replace(/__APP__/g, '/app.js?v=' + build + '-' + appHash));
 const lame = fs.readFileSync('apps-script/Lame.html', 'utf8').replace(/^\s*<script[^>]*>/, '').replace(/<\/script>\s*$/, '');
 fs.writeFileSync('dist/lame.js', lame);
 fs.cpSync('public', 'dist', { recursive: true });   // includes public/fonts/
@@ -85,6 +87,7 @@ const csp = [
 ].join('; ');
 // Big files that rarely change are kept by the browser for a week (fonts, 30 days); app.js stays at 5 minutes so updates show up quickly. If you replace a picture or video, give it a new file name.
 fs.writeFileSync('dist/_headers', '/app.js\n  Cache-Control: public, max-age=300\n'
+  + '/sw.js\n  Cache-Control: no-cache\n'
   + ['/home-bg-hd.mp4', '/home-bg-hd-poster.jpg', '/press-img/*', '/photos/*', '/og-image.png', '/roadto100-wanted.jpg', '/icon*', '/apple-touch-icon.png', '/favicon*'].map(p => p + '\n  Cache-Control: public, max-age=604800\n').join('')
   + '/links.json\n  Cache-Control: public, max-age=300\n'
   + '/fonts/*\n  Cache-Control: public, max-age=2592000\n'
