@@ -493,6 +493,29 @@ await step('add a song from a SoundCloud link: it is added with no audio file an
   await page.waitForFunction(() => !document.querySelector('#npVid iframe'), null, { timeout: 8000 });         // another song replaces SoundCloud's player
   await page.evaluate(() => { try { closeNp(); } catch (e) {} audio.pause(); });
 });
+await step('Start from a SoundCloud link in the New release form; Songs on links only lists link-only songs and Add file keeps a copy', async () => {
+  w.soundcloud['https://soundcloud.com/nicolas-soul/new-single'] = { title: 'New Single by Nicolas Soul', author_name: 'Nicolas Soul', thumbnail_url: 'https://i1.sndcdn.com/artworks-abc-large.jpg' };
+  await page.evaluate(() => openNewRelease()); await page.waitForSelector('[data-nr-sc]');
+  await page.click('[data-nr-sc]'); await page.waitForSelector('#srUrl');
+  await page.fill('#srUrl', 'https://soundcloud.com/nicolas-soul'); await page.click('[data-scr-go]'); await seen('Paste the link to one song from SoundCloud');
+  await page.fill('#srUrl', 'https://soundcloud.com/nicolas-soul/new-single'); await page.click('[data-scr-go]');
+  await seen('Created “New Single”');
+  let nat = await store(); const rel = nat.releases.find((r) => r.title === 'New Single'); assert.ok(rel && rel.hidden, 'a hidden release was made'); assert.ok(rel.cover_file_id, 'with SoundCloud\'s picture as the cover');
+  const trk = nat.tracks.find((t) => t.release_id === rel.release_id); assert.ok(trk && trk.sc_url);
+  await page.evaluate(() => renderVault()); await seen('Songs on links only'); await noSideways('settings');
+  assert.match(await page.textContent('[data-linkonly]'), /depend on a YouTube or SoundCloud link/);
+  await page.click('[data-linkonly]'); await page.waitForSelector('#loList [data-lo]');
+  const listed = await page.evaluate(() => [...document.querySelectorAll('#loList [data-lo]')].map((r) => r.dataset.lo));
+  assert.ok(listed.includes(trk.track_id), 'the new song is listed as depending on a link');
+  await page.evaluate((id) => document.querySelector('[data-lo-up="' + id + '"]').click(), trk.track_id);   // (the row can sit under the tab bar on a long list)
+  await page.setInputFiles('#loFile', { name: 'new-single.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('my own master copy'.repeat(30)) });
+  await page.waitForFunction((id) => ![...document.querySelectorAll('#loList [data-lo]')].some((r) => r.dataset.lo === id), trk.track_id, { timeout: 20000 });
+  nat = await store(); const vs = nat.versions.filter((v) => v.track_id === trk.track_id);
+  assert.equal(vs.length, 2, 'the SoundCloud version is kept and a file version was added'); const file = vs.find((v) => v.format !== 'SOUNDCLOUD');
+  assert.ok(file && /^r2:/.test(file.audio) && file.is_primary, 'the file is stored on our own storage and plays first'); assert.equal(vs.find((v) => v.format === 'SOUNDCLOUD').is_primary, false);
+  assert.deepEqual(await page.evaluate((id) => S.lib.versions.filter((v) => v.track_id === id).map((v) => [v.format === 'SOUNDCLOUD', !!v.is_primary]).sort(), trk.track_id), [[false, true], [true, false]], 'in the open app too, the file plays first');
+  await page.evaluate(() => closeModal());
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

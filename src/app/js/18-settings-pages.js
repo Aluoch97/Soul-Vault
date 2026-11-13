@@ -41,7 +41,7 @@ function dressAsPage() {
 // the pop-up container is re-filled by these screens as they load; keep it dressed, and undress it the moment it closes
 new MutationObserver(() => { const m = $('#modal'); if (m.hidden) { m.classList.remove('pagemode'); delete m.dataset.scrolled; } else if (m.classList.contains('pagemode')) dressAsPage(); })
   .observe($('#modal'), { childList: true, attributes: true, attributeFilter: ['hidden'] });
-['openMissing', 'openFans', 'openBackups', 'openAreas', 'openOwnerPw', 'showProblems', 'checkYoutubeSetup', 'checkPlayback', 'openNewRelease'].forEach(name => {
+['openMissing', 'openLinkOnly', 'openFans', 'openBackups', 'openAreas', 'openOwnerPw', 'showProblems', 'checkYoutubeSetup', 'checkPlayback', 'openNewRelease'].forEach(name => {
   const orig = window[name]; if (typeof orig !== 'function') return;
   window[name] = function () { const r = orig.apply(this, arguments); dressAsPage(); return r && r.then ? r.then(v => { dressAsPage(); return v; }) : r; };
 });

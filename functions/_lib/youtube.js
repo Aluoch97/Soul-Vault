@@ -72,7 +72,7 @@ export async function scInfo(url) {
     const res = await fetch('https://soundcloud.com/oembed?format=json&url=' + encodeURIComponent(url)); if (!res.ok) return null;
     const j = await res.json(), artist = String(j.author_name || '').trim(); let title = String(j.title || '').trim();
     if (artist && title.toLowerCase().endsWith(' by ' + artist.toLowerCase())) title = title.slice(0, title.length - artist.length - 4).trim();
-    return { title, artist };
+    return { title, artist, thumb: String(j.thumbnail_url || '') };
   } catch (e) { return null; }
 }
 

@@ -433,6 +433,33 @@ async function studio(ctx, fn, a) {
     store.tracks.push(track); store.versions.push(version); await saveNat();
     return { track, version };
   }
+  if (fn === 'createReleaseFromSoundcloud') {   // a hidden release with one song that plays through SoundCloud; SoundCloud's picture of the song becomes the cover
+    const o = a[1] || {}, url = YT.scUrl(o.url);
+    if (!url) throw new Error("Paste the link to ONE song from SoundCloud: open the song, tap Share, then Copy link (it looks like soundcloud.com/artist/song).");
+    const info = await YT.scInfo(url);
+    if (!info) throw new Error("SoundCloud couldn't find that song. If it's private, use its secret share link; otherwise check the link.");
+    const title = (String(o.title || '').trim() || info.title || 'SoundCloud song').slice(0, 120);
+    const type = RELEASE_TYPES.indexOf(o.type) > -1 ? o.type : 'Single';
+    const year = Math.round(Number(o.year)) || new Date().getFullYear();
+    let coverId = '';
+    if (env.MEDIA && /^https:\/\/[a-z0-9.-]*sndcdn\.com\//i.test(info.thumb)) {
+      try {
+        const res = await fetch(info.thumb.replace('-large.', '-t500x500.')); const buf = res.ok ? await res.arrayBuffer() : null;
+        if (buf && buf.byteLength > 2000) {
+          const id = 'c' + rand() + rand().slice(0, 4);
+          for (const size of ['t', '160', '400', '1200', '1600']) await env.MEDIA.put('img/' + id + '/' + size, buf, { httpMetadata: { contentType: res.headers.get('content-type') || 'image/jpeg', cacheControl: 'public, max-age=31536000, immutable' } });
+          coverId = id;
+        }
+      } catch (e) { /* no cover this time: the release is still made */ }
+    }
+    const plain = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const release = newRelease({ title, type, year: String(year), coverId });
+    const track = Object.assign(newTrack(release.release_id, 1, title), { sc_url: url });
+    if (info.artist && plain(info.artist) !== plain('Nicólas Soul')) { track.artist = info.artist.slice(0, 120); release.artist_name = track.artist; }
+    const version = newSoundcloudVersion(track.track_id, url);
+    store.releases.push(release); store.tracks.push(track); store.versions.push(version); await saveNat();
+    return { release, tracks: [track], versions: [version] };   // hidden from fans until you show it
+  }
   if (fn === 'createReleaseFromYoutube') {
     const o = a[1] || {}, src = await YT.source(env, o.url);
     const title = String(o.title || src.title || '').trim().slice(0, 120) || 'From YouTube';
@@ -712,7 +739,7 @@ export async function onRequestPost(ctx) {
     } else if (env.DB && /^(addYoutubeSong|createReleaseFromYoutube|addYoutubePlaylistVideos|refreshYoutubeTitles|youtubeTitleStatus|checkYoutube)$/.test(fn) && await youtubeOnEdge(env)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong)$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong|createReleaseFromSoundcloud)$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {
