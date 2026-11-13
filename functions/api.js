@@ -86,7 +86,7 @@ async function edgeShare(ctx, args) {
 const VIDEO_LISTS = [['originals', 'Originals', 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK'], ['remixes', 'Remixes', 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV'], ['music', 'Music videos', 'PLYYNnxWFsj1_wIe3c0Lyj4EL9tMs9GQYU']];
 async function videoLists(ctx) {
   const { env } = ctx, ck = new Request('https://edge.soulnicolas.invalid/videolists/1');
-  try { const hit = await caches.default.match(ck); if (hit) return await hit.json(); } catch (e) { /* no cache here */ }
+  try { const hit = await caches.default.match(ck); if (hit) { const j = await hit.json(); if (j && Array.isArray(j.lists) && j.lists.length === VIDEO_LISTS.length) return j; } } catch (e) { /* no cache here */ }   // (an older kept answer with fewer lists is ignored, so a new playlist shows at once)
   let allOk = true;
   const lists = await Promise.all(VIDEO_LISTS.map(async ([key, name, id]) => {
     try {

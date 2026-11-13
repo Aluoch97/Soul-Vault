@@ -218,10 +218,10 @@ function sortVids(vs, how) {
 const vidCount = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n);
 const vidMeta = v => [v.views != null ? vidCount(v.views) + ' views' : '', v.at ? new Date(v.at).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : ''].filter(Boolean).join(' · ');
 // The videos of one section, each with its tag; the same video in two playlists shows once.
-function videosOf(k) {
+function videosOf(k, sub) {
   if (k === 'press') return SITE.videos.map(v => ({ id: v[1], title: v[0], tag: VIDEO_TAG.press }));
   const sec = VIDEO_SECTIONS.find(x => x[0] === k), seen = new Set(), out = [];
-  sec[3].forEach(pl => { const L = (S.videoLists || []).find(x => x.key === pl); ((L && L.videos) || []).forEach(v => { if (!seen.has(v.id)) { seen.add(v.id); out.push(Object.assign({}, v, { tag: VIDEO_TAG[pl] })); } }); });
+  sec[3].filter(pl => !sub || sub === 'all' || sub === pl).forEach(pl => { const L = (S.videoLists || []).find(x => x.key === pl); ((L && L.videos) || []).forEach(v => { if (!seen.has(v.id)) { seen.add(v.id); out.push(Object.assign({}, v, { tag: VIDEO_TAG[pl] })); } }); });
   return out;
 }
 function renderVideo() {
@@ -230,13 +230,20 @@ function renderVideo() {
   $('#main').innerHTML = `<div class="wrap sitepg presspg videopg">
     <header class="vidhead"><h1 class="vidh1">Soul <span>Videos</span></h1><p class="cs">Freestyles, music videos and press, straight from the channel.</p></header>
     <div class="vidtabs" role="tablist" aria-label="Video">${VIDEO_SECTIONS.map(x => `<button role="tab" data-vidtab="${x[0]}">${x[1]}</button>`).join('')}</div>
+    <div id="videoSub"></div>
     <div id="videoSort"></div>
     <div id="videoBody"><p class="cs">Loading videos…</p></div></div>`;
   const body = $('#videoBody'), btns = [...$$('[data-vidtab]')];
   const draw = (k, idx, autoplay) => {
     const sec = VIDEO_SECTIONS.find(x => x[0] === k), yt = k === 'press' ? '' : 'https://www.youtube.com/playlist?list=' + VIDEO_PL[sec[3][0]];
-    if (k !== 'press' && !S.videoLists) { body.innerHTML = '<p class="cs">Loading videos…</p>'; $('#videoSort').innerHTML = ''; return; }
-    const all = videosOf(k);
+    if (k !== 'press' && !S.videoLists) { body.innerHTML = '<p class="cs">Loading videos…</p>'; $('#videoSort').innerHTML = ''; $('#videoSub').innerHTML = ''; return; }
+    if (['all', 'originals', 'remixes'].indexOf(S.videoSub) < 0) S.videoSub = 'all';
+    if (k === 'freestyles') {   // Originals and Remixes are one section; these small tabs separate them again
+      const n = x => videosOf('freestyles', x).length;
+      $('#videoSub').innerHTML = `<div class="vidsub" role="tablist" aria-label="Freestyles">${[['all', 'All'], ['originals', 'Originals'], ['remixes', 'Remixes']].map(([x, l]) => `<button type="button" role="tab" data-vidsub="${x}" aria-selected="${x === S.videoSub}">${l} <span>${n(x)}</span></button>`).join('')}</div>`;
+      $$('[data-vidsub]').forEach(b => b.addEventListener('click', () => { S.videoSub = b.dataset.vidsub; syncUrl(); draw(k, 0); }));
+    } else $('#videoSub').innerHTML = '';
+    const all = videosOf(k, k === 'freestyles' ? S.videoSub : '');
     if (!all.length) { $('#videoSort').innerHTML = ''; body.innerHTML = `<p class="cs">The videos could not load right now.</p>${yt ? `<p><a class="pill" href="${esc(yt)}" target="_blank" rel="noopener">Open on YouTube</a></p>` : ''}`; return; }
     const have = h => all.some(v => v[vidField[h]] != null);
     const opts = VIDEO_SORTS.filter(o => o[0] === 'az' || have(o[0]));
@@ -250,7 +257,7 @@ function renderVideo() {
     const rest = vs.map((v, i) => i === cur ? '' : `<button type="button" class="vidcard" data-vidpick="${i}" aria-label="Play ${esc(vidTitle(v.title))}">
       <span class="vidpost"><img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i class="vidplay sm">${I.play}</i></span><span class="vidname">${esc(vidTitle(v.title))}</span>${vidMeta(v) ? `<span class="vidstat">${esc(vidMeta(v))}</span>` : ''}</button>`).join('');
     body.innerHTML = hero + (vs.length > 1 ? `<h2 class="vidmore">More <b>${esc(sec[2].toLowerCase())}</b> <span>${vs.length - 1}</span></h2><div class="vidwall">${rest}</div>` : '')
-      + (yt ? `<p class="cs sitefoot"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the whole playlist on YouTube</a></p>` : '');
+      + (yt && !(k === 'freestyles' && S.videoSub !== 'all') ? `<p class="cs sitefoot"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the whole playlist on YouTube</a></p>` : '');
     wireYt(body);
     if (autoplay) { const st = $('.vidstage', body); if (st) st.click(); }
     $$('[data-vidsort]').forEach(b => b.addEventListener('click', () => { S.videoSort = b.dataset.vidsort; draw(k, 0); }));

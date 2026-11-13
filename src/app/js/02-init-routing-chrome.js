@@ -67,7 +67,7 @@ function parseRoute() {
   if (p[0] === 'tour') return { v: 'tour', tab: p[1] === 'road-to-100' ? 'road' : 'shows' };
   if (p[0] === 'press' && p[1] === 'video') return { v: 'video', tab: 'press' };   // the press videos moved to the Video tab
   if (p[0] === 'press') return { v: 'press', tab: 'articles' };
-  if (p[0] === 'video') return { v: 'video', tab: p[1] === 'music-videos' ? 'music' : p[1] === 'press' ? 'press' : 'freestyles' };   // (/video/originals and /video/remixes are the one Freestyles list now)
+  if (p[0] === 'video') return { v: 'video', tab: p[1] === 'music-videos' ? 'music' : p[1] === 'press' ? 'press' : 'freestyles', sub: p[1] === 'originals' || p[1] === 'remixes' ? p[1] : 'all' };   // (/video/originals and /video/remixes are the one Freestyles list now)
   if (p[0] === 'lore') return { v: 'lore' };
   return { v: 'home', unknown: p.length > 0 };   // an address nobody made: show Home, but tell search engines not to index it
 }
@@ -78,7 +78,7 @@ function pathFor() {
   if (v === 'release' && S.releaseId) return '/vault/' + relSlug(S.releaseId);
   if (v === 'tour') return S.tourTab === 'road' ? '/tour/road-to-100' : '/tour';
   if (v === 'press') return '/press';
-  if (v === 'video') return S.videoTab === 'music' ? '/video/music-videos' : S.videoTab === 'press' ? '/video/press' : '/video';
+  if (v === 'video') return S.videoTab === 'music' ? '/video/music-videos' : S.videoTab === 'press' ? '/video/press' : S.videoSub === 'originals' || S.videoSub === 'remixes' ? '/video/' + S.videoSub : '/video';
   if (v === 'lore') return '/lore';
   return null;   // owner screens (settings, share links, insights) have no address
 }
@@ -113,7 +113,7 @@ function routeTo(r) {
   try {
     if (r.v === 'tour') { S.tourTab = r.tab; renderTour(); }
     else if (r.v === 'press') { S.pressTab = r.tab; renderPress(); }
-    else if (r.v === 'video') { S.videoTab = r.tab; renderVideo(); }
+    else if (r.v === 'video') { S.videoTab = r.tab; S.videoSub = r.sub || 'all'; renderVideo(); }
     else if (r.v === 'lore' && (OWNER || CLUB())) renderLore();
     else if (r.v === 'library' && S.lib) renderLibrary();
     else if (r.v === 'release' && S.lib) {

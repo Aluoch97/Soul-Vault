@@ -228,6 +228,13 @@ await step('Video tab: Freestyles (originals + remixes together), Music Videos a
   assert.deepEqual(await sortBtns(), ['Newest*', 'A–Z', 'Most viewed', 'Most liked'], 'sort buttons, newest first by default');
   assert.deepEqual([h.title, h.tag, h.wall, h.path], ['Zeta <i>Two</i>', 'Original', ['Original One', 'Remix One'], '/video'], 'originals and remixes in one list; the newest is featured; titles tidied and shown as plain text: ' + JSON.stringify(h));
   assert.match(await page.textContent('.vidhero .vidstat'), /90 views · Jun 2025/, 'views and month uploaded');
+  const subs = () => page.evaluate(() => [...document.querySelectorAll('[data-vidsub]')].map((b) => b.textContent.replace(/\s+/g, ' ').trim() + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
+  assert.deepEqual(await subs(), ['All 3*', 'Originals 2', 'Remixes 1'], 'Freestyles has tabs to separate the originals from the remixes');
+  await page.click('[data-vidsub="remixes"]'); await page.waitForFunction(() => /Remix One/.test(document.querySelector('.vidhero .vidtitle').textContent) && location.pathname === '/video/remixes' && !document.querySelector('.vidwall'), null, { timeout: 5000 });
+  assert.deepEqual(await subs(), ['All 3', 'Originals 2', 'Remixes 1*']);
+  await page.click('[data-vidsub="originals"]'); await page.waitForFunction(() => document.querySelectorAll('.vidwall .vidcard').length === 1 && /Original One|Zeta/.test(document.querySelector('.vidhero .vidtitle').textContent) && location.pathname === '/video/originals', null, { timeout: 5000 });
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('.vidtag, .vidwall .vidname')].some((e) => /Remix One/.test(e.textContent))), false, 'no remixes among the originals');
+  await page.click('[data-vidsub="all"]'); await page.waitForFunction(() => document.querySelectorAll('.vidwall .vidcard').length === 2 && location.pathname === '/video', null, { timeout: 5000 });
   for (const [btn, expect] of [['A–Z', 'Original One'], ['Most viewed', 'Original One'], ['Most liked', 'Zeta <i>Two</i>'], ['Newest', 'Zeta <i>Two</i>']]) {
     await page.click('[data-vidsort]:has-text("' + btn + '")'); await page.waitForFunction((t) => document.querySelector('.vidhero .vidtitle').textContent === t, expect, { timeout: 5000 });
   }
