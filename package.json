@@ -4,7 +4,8 @@
   "description": "soulnicolas.com: Soul Vault as the website. Build: node build.js (output: dist/).",
   "scripts": {
     "build": "node build.js",
-    "test": "node --test --test-reporter=spec tests/*.test.mjs"
+    "test": "node --test --test-reporter=spec tests/*.test.mjs",
+    "test:screens": "node tests/browser/studio-screens.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"

@@ -12,3 +12,18 @@ jobs:
       - run: node build.js
       - name: Test the Cloudflare backend (functions/)
         run: npm test
+  screens:
+    # The real app in a real phone-sized browser, signed in as the owner, against the real backend code (tests/browser/studio-screens.mjs).
+    # Pinned to Ubuntu 24.04: Playwright has no chromium for 26.04 (what "latest" is now).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: node build.js
+      - run: npm i --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Owner screens in a phone-sized browser
+        run: npm run test:screens
