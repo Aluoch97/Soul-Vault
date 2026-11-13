@@ -215,6 +215,7 @@ await step('Video tab: a nav button with the Originals and Remixes playlists, ta
   assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.videopg .vt')].map((e) => e.textContent)), ['Original One', 'Original <i>Two</i>'], 'Originals, with titles shown as plain text');
   assert.equal(await page.evaluate(() => location.pathname), '/video');
   assert.equal(await page.evaluate(() => document.querySelectorAll('#tabs button').length), 6, 'six tabs');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#tabs button')].map((b) => b.dataset.nav)), ['home', 'library', 'video', 'tour', 'press', 'lore'], 'Video sits right next to Music');
   await noSideways('video'); await tapAt('.videopg .thumb');
   await page.waitForSelector('.videopg iframe[src*="youtube-nocookie.com/embed/orig1111111"]');
   await page.click('[data-vidtab="remixes"]'); await page.waitForFunction(() => document.querySelectorAll('.videopg .vid').length === 1 && location.pathname === '/video/remixes', null, { timeout: 5000 });

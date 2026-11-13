@@ -142,7 +142,7 @@ function renderChrome(noUrl) {
   const years = [...new Set(((S.lib && S.lib.releases) || []).map(r => r.year))].sort((a, b) => b - a);
   const cc = n => n === cur ? 'aria-current="page"' : '';
   const club = !OWNER;
-  const main = [['home', I.home, 'Home'], ['library', I.vault, 'Music'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['video', I.play, 'Video'], ['lore', I.layers, 'Lore']];
+  const main = [['home', I.home, 'Home'], ['library', I.vault, 'Music'], ['video', I.play, 'Video'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['lore', I.layers, 'Lore']];
   $('#side').innerHTML = `
     <div class="brand">Soul <span>Vault</span><i class="flagband" aria-hidden="true"></i></div>
     <nav>
