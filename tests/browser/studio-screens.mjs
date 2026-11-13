@@ -223,20 +223,22 @@ await step('Video tab: Freestyles (originals + remixes together), Music Videos a
   assert.equal(look.bar, 'rgba(0, 0, 0, 0)', 'no black bar behind the section buttons'); assert.deepEqual([look.h1, look.sub], ['center', 'center'], 'the title and the line under it are centred');
   assert.deepEqual(look.tabs, ['Freestyles*', 'Music Videos', 'Press']);
   const hero = () => page.evaluate(() => ({ title: (document.querySelector('.vidhero .vidtitle') || {}).textContent, tag: (document.querySelector('.vidhero .vidtag') || {}).textContent, wall: [...document.querySelectorAll('.vidwall .vidname')].map((e) => e.textContent), path: location.pathname }));
-  const sortBtns = () => page.evaluate(() => [...document.querySelectorAll('[data-vidsort]')].map((b) => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')));
+  const sortBtns = () => page.evaluate(() => [...document.querySelectorAll('[data-vidsortsel] option')].map((o) => o.textContent + (o.selected ? '*' : '')));
   let h = await hero();
-  assert.deepEqual(await sortBtns(), ['Newest*', 'A–Z', 'Most viewed', 'Most liked'], 'sort buttons, newest first by default');
+  assert.deepEqual(await sortBtns(), ['Newest*', 'A–Z', 'Most viewed', 'Most liked'], 'one Sort dropdown, newest first by default');
   assert.deepEqual([h.title, h.tag, h.wall, h.path], ['Zeta <i>Two</i>', 'Original', ['Original One', 'Remix One'], '/video'], 'originals and remixes in one list; the newest is featured; titles tidied and shown as plain text: ' + JSON.stringify(h));
   assert.match(await page.textContent('.vidhero .vidstat'), /90 views · Jun 2025/, 'views and month uploaded');
   const subs = () => page.evaluate(() => [...document.querySelectorAll('[data-vidsub]')].map((b) => b.textContent.replace(/\s+/g, ' ').trim() + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
-  assert.deepEqual(await subs(), ['All 3*', 'Originals 2', 'Remixes 1'], 'Freestyles has tabs to separate the originals from the remixes');
+  const bar = await page.evaluate(() => { const q = (x) => document.querySelector(x).getBoundingClientRect(); return { sameRow: Math.abs((q('.vidsub').top + q('.vidsub').height / 2) - (q('.vidsort').top + q('.vidsort').height / 2)) < 12, noPills: getComputedStyle(document.querySelector('[data-vidsub]')).borderTopWidth === '0px', rows: document.querySelectorAll('.vidhead, .vidtabs, .vidbar').length, selectFont: parseFloat(getComputedStyle(document.querySelector('[data-vidsortsel]')).fontSize) }; });
+  assert.deepEqual([bar.sameRow, bar.noPills, bar.rows], [true, true, 3], 'less clutter: section buttons, then one toolbar with All/Originals/Remixes and the Sort dropdown on the same row: ' + JSON.stringify(bar)); assert.ok(bar.selectFont >= 16, 'the dropdown text is 16px+ so iPhones do not zoom');
+  assert.deepEqual(await subs(), ['All*', 'Originals', 'Remixes'], 'Freestyles has tabs to separate the originals from the remixes');
   await page.click('[data-vidsub="remixes"]'); await page.waitForFunction(() => /Remix One/.test(document.querySelector('.vidhero .vidtitle').textContent) && location.pathname === '/video/remixes' && !document.querySelector('.vidwall'), null, { timeout: 5000 });
-  assert.deepEqual(await subs(), ['All 3', 'Originals 2', 'Remixes 1*']);
+  assert.deepEqual(await subs(), ['All', 'Originals', 'Remixes*']);
   await page.click('[data-vidsub="originals"]'); await page.waitForFunction(() => document.querySelectorAll('.vidwall .vidcard').length === 1 && /Original One|Zeta/.test(document.querySelector('.vidhero .vidtitle').textContent) && location.pathname === '/video/originals', null, { timeout: 5000 });
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('.vidtag, .vidwall .vidname')].some((e) => /Remix One/.test(e.textContent))), false, 'no remixes among the originals');
   await page.click('[data-vidsub="all"]'); await page.waitForFunction(() => document.querySelectorAll('.vidwall .vidcard').length === 2 && location.pathname === '/video', null, { timeout: 5000 });
   for (const [btn, expect] of [['A–Z', 'Original One'], ['Most viewed', 'Original One'], ['Most liked', 'Zeta <i>Two</i>'], ['Newest', 'Zeta <i>Two</i>']]) {
-    await page.click('[data-vidsort]:has-text("' + btn + '")'); await page.waitForFunction((t) => document.querySelector('.vidhero .vidtitle').textContent === t, expect, { timeout: 5000 });
+    await page.selectOption('[data-vidsortsel]', { label: btn }); await page.waitForFunction((t) => document.querySelector('.vidhero .vidtitle').textContent === t, expect, { timeout: 5000 });
   }
   await noSideways('video'); await tapAt('.vidstage');
   await page.waitForSelector('.vidhero iframe[src*="youtube-nocookie.com/embed/orig2222222"]');
@@ -246,7 +248,7 @@ await step('Video tab: Freestyles (originals + remixes together), Music Videos a
   await page.click('[data-vidtab="music"]'); await page.waitForFunction(() => /Music Vid A/.test((document.querySelector('.vidhero .vidtitle') || {}).textContent || '') && location.pathname === '/video/music-videos', null, { timeout: 5000 });
   h = await hero(); assert.deepEqual([h.tag, h.wall], ['Music video', ['Music Vid B']]); await noSideways('music videos');
   await page.click('[data-vidtab="press"]'); await page.waitForFunction(() => location.pathname === '/video/press' && /Press/.test((document.querySelector('.vidhero .vidtag') || {}).textContent || ''), null, { timeout: 5000 });
-  h = await hero(); assert.equal(h.wall.length, 3, 'the four press interviews: one featured, three below'); assert.deepEqual(await sortBtns(), [], 'no dates or counts for press videos, so no sort buttons');
+  h = await hero(); assert.equal(h.wall.length, 3, 'the four press interviews: one featured, three below'); assert.deepEqual(await sortBtns(), [], 'no dates or counts for press videos, so no sort dropdown');
   await noSideways('press videos');
   assert.deepEqual(await page.evaluate(() => { history.pushState(null, '', '/press/video'); const r = parseRoute(); history.pushState(null, '', '/video/press'); return r; }), { v: 'video', tab: 'press' }, 'the old /press/video address opens the Video tab');
   await page.click('#tabs [data-nav="press"]'); await page.waitForSelector('.presspg .pcards');
