@@ -68,8 +68,9 @@ function featuresOf(t) {
   const m = String(t.title || '').match(/[(\[]\s*(?:feat\.?|ft\.?|featuring)\s+([^)\]]+)[)\]]/i); if (m) add(m[1]);
   return out;
 }
+const isGuestSpot = t => t.feature_role === 'mine';   // my guest spot on someone else's song (set in Studio)
 function featuredSongs() {
-  return S.lib.tracks.filter(t => !hidden(t) && primaryOf(t) && featuresOf(t).length && (OWNER || !(rel(t.release_id) || {}).locked))
+  return S.lib.tracks.filter(t => !hidden(t) && primaryOf(t) && (featuresOf(t).length || isGuestSpot(t)) && (OWNER || !(rel(t.release_id) || {}).locked))
     .sort((a, b) => relDateKey(rel(b.release_id) || {}).localeCompare(relDateKey(rel(a.release_id) || {})) || (Number(a.track_no) || 0) - (Number(b.track_no) || 0));
 }
 const secState = id => { S.sec = S.sec || {}; return (S.sec[id] = S.sec[id] || { view: ls.get('sv_secview_' + id, 'scroll'), chip: 'all' }); };
@@ -112,12 +113,20 @@ function unreleasedSection() {
 function featuresSection() {
   const ts = featuredSongs();
   if (!ts.length) return '';
-  const by = {}; ts.forEach(t => featuresOf(t).forEach(n => { by[n] = (by[n] || 0) + 1; }));
+  const mine = ts.filter(isGuestSpot), guests = ts.filter(t => !isGuestSpot(t) && featuresOf(t).length);
+  const mainArtist = t => String(t.artist || (rel(t.release_id) || {}).artist_name || '').trim();
+  const by = {};   // one chip per person: the guests on my songs, and the artists whose songs I appear on
+  guests.forEach(t => featuresOf(t).forEach(n => { by[n] = (by[n] || 0) + 1; }));
+  mine.forEach(t => { const n = mainArtist(t); if (n) by[n] = (by[n] || 0) + 1; });
   const names = Object.keys(by).sort((a, b) => by[b] - by[a] || a.localeCompare(b)).slice(0, 10);
-  return vaultSection({ id: 'features', cls: 'spot', label: 'Songs with features', songs: ts, chips: [['all', 'All', ts.length]].concat(names.map(n => [n, n, by[n]])),
+  const chips = [['all', 'All', ts.length]].concat(guests.length && mine.length ? [['k:guests', 'Guests on my songs', guests.length], ['k:mine', 'My guest spots', mine.length]] : []).concat(names.map(n => ['a:' + n, n, by[n]]));
+  const people = Object.keys(by).length;
+  return vaultSection({ id: 'features', cls: 'spot', label: 'Features', songs: ts, chips,
     ribbon: `<span class="vs-lock">${I.mic || ''}</span><span class="vs-acc">Special guests</span><i class="vs-dot" aria-hidden="true"></i><span class="vs-sub">Features</span>`,
-    title: '<b>Features</b>', blurb: `Songs with a guest on them. ${ts.length} ${ts.length === 1 ? 'song' : 'songs'} with ${Object.keys(by).length} ${Object.keys(by).length === 1 ? 'artist' : 'artists'}.`,
-    inChip: (t, k) => featuresOf(t).indexOf(k) > -1, tagOf: t => 'feat. ' + featuresOf(t).join(', '), subOf: t => [(rel(t.release_id) || {}).title, t.duration].filter(Boolean).join(' · ') });
+    title: '<b>Features</b>', blurb: `Guests on my songs, and my guest spots on other artists' songs. ${ts.length} ${ts.length === 1 ? 'song' : 'songs'} with ${people} ${people === 1 ? 'artist' : 'artists'}.`,
+    inChip: (t, k) => k === 'k:guests' ? !isGuestSpot(t) : k === 'k:mine' ? isGuestSpot(t) : k.indexOf('a:') === 0 && (isGuestSpot(t) ? mainArtist(t) === k.slice(2) : featuresOf(t).indexOf(k.slice(2)) > -1),
+    tagOf: t => isGuestSpot(t) ? 'Guest spot' : 'feat. ' + featuresOf(t).join(', '),
+    subOf: t => [isGuestSpot(t) ? mainArtist(t) : '', (rel(t.release_id) || {}).title, t.duration].filter(Boolean).join(' · ') });
 }
 function dropsRow() {
   const ds = S.lib.releases.filter(isLocked).sort((a, b) => new Date(a.unlock_at) - new Date(b.unlock_at));

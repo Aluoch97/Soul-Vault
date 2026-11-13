@@ -601,6 +601,17 @@ test('unreleased songs: what a song counts as (single, album, EP, mixtape, compi
   assert.equal((await w.call('studioSaveTrack', ['wrong', 'trk_a1', { fields: { unrel_kind: 'EP' } }])).ok, false);   // owner only
 }));
 
+test('features: a song can be marked as my guest spot on someone else\'s song, and fans can see that', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'catalog');
+  const fan = async () => (await w.call('getShare', ['PUB'])).result.tracks.find(t => t.track_id === 'trk_a1');
+  assert.equal((await w.owner('studioSaveTrack', 'trk_a1', { fields: { feature_role: 'mine', artist: 'Berhani' } })).ok, true);
+  assert.deepEqual([(await fan()).feature_role, (await fan()).artist], ['mine', 'Berhani']);
+  await w.owner('studioSaveTrack', 'trk_a1', { fields: { feature_role: 'something else' } }); assert.equal((await fan()).feature_role, '');   // only "mine" is accepted
+  await w.owner('studioSaveTrack', 'trk_a1', { fields: { feature_role: 'mine' } }); await w.owner('studioSaveTrack', 'trk_a1', { fields: { feature_role: '' } });
+  assert.equal((await fan()).feature_role, '');
+  assert.equal((await w.call('studioSaveTrack', ['wrong', 'trk_a1', { fields: { feature_role: 'mine' } }])).ok, false);   // owner only
+}));
+
 // ---------------------------------------------------------------- moving areas off the Sheet
 test('adopting an area: owner only, known areas only, and the app then answers those calls itself', () => withWorld(async (w) => {
   assert.equal((await w.call('adoptDomain', ['wrong', 'playlists'])).ok, false);
