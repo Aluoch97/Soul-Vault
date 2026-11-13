@@ -152,6 +152,7 @@ await step('fans see the Unreleased and Features areas too (without the owner hi
   await fctx.close();
 });
 await step('the page reports each page view with the time on it, from a phone, with the city; robots and Do-Not-Track are left out', async () => {
+  await w.call('getSiteLive', [KEY, false]);                                                                // (makes the table, so a slow machine does not query it too early)
   const rowsOf = (dev) => w.db.prepare('SELECT * FROM site_views WHERE device_id = ? ORDER BY at').bind(dev).all().then((r) => r.results);
   const fctx = await phoneContext({ city: 'Franklin', region: 'Tennessee', country: 'US' }), fan = await fctx.newPage();
   await fan.goto('https://soulnicolas.com/?s=PUB', { referer: 'https://l.instagram.com/' });

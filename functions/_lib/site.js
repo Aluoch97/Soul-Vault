@@ -90,7 +90,7 @@ export async function getSiteInsights(db, lib, days, includeOwner) {
 /** Who is on the site right now (a "still here" note in the last 90 seconds). */
 export async function getSiteLive(db, lib, includeOwner) {
   await ensureSite(db);
-  const now = Date.now(), rows = (await db.prepare('SELECT * FROM site_views WHERE last >= ? ORDER BY last DESC').bind(now - LIVE_MS).all()).results.filter(x => includeOwner || x.share_token !== 'owner');
+  const now = Date.now(), rows = (await db.prepare('SELECT * FROM site_views WHERE last >= ? ORDER BY last DESC, rowid DESC').bind(now - LIVE_MS).all()).results.filter(x => includeOwner || x.share_token !== 'owner');
   const seen = {}, list = [];
   rows.forEach(r => { if (seen[r.device_id]) return; seen[r.device_id] = 1; list.push({ page: pageName(r.path, lib), device: r.device, city: [r.city, r.region].filter(Boolean).join(', '), ago: Math.max(0, Math.round((now - r.last) / 1000)) }); });
   return { count: list.length, now: list.slice(0, 30) };
