@@ -1,10 +1,10 @@
 /* ── library ── */
 // The top of the Music and Lore pages: the greeting and Soul Vault name, and for the owner the new-release, share-links and Settings buttons.
-function homeHeader() {
+function homeHeader(withButtons) {
   return `<header class="home-h">
         <div><div class="hello">${OWNER ? 'Karibu tena' : 'Karibu, ' + esc((S.share && S.share.fan_name) || 'family')}</div><div class="brand">Soul <span>Vault</span></div></div>
         <div class="hbtns">
-          ${OWNER ? `<button class="round" data-newrel aria-label="New release">${I.plus}</button>
+          ${OWNER && withButtons ? `<button class="round" data-newrel aria-label="New release">${I.plus}</button>
                      <button class="round" data-nav="shares" aria-label="Share links">${I.link}</button>
                      <button class="avatar" data-nav="vault" aria-label="Settings">NS</button>`
                   : ''}
@@ -17,7 +17,7 @@ function renderLibrary(keepScroll) {
   const types = TYPE_FILTERS;
   $('#main').innerHTML = `
     <div class="wrap">
-      ${homeHeader()}
+      ${homeHeader(false)}
       <label class="search big">${I.search}<input id="q" type="search" placeholder="Search songs and releases" value="${esc(S.q)}" aria-label="Search songs and releases"></label>
       <div id="libBody"></div>
     </div>`;

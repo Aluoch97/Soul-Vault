@@ -150,7 +150,7 @@ function renderLore() {
   const phRels = L.eras.map(e => ({ r: e.r, ph: extrasOf(e.r.release_id, 'photo').filter(x => x.file_id) })).filter(x => x.ph.length);
   let cat = cats.some(c => c[0] === S.loreCat) ? S.loreCat : (cats.find(c => c[2].size) || cats[0])[0];
   $('#main').innerHTML = `<div class="wrap lore">
-    ${homeHeader()}
+    ${homeHeader(true)}
     ${OWNER ? '<p class="cs" style="margin:6px 0 0">Compiled from your catalog: credits, places, videos and eras. It updates as you edit releases.</p>' : ''}
     <section class="lorephotos${S.loreAll ? ' all' : ''}" aria-label="Photos">${SITE.photos.map((f, i) => `<button type="button" class="lph1${i >= 6 ? ' extra' : ''}" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</section>
     ${SITE.photos.length > 6 ? `<button type="button" class="pill soft lormore" data-lore-all>${S.loreAll ? 'Show fewer photos' : 'See all ' + SITE.photos.length + ' photos'}</button>` : ''}

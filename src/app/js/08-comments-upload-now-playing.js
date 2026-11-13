@@ -335,7 +335,7 @@ function renderShares() {
   clearPageBg();
   S.view = 'shares'; renderChrome();
   const rows = S.lib.shares.slice().reverse();
-  $('#main').innerHTML = `<div class="wrap"><h1 class="page-h"><b>Share</b> links</h1>
+  $('#main').innerHTML = `<div class="wrap"><button class="back" data-nav="vault">${I.back}Settings</button><h1 class="page-h"><b>Share</b> links</h1>
     <div class="clubcta"><div><strong>Fan club</strong><span class="cs">One link that opens your whole vault: every release that isn't hidden, videos, worlds and comments. Make one for everyone, or one per fan so you can switch people off individually.</span></div>
       <button class="pill main" data-share="all" data-id="all">${I.star}New fan club link</button></div>` + (rows.length ? `<div class="links">${rows.map(s => {
     const tg = targetOf(s);
