@@ -82,6 +82,21 @@ async function edgeShare(ctx, args) {
   return Object.assign({}, body, { share: shareBlock(s) });
 }
 
+// The Video tab's playlists (public; YouTube is the book of record). Each list answers alone: { key, name, id, videos } plus error when it could not be read.
+const VIDEO_LISTS = [['originals', 'Originals', 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK'], ['remixes', 'Remixes', 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV']];
+async function videoLists(ctx) {
+  const { env } = ctx, ck = new Request('https://edge.soulnicolas.invalid/videolists/1');
+  try { const hit = await caches.default.match(ck); if (hit) return await hit.json(); } catch (e) { /* no cache here */ }
+  let allOk = true;
+  const lists = await Promise.all(VIDEO_LISTS.map(async ([key, name, id]) => {
+    try { const r = await YT.source(env, 'https://www.youtube.com/playlist?list=' + id); return { key, name, id, videos: r.videos }; }
+    catch (e) { allOk = false; return { key, name, id, videos: [], error: 'not-available' }; }
+  }));
+  const body = { lists };
+  if (allOk) { try { ctx.waitUntil(caches.default.put(ck, new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=900' } }))); } catch (e) { /* fine */ } }
+  return body;
+}
+
 // The first screen of Home: newest single and newest project (same rule as Vault.gs getHome), covers from our own storage.
 // Returns null (so Apps Script answers) when a cover is not in R2 yet.
 async function edgeHome(ctx, args) {
@@ -626,6 +641,8 @@ export async function onRequestPost(ctx) {
     if (fn === 'getShare' && env.DB) {
       const out = await edgeShare(ctx, args);
       if (out) return json({ ok: true, result: out });
+    } else if (fn === 'getVideoLists') {   // the Video tab: two YouTube playlists, read with our key, kept 15 minutes at the edge
+      return json({ ok: true, result: await videoLists(ctx) });
     } else if (fn === 'getHome' && env.DB) {
       const out = await edgeHome(ctx, args);
       if (out) return json({ ok: true, result: out });
