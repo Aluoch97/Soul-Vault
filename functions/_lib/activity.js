@@ -4,10 +4,11 @@ import { shareScope, findShare } from './share.js';
 const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
 const hex = n => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, '0')).join('');
 
-export const ACTIVITY_FNS = ['createShare', 'setShareActive', 'deleteShare', 'quickShare', 'recordPlay', 'logListens', 'getInsights', 'getComments', 'addComment', 'resolveComment', 'deleteComment', 'logClientError', 'errorSummary'];
+export const ACTIVITY_FNS = ['createShare', 'setShareActive', 'deleteShare', 'quickShare', 'recordPlay', 'logListens', 'getInsights', 'listeningNow', 'getLive', 'getComments', 'addComment', 'resolveComment', 'deleteComment', 'logClientError', 'errorSummary'];
 const DDL = [
   'CREATE TABLE IF NOT EXISTS shares (token TEXT PRIMARY KEY, target_type TEXT, target_id TEXT, label TEXT, allow_download INTEGER, expires TEXT, active INTEGER, plays INTEGER, created TEXT, fan_name TEXT, member_no INTEGER)',
   'CREATE TABLE IF NOT EXISTS listens (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, track_id TEXT, version_id TEXT, release_id TEXT, share_token TEXT, device_id TEXT, seconds INTEGER, pct INTEGER, outcome TEXT, device TEXT)',
+  'CREATE TABLE IF NOT EXISTS live (device_id TEXT PRIMARY KEY, at INTEGER, share_token TEXT, track_id TEXT, version_id TEXT, release_id TEXT, device TEXT)',
   'CREATE INDEX IF NOT EXISTS ix_listens_at ON listens (at)', 'CREATE INDEX IF NOT EXISTS ix_listens_dev ON listens (share_token, device_id, at)',
   'CREATE TABLE IF NOT EXISTS comments (comment_id TEXT PRIMARY KEY, version_id TEXT, token TEXT, name TEXT, time_sec REAL, text TEXT, created TEXT, resolved INTEGER)',
   'CREATE INDEX IF NOT EXISTS ix_comments_v ON comments (version_id)',
@@ -88,34 +89,87 @@ export async function logListens(db, lib, isOwner, token, deviceId, events) {
   await db.batch(rows.map(r => db.prepare('INSERT INTO listens (at, track_id, version_id, release_id, share_token, device_id, seconds, pct, outcome, device) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(...r)));
   return rows.length;
 }
-const TZ = 'America/Los_Angeles';   // the same time zone the Sheet used for "per day"
+const TZ = 'America/Chicago';   // Nick's time zone (Nashville): days, hours and weekdays in the insights are Central time
 const dayKey = ms => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+const HOUR_FMT = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23', weekday: 'short' });
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const hourAndDay = ms => { const p = {}; HOUR_FMT.formatToParts(new Date(ms)).forEach(x => { p[x.type] = x.value; }); return { h: Number(p.hour) % 24, wd: WEEKDAYS.indexOf(p.weekday) }; };
+
+/** The headline numbers for a set of listens (used for this period and for the one before it, so the app can show "up 12%"). */
+function headline(L) {
+  const devs = {}; let plays = 0, complete = 0, seconds = 0;
+  L.forEach(x => { if (x.device_id) devs[x.device_id] = 1; seconds += Number(x.seconds) || 0; if (x.outcome !== 'skip') { plays++; if (x.outcome === 'complete') complete++; } });
+  const listeners = Object.keys(devs).length;
+  return { plays, listeners, seconds, finishRate: plays ? Math.round(complete / plays * 100) : 0, perListener: listeners ? Math.round(plays / listeners * 10) / 10 : 0 };
+}
 export async function getInsights(db, lib, days, includeOwner) {
   days = Number(days) || 0;
-  const out = { days, totals: { plays: 0, skips: 0, listeners: 0, seconds: 0, finishRate: 0 }, perDay: [], songs: [], skipped: [], releases: [], links: [] };
-  const since = days > 0 ? Date.now() - days * 864e5 : 0;
-  const L = (await db.prepare('SELECT * FROM listens WHERE at >= ?').bind(since).all()).results.filter(x => includeOwner || x.share_token !== 'owner');
-  if (!L.length) { const span0 = days > 0 ? Math.min(days, 31) : 30; for (let i = span0 - 1; i >= 0; i--) out.perDay.push({ d: dayKey(Date.now() - i * 864e5), n: 0 }); return out; }
+  const keep = x => includeOwner || x.share_token !== 'owner';
+  const out = { days, totals: { plays: 0, skips: 0, listeners: 0, seconds: 0, finishRate: 0, perListener: 0 }, prev: null, audience: { newListeners: 0, returning: 0 },
+    perDay: [], hours: [], weekdays: [], devices: { phone: 0, desktop: 0 }, songs: [], skipped: [], releases: [], links: [] };
+  const now = Date.now(), since = days > 0 ? now - days * 864e5 : 0;
+  const L = (await db.prepare('SELECT * FROM listens WHERE at >= ?').bind(since).all()).results.filter(keep);
+  const span = days > 0 ? Math.min(days, 31) : 30;
+  if (!L.length) { for (let i = span - 1; i >= 0; i--) out.perDay.push({ d: dayKey(now - i * 864e5), n: 0, l: 0 }); out.hours = new Array(24).fill(0); out.weekdays = new Array(7).fill(0); }
+  // the period before this one, same length, for "up / down" arrows (not for "all time")
+  if (days > 0) { const P = (await db.prepare('SELECT * FROM listens WHERE at >= ? AND at < ?').bind(since - days * 864e5, since).all()).results.filter(keep); out.prev = headline(P); }
+  if (!L.length) return out;
   const T = {}, Rl = {}, Sh = {}; (lib.tracks || []).forEach(t => { T[t.track_id] = t; }); (lib.releases || []).forEach(r => { Rl[r.release_id] = r; }); (lib.shares || []).forEach(s => { Sh[s.token] = s; });
-  const song = {}, relA = {}, link = {}, day = {}, devs = {}; let complete = 0;
+  const song = {}, relA = {}, link = {}, day = {}, dayDevs = {}, devs = {}; let complete = 0;
+  out.hours = new Array(24).fill(0); out.weekdays = new Array(7).fill(0);
   L.forEach(x => {
-    const play = x.outcome !== 'skip', sg = song[x.track_id] = song[x.track_id] || { plays: 0, complete: 0, skips: 0 };
+    const play = x.outcome !== 'skip', sg = song[x.track_id] = song[x.track_id] || { plays: 0, complete: 0, skips: 0, devs: {} };
     if (play) { sg.plays++; out.totals.plays++; if (x.outcome === 'complete') { sg.complete++; complete++; } } else { sg.skips++; out.totals.skips++; }
-    out.totals.seconds += Number(x.seconds) || 0; if (x.device_id) devs[x.device_id] = 1;
+    out.totals.seconds += Number(x.seconds) || 0; if (x.device_id) { devs[x.device_id] = 1; if (play) sg.devs[x.device_id] = 1; }
     if (play) relA[x.release_id] = (relA[x.release_id] || 0) + 1;
     const lk = link[x.share_token] = link[x.share_token] || { plays: 0, devs: {} }; if (play) lk.plays++; if (x.device_id) lk.devs[x.device_id] = 1;
-    if (play) { const d = dayKey(x.at); day[d] = (day[d] || 0) + 1; }
+    if (play) {
+      const d = dayKey(x.at); day[d] = (day[d] || 0) + 1; if (x.device_id) (dayDevs[d] = dayDevs[d] || {})[x.device_id] = 1;
+      const hd = hourAndDay(x.at); out.hours[hd.h]++; if (hd.wd >= 0) out.weekdays[hd.wd]++;
+      if (x.device === 'phone') out.devices.phone++; else out.devices.desktop++;
+    }
   });
   out.totals.listeners = Object.keys(devs).length; out.totals.finishRate = out.totals.plays ? Math.round(complete / out.totals.plays * 100) : 0;
-  const span = days > 0 ? Math.min(days, 31) : 30;
-  for (let i = span - 1; i >= 0; i--) { const d = dayKey(Date.now() - i * 864e5); out.perDay.push({ d, n: day[d] || 0 }); }
+  out.totals.perListener = out.totals.listeners ? Math.round(out.totals.plays / out.totals.listeners * 10) / 10 : 0;
+  // new vs returning: a listener is "new" when this period holds their very first listen
+  if (days > 0 && out.totals.listeners) {
+    const first = {}; (await db.prepare('SELECT device_id, MIN(at) AS f FROM listens WHERE device_id != \'\' GROUP BY device_id').all()).results.forEach(r => { first[r.device_id] = r.f; });
+    Object.keys(devs).forEach(id => { if ((first[id] == null ? since : first[id]) >= since) out.audience.newListeners++; else out.audience.returning++; });
+  }
+  for (let i = span - 1; i >= 0; i--) { const d = dayKey(now - i * 864e5); out.perDay.push({ d, n: day[d] || 0, l: Object.keys(dayDevs[d] || {}).length }); }
   const name = tid => { const t = T[tid] || {}, r = Rl[t.release_id] || {}; return { title: t.title || '(removed song)', release: r.title || '' }; };
-  out.songs = Object.keys(song).map(tid => { const g = song[tid], heard = g.plays + g.skips; return Object.assign(name(tid), { track_id: tid, plays: g.plays, finish: g.plays ? Math.round(g.complete / g.plays * 100) : 0, skip: heard ? Math.round(g.skips / heard * 100) : 0, heard }); }).sort((a, b) => b.plays - a.plays || b.finish - a.finish);
+  out.songs = Object.keys(song).map(tid => { const g = song[tid], heard = g.plays + g.skips; return Object.assign(name(tid), { track_id: tid, plays: g.plays, listeners: Object.keys(g.devs).length, finish: g.plays ? Math.round(g.complete / g.plays * 100) : 0, skip: heard ? Math.round(g.skips / heard * 100) : 0, heard }); }).sort((a, b) => b.plays - a.plays || b.finish - a.finish);
   out.skipped = out.songs.filter(x => x.heard >= 3 && x.skip > 0).sort((a, b) => b.skip - a.skip || b.heard - a.heard).slice(0, 8);
   out.songs = out.songs.filter(x => x.plays > 0).slice(0, 15);
   out.releases = Object.keys(relA).map(rid => ({ release_id: rid, title: (Rl[rid] || {}).title || '(removed release)', plays: relA[rid] })).sort((a, b) => b.plays - a.plays).slice(0, 10);
-  out.links = Object.keys(link).map(tok => { const s = Sh[tok] || {}, lb = tok === 'owner' ? 'You' : (s.fan_name || s.label || (s.target_type === 'all' ? 'Fan club link' : 'Share link')); return { label: String(lb), plays: link[tok].plays, listeners: Object.keys(link[tok].devs).length, active: tok === 'owner' || s.active !== false }; }).sort((a, b) => b.plays - a.plays);
+  out.links = Object.keys(link).map(tok => { const s = Sh[tok] || {}, lb = tok === 'owner' ? 'You' : (s.fan_name || s.label || (s.target_type === 'all' ? 'Fan club link' : 'Share link')); return { label: String(lb), plays: link[tok].plays, listeners: Object.keys(link[tok].devs).length, active: tok === 'owner' || !!s.active }; }).sort((a, b) => b.plays - a.plays).slice(0, 15);
   return out;
+}
+
+// ── who is listening right now ──
+// The app sends a small "still listening" note about every 30 seconds while a song plays. It is kept for a few minutes only (never in the history),
+// so this is only ever a "right now" view. No names: the label is the share link's name, like in "By share link".
+const LIVE_MS = 100000, LIVE_KEEP_MS = 5 * 60000, LIVE_MAX_ROWS = 3000;
+export async function listeningNow(db, lib, isOwner, token, deviceId, versionId, device) {
+  const dev = String(deviceId || '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 40); if (!dev) return false;
+  if (!versionId) { await db.prepare('DELETE FROM live WHERE device_id = ?').bind(dev).run(); return true; }   // paused or stopped
+  let shareTok = 'owner', allowed = null;
+  if (!isOwner) { const s = findShare(lib, String(token || ''), new Date()); if (!s) return false; shareTok = s.token; allowed = new Set(shareScope(s, lib, new Date()).versions.map(v => v.version_id)); }
+  const v = (lib.versions || []).find(x => x.version_id === versionId); if (!v || (allowed && !allowed.has(versionId))) return false;
+  const t = (lib.tracks || []).find(x => x.track_id === v.track_id) || {}, now = Date.now();
+  const cur = await db.prepare('SELECT at, version_id FROM live WHERE device_id = ?').bind(dev).first();
+  if (cur && cur.version_id === versionId && now - cur.at < 20000) return true;                                  // sent a moment ago: nothing to do
+  await db.prepare('DELETE FROM live WHERE at < ?').bind(now - LIVE_KEEP_MS).run();
+  if (!cur && Number((await db.prepare('SELECT COUNT(*) AS n FROM live').first()).n) >= LIVE_MAX_ROWS) return false;
+  await db.prepare('INSERT OR REPLACE INTO live (device_id, at, share_token, track_id, version_id, release_id, device) VALUES (?,?,?,?,?,?,?)').bind(dev, now, shareTok, v.track_id, versionId, t.release_id || '', device === 'phone' ? 'phone' : 'desktop').run();
+  return true;
+}
+export async function getLive(db, lib, includeOwner) {
+  const now = Date.now(), T = {}, Rl = {}, Sh = {}; (lib.tracks || []).forEach(t => { T[t.track_id] = t; }); (lib.releases || []).forEach(r => { Rl[r.release_id] = r; }); (lib.shares || []).forEach(s => { Sh[s.token] = s; });
+  const rows = (await db.prepare('SELECT * FROM live WHERE at >= ? ORDER BY at DESC').bind(now - LIVE_MS).all()).results.filter(x => includeOwner || x.share_token !== 'owner');
+  const list = rows.slice(0, 30).map(x => { const t = T[x.track_id] || {}, s = Sh[x.share_token] || {};
+    return { title: t.title || '(removed song)', release: (Rl[x.release_id] || {}).title || '', who: String(x.share_token === 'owner' ? 'You' : (s.fan_name || s.label || (s.target_type === 'all' ? 'Fan club link' : 'Share link'))), device: x.device, ago: Math.max(0, Math.round((now - x.at) / 1000)) }; });
+  return { count: rows.length, now: list };
 }
 
 // ── comments ──

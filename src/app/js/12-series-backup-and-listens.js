@@ -308,6 +308,31 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .instable .rk { color: var(--dim); width: 28px; font-variant-numeric: tabular-nums; }
   .ins-wrap { overflow-x: auto; }
   .ins-empty { padding: 30px 16px; text-align: center; border: 1px dashed var(--line); border-radius: 16px; color: var(--dim); }
+  .live { margin: 4px 0 16px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.03); }
+  .live .lv-h { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+  .live .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dim); flex: none; }
+  .live.on { border-color: rgba(60,200,110,.5); background: rgba(60,200,110,.07); }
+  .live.on .dot { background: var(--green-hi); box-shadow: 0 0 0 0 rgba(60,200,110,.6); animation: lvpulse 2s infinite; }
+  @keyframes lvpulse { 0% { box-shadow: 0 0 0 0 rgba(60,200,110,.6); } 70% { box-shadow: 0 0 0 9px rgba(60,200,110,0); } 100% { box-shadow: 0 0 0 0 rgba(60,200,110,0); } }
+  @media (prefers-reduced-motion: reduce) { .live.on .dot { animation: none; } }
+  .lv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .lv-list:not(:empty) { margin-top: 12px; }
+  .lv-list li { display: grid; gap: 2px; min-width: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+  .lv-list .t { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; } .lv-list .sub { color: var(--dim); font-weight: 500; }
+  .lv-list .cs { font-size: 13px; }
+  .kpi .dl { display: inline-block; margin-top: 6px; font-style: normal; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+  .kpi .dl.up { color: var(--green-hi); background: rgba(60,200,110,.12); } .kpi .dl.down { color: var(--red-hi); background: rgba(210,16,52,.14); } .kpi .dl.flat { color: var(--dim); background: rgba(255,255,255,.06); }
+  .kpi span { display: block; }
+  .chartseg { margin: 8px 0 0; }
+  .split { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,.06); margin: 6px 0 8px; }
+  .split .a { background: var(--green-hi); } .split .b { background: var(--red-hi); }
+  .splitkey { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 6px; font-size: 14px; }
+  .splitkey .k { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; } .splitkey .k.a { background: var(--green-hi); } .splitkey .k.b { background: var(--red-hi); }
+  .hbars { display: flex; align-items: flex-end; gap: 3px; height: 86px; margin: 6px 0 4px; }
+  .hbars .hb { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end; }
+  .hbars .hb i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: rgba(255,255,255,.28); } .hbars .hb i.top { background: var(--red-hi); }
+  .hbars.days { gap: 8px; }
+  .hbaxis { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); margin-bottom: 14px; }
   .privnote { text-align: center; font-size: 12px; margin: 24px 0 8px; }
   @media (min-width: 0px) { .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi b { font-size: 24px; }
     .instable { font-size: 13px; } .instable th { font-size: 10px; letter-spacing: .04em; padding: 6px 4px; } .instable td { padding: 8px 4px; }
@@ -360,6 +385,7 @@ async function flushListens() {
 // Leaving the page: count the current song and hand the batch off even as the tab closes.
 function flushOnLeave() {
   if (S.lt) listenEnd(false);
+  if (S.nowSent && BOOT.api && navigator.sendBeacon) { navigator.sendBeacon(BOOT.api, new Blob([JSON.stringify({ fn: 'listeningNow', args: [BOOT.key, BOOT.token, deviceId(), '', 'x'] })], { type: 'text/plain' })); S.nowSent = ''; }   // leaving: no longer "listening now"
   const q = ls.get(LQ_KEY, []); if (!q.length || !BOOT.api || !navigator.sendBeacon) return;
   const body = JSON.stringify({ fn: 'logListens', args: [BOOT.key, BOOT.token, deviceId(), listenPayload(q)] });
   if (navigator.sendBeacon(BOOT.api, new Blob([body], { type: 'text/plain' }))) ls.set(LQ_KEY, []);
@@ -367,6 +393,20 @@ function flushOnLeave() {
 setInterval(flushListens, 60000);
 setTimeout(() => { initVolume(); syncModes(); }, 0);
 setTimeout(flushListens, 8000);   // anything left over from last time
+
+/* ── "listening now": while a song plays the app tells the site about every 30 seconds (the owner sees it under Listening insights).
+   Pausing or leaving clears it. Nothing here is saved to the history, and the site forgets it after a few minutes. ── */
+function nowBeat(force) {
+  const playing = !audio.paused && S.now && S.now.v, v = playing ? S.now.v.version_id : '';
+  if (!v && !S.nowSent) return;                                         // nothing playing, nothing to clear
+  if (!force && v === S.nowSent && Date.now() - (S.nowAt || 0) < 25000) return;
+  S.nowSent = v; S.nowAt = Date.now();
+  run('listeningNow', BOOT.key, BOOT.token, deviceId(), v, matchMedia('(max-width: 760px)').matches ? 'phone' : 'desktop').catch(() => {});
+}
+setInterval(() => nowBeat(false), 30000);
+audio.addEventListener('playing', () => nowBeat(true));
+audio.addEventListener('pause', () => nowBeat(true));
+audio.addEventListener('ended', () => nowBeat(true));
 
 /* ── the Insights page (you only) ── */
 async function renderInsights() {
@@ -377,46 +417,104 @@ async function renderInsights() {
   $('#main').innerHTML = `<div class="wrap">
     <button class="back" data-nav="vault">${I.back}Settings</button>
     <h1 class="page-h" style="padding-left:0"><b>Listening</b> insights</h1>
+    <section class="live" id="insLive" aria-live="polite" aria-label="Listening now"><div class="lv-h"><span class="dot" aria-hidden="true"></span><b id="lvCount">Checking who is listening…</b></div><ul id="lvList" class="lv-list"></ul></section>
     <div class="ins-top"><div class="seg" role="group" aria-label="Time range">${rng.map(([d, l]) => `<button data-ins-days="${d}" aria-pressed="${S.insDays === d}">${l}</button>`).join('')}</div>
       <label><input type="checkbox" id="insMine"${S.insMine ? ' checked' : ''}>Include my own plays</label></div>
-    <div id="insBody"><p class="status" style="padding-left:0">Adding up plays…</p></div></div>`;
+    <div id="insBody"><p class="status" style="padding-left:0">Adding up streams…</p></div></div>`;
   window.scrollTo(0, 0);
-  try { insightsBody(await run('getInsights', BOOT.key, S.insDays, !!S.insMine)); }
+  clearInterval(S.liveT); pollLive(); S.liveT = setInterval(pollLive, 20000);
+  try { S.insData = await run('getInsights', BOOT.key, S.insDays, !!S.insMine); insightsBody(S.insData); }
   catch (e) { $('#insBody').innerHTML = `<p class="err">${esc(e.message || 'Could not load insights.')}</p>`; }
 }
-function dayChart(perDay) {
-  const W = 700, H = 140, n = perDay.length, max = Math.max(1, ...perDay.map(x => x.n)), bw = W / n;
-  const total = perDay.reduce((a, b) => a + b.n, 0);
+const agoText = s => s < 10 ? 'just now' : s < 90 ? s + 's ago' : Math.round(s / 60) + ' min ago';
+async function pollLive() {
+  const box = $('#insLive');
+  if (!box || S.view !== 'insights') { clearInterval(S.liveT); S.liveT = null; return; }   // left the page: stop asking
+  try {
+    const r = await run('getLive', BOOT.key, !!S.insMine);
+    if (!$('#insLive')) return;
+    $('#lvCount').textContent = r.count ? `${r.count} listening now` : 'Nobody is listening right now';
+    box.classList.toggle('on', r.count > 0);
+    $('#lvList').innerHTML = r.now.map(x => `<li><span class="t">${esc(x.title)}${x.release ? `<span class="sub"> · ${esc(x.release)}</span>` : ''}</span><span class="cs">${esc(x.who)} · ${x.device === 'phone' ? 'Phone' : 'Computer'} · ${agoText(x.ago)}</span></li>`).join('');
+  } catch (e) { if ($('#lvCount')) $('#lvCount').textContent = 'Could not check who is listening'; }
+}
+/** bars for each day: listeners (unique people) or streams */
+function dayChart(perDay, key) {
+  const W = 700, H = 140, n = perDay.length, max = Math.max(1, ...perDay.map(x => x[key])), bw = W / n, what = key === 'l' ? 'listeners' : 'streams';
+  const total = perDay.reduce((a, b) => a + b[key], 0);
   const label = d => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  return `<svg class="daychart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Plays per day: ${total} plays from ${label(perDay[0].d)} to ${label(perDay[n - 1].d)}, busiest day ${max} plays.">
-    ${perDay.map((x, i) => { const h = x.n ? Math.max(4, (x.n / max) * (H - 26)) : 3;
-      return `<rect class="b${x.n ? '' : ' z'}" x="${i * bw + 1}" y="${H - h}" width="${Math.max(1, bw - 2)}" height="${h}" rx="2"><title>${label(x.d)}: ${x.n} plays</title></rect>`; }).join('')}
+  return `<svg class="daychart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${what[0].toUpperCase() + what.slice(1)} per day: ${total} in total (${perDay.map(x => `${label(x.d)} ${x[key]}`).join(', ')})">
+    ${perDay.map((x, i) => { const h = x[key] ? Math.max(4, (x[key] / max) * (H - 26)) : 3;
+      return `<rect class="b${x[key] ? '' : ' z'}" x="${i * bw + 1}" y="${H - h}" width="${Math.max(1, bw - 2)}" height="${h}" rx="2"><title>${label(x.d)}: ${x[key]} ${what}</title></rect>`; }).join('')}
     </svg><div class="dayaxis" aria-hidden="true"><span>${esc(label(perDay[0].d))}</span><span>${esc(label(perDay[n - 1].d))}</span></div>`;
 }
+/** an up/down chip next to a number, compared with the period before ("new" when there was nothing before) */
+function deltaChip(cur, prev, days, points) {
+  if (!prev || prev.__none) return '';
+  const was = prev.v;
+  if (was == null) return '';
+  const when = `the previous ${days} days`;
+  if (points) { const diff = Math.round(cur - was); if (!diff) return `<i class="dl flat" aria-label="same as ${when}">–</i>`; return `<i class="dl ${diff > 0 ? 'up' : 'down'}" aria-label="${diff > 0 ? 'up' : 'down'} ${Math.abs(diff)} points from ${when}">${diff > 0 ? '▲' : '▼'} ${Math.abs(diff)} pts</i>`; }
+  if (!was && !cur) return '';
+  if (!was) return `<i class="dl up" aria-label="new: nothing in ${when}">▲ new</i>`;
+  const pct = Math.round((cur - was) / was * 100);
+  if (!pct) return `<i class="dl flat" aria-label="same as ${when}">–</i>`;
+  return `<i class="dl ${pct > 0 ? 'up' : 'down'}" aria-label="${pct > 0 ? 'up' : 'down'} ${Math.abs(pct)} percent from ${when}">${pct > 0 ? '▲' : '▼'} ${Math.abs(pct)}%</i>`;
+}
+/** a row of bars (hours of the day, days of the week) with the tallest one named in words */
+function barRow(vals, labels, cls, unit) {
+  const max = Math.max(1, ...vals), top = vals.indexOf(Math.max(...vals));
+  return `<div class="hbars ${cls}" role="img" aria-label="${unit} by ${cls === 'hours' ? 'hour of the day' : 'day of the week'}. Busiest: ${esc(labels[top])} (${vals[top]})">
+    ${vals.map((v, i) => `<span class="hb"><i class="${i === top && v ? 'top' : ''}" style="height:${v ? Math.max(6, Math.round(v / max * 100)) : 2}%" title="${esc(labels[i])}: ${v}"></i></span>`).join('')}</div>`;
+}
+const HOUR_LABEL = h => (h % 12 || 12) + (h < 12 ? ' AM' : ' PM');
 function insightsBody(d) {
-  const t = d.totals, hrs = t.seconds / 3600;
+  const t = d.totals, hrs = t.seconds / 3600, days = d.days, p = d.prev;
   if (!t.plays && !t.skips) {
-    $('#insBody').innerHTML = `<div class="ins-empty">No plays ${d.days ? 'in this range' : 'yet'}${S.insMine ? '' : ' from fans'}. Plays show up here within about a minute of someone listening.</div>`;
+    $('#insBody').innerHTML = `<div class="ins-empty">No streams ${days ? 'in this range' : 'yet'}${S.insMine ? '' : ' from fans'}. They show up here within about a minute of someone listening.</div>`;
     return;
   }
+  S.insMetric = S.insMetric || 'l';
+  const ph = p ? { l: { v: p.listeners }, n: { v: p.plays }, per: { v: p.perListener }, fin: { v: p.finishRate }, hrs: { v: p.seconds / 3600 } } : {};
+  const kpi = (val, lab, chip) => `<div class="kpi"><b>${val}</b><span>${lab}</span>${chip || ''}</div>`;
   const table = (cap, head, rows) => `<h2 class="sh"><span>${cap}</span></h2><div class="ins-wrap"><table class="instable"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const au = d.audience, auTotal = au.newListeners + au.returning, devTotal = d.devices.phone + d.devices.desktop;
+  const pct = (n, of) => of ? Math.round(n / of * 100) : 0;
+  const sixth = days ? kpi(au.newListeners.toLocaleString(), 'New listeners') : kpi(t.skips.toLocaleString(), 'Skips');
+  const peakH = d.hours.indexOf(Math.max(...d.hours)), peakD = d.weekdays.indexOf(Math.max(...d.weekdays));
   $('#insBody').innerHTML = `
     <div class="kpis">
-      <div class="kpi"><b>${t.plays.toLocaleString()}</b><span>Plays</span></div>
-      <div class="kpi"><b>${t.listeners.toLocaleString()}</b><span>Listeners</span></div>
-      <div class="kpi"><b>${hrs < 10 ? hrs.toFixed(1) : Math.round(hrs).toLocaleString()}</b><span>Hours listened</span></div>
-      <div class="kpi"><b>${t.finishRate}%</b><span>Finish rate</span></div>
+      ${kpi(t.listeners.toLocaleString(), 'Listeners', deltaChip(t.listeners, ph.l, days))}
+      ${kpi(t.plays.toLocaleString(), 'Streams', deltaChip(t.plays, ph.n, days))}
+      ${kpi(t.perListener.toFixed(1), 'Streams per listener', deltaChip(t.perListener, ph.per, days))}
+      ${kpi(t.finishRate + '%', 'Finish rate', deltaChip(t.finishRate, ph.fin, days, true))}
+      ${kpi(hrs < 10 ? hrs.toFixed(1) : Math.round(hrs).toLocaleString(), 'Hours listened', deltaChip(hrs, ph.hrs, days))}
+      ${sixth}
     </div>
-    <h2 class="sh"><span><b>Plays</b> per day</span></h2>${dayChart(d.perDay)}
-    ${d.songs.length ? table('<b>Top</b> songs', '<th class="rk">#</th><th>Song</th><th class="n">Plays</th><th class="n">Finished</th><th class="n">Skipped</th>',
-      d.songs.map((s, i) => `<tr><td class="rk">${i + 1}</td><td>${esc(s.title)}<span class="sub">${esc(s.release)}</span></td><td class="n">${s.plays}</td><td class="n">${s.finish}%</td><td class="n">${s.skip}%</td></tr>`).join('')) : ''}
+    <div class="seg chartseg" role="group" aria-label="Chart"><button data-ins-metric="l" aria-pressed="${S.insMetric === 'l'}">Listeners</button><button data-ins-metric="n" aria-pressed="${S.insMetric === 'n'}">Streams</button></div>
+    <h2 class="sh"><span><b>${S.insMetric === 'l' ? 'Listeners' : 'Streams'}</b> per day</span></h2>${dayChart(d.perDay, S.insMetric)}
+    ${days && auTotal ? `<h2 class="sh"><span><b>New</b> vs returning</span></h2>
+      <div class="split" role="img" aria-label="${au.newListeners} new listeners and ${au.returning} returning listeners"><span class="a" style="width:${pct(au.newListeners, auTotal)}%"></span><span class="b" style="width:${100 - pct(au.newListeners, auTotal)}%"></span></div>
+      <p class="splitkey"><span><i class="k a"></i>New <b>${au.newListeners.toLocaleString()}</b> (${pct(au.newListeners, auTotal)}%)</span><span><i class="k b"></i>Returning <b>${au.returning.toLocaleString()}</b> (${pct(au.returning, auTotal)}%)</span></p>
+      <p class="cs">New = the first time this device ever listened was in this range.</p>` : ''}
+    ${d.songs.length ? table('<b>Top</b> songs', '<th class="rk">#</th><th>Song</th><th class="n">Streams</th><th class="n">Listeners</th><th class="n">Finished</th>',
+      d.songs.map((s, i) => `<tr><td class="rk">${i + 1}</td><td>${esc(s.title)}<span class="sub">${esc(s.release)}</span></td><td class="n">${s.plays}</td><td class="n">${s.listeners}</td><td class="n">${s.finish}%</td></tr>`).join('')) : ''}
+    <h2 class="sh"><span><b>When</b> they listen</span></h2>
+    ${barRow(d.hours, d.hours.map((_, h) => HOUR_LABEL(h)), 'hours', 'Streams')}
+    <div class="hbaxis" aria-hidden="true"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span></div>
+    ${barRow(d.weekdays, ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], 'days', 'Streams')}
+    <div class="hbaxis days" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+    <p class="cs">Busiest hour: <b>${HOUR_LABEL(peakH)}</b>. Busiest day: <b>${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][peakD]}</b>. Central time.</p>
+    ${devTotal ? `<h2 class="sh"><span><b>Phone</b> or computer</span></h2>
+      <div class="split" role="img" aria-label="${d.devices.phone} streams on phones and ${d.devices.desktop} on computers"><span class="a" style="width:${pct(d.devices.phone, devTotal)}%"></span><span class="b" style="width:${100 - pct(d.devices.phone, devTotal)}%"></span></div>
+      <p class="splitkey"><span><i class="k a"></i>Phone <b>${pct(d.devices.phone, devTotal)}%</b></span><span><i class="k b"></i>Computer <b>${pct(d.devices.desktop, devTotal)}%</b></span></p>` : ''}
     ${d.skipped.length ? table('<b>Most</b> skipped', '<th>Song</th><th class="n">Skipped</th><th class="n">Times heard</th>',
       d.skipped.map(s => `<tr><td>${esc(s.title)}<span class="sub">${esc(s.release)}</span></td><td class="n">${s.skip}%</td><td class="n">${s.heard}</td></tr>`).join('')) : ''}
-    ${d.releases.length ? table('<b>Top</b> releases', '<th class="rk">#</th><th>Release</th><th class="n">Plays</th>',
+    ${d.releases.length ? table('<b>Top</b> releases', '<th class="rk">#</th><th>Release</th><th class="n">Streams</th>',
       d.releases.map((r, i) => `<tr><td class="rk">${i + 1}</td><td>${esc(r.title)}</td><td class="n">${r.plays}</td></tr>`).join('')) : ''}
-    ${d.links.length ? table('<b>By</b> share link', '<th>Link</th><th class="n">Plays</th><th class="n">Listeners</th>',
+    ${d.links.length ? table('<b>By</b> share link', '<th>Link</th><th class="n">Streams</th><th class="n">Listeners</th>',
       d.links.map(l => `<tr><td>${esc(l.label)}${l.active ? '' : '<span class="sub">switched off</span>'}</td><td class="n">${l.plays}</td><td class="n">${l.listeners}</td></tr>`).join('')) : ''}
-    <p class="cs">A play is 30 seconds or more. Shorter listens you moved on from count as skips. Listeners are counted by device, without names.</p>`;
+    <p class="cs">A stream is 30 seconds or more. Shorter listens you moved on from count as skips. Listeners are counted by device, once each, without names (one person on two devices counts twice). Arrows compare with the same number of days just before.</p>`;
 }
 
 
