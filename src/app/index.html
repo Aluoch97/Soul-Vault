@@ -148,8 +148,7 @@
 /* Vault on a computer: the scrolling shelves (main discography, Unreleased, Features) look like the phone: a row of cards you scroll sideways, with arrows on the shelf.
    Other rows (playlists, recently played, coming attractions) stay as an even grid that lines up with the page edges. */
 @media (min-width: 900px) {
-  #main .shelf .ctrack { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--padx)); padding: 0 var(--padx) 8px; scroll-padding-left: var(--padx); scrollbar-width: thin; }
-  #main .shelf .ctrack::-webkit-scrollbar { display: initial; height: 8px; }
+  #main .shelf .ctrack { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--padx)); padding: 0 var(--padx) 8px; scroll-padding-left: var(--padx); }
   #main .shelf .ctrack .slide { flex: 0 0 clamp(240px, 19vw, 300px); width: auto; aspect-ratio: 4 / 5; border-radius: 18px; }
   #main .shelf .slide .ttl { font-size: clamp(17px, 1.3vw, 21px); }
   #main .shelf .slide .cap { left: 14px; right: 62px; bottom: 14px; }
@@ -159,8 +158,7 @@
   #main .hrow.recent { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   #main .recent .rc { flex: none; }
   #main .recent .rc .art { width: 100%; height: auto; aspect-ratio: 1; }
-  #main .hrow.vrow { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 8px; scrollbar-width: thin; }
-  #main .hrow.vrow::-webkit-scrollbar { display: initial; height: 8px; }
+  #main .hrow.vrow { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 8px; }
   #main .hrow.vrow .vsc { flex: 0 0 180px; }
 }
 @media (min-width: 1700px) { .wrap:has(#libBody) { max-width: 1640px; margin-left: auto; margin-right: auto; } }
