@@ -64,21 +64,70 @@ function openInstall() {
 async function openMissing() {
   const m = $('#modal'); m.className = 'modal';
   m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Missing files"><h2>Missing files</h2><p class="cs" id="msSt">Loading…</p>
-    <div id="msList" style="display:grid;gap:14px;max-height:62vh;overflow:auto"></div><input type="file" id="msFile" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" tabindex="-1"><div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
+    <div id="msList" class="mslistbox"></div><input type="file" id="msFile" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" tabindex="-1"><div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
   m.hidden = false;
   let items = [];
   const draw = () => {
-    $('#msSt').textContent = items.length ? items.length + ' still to upload. Tap Upload next to one and pick the file. It goes live for everyone as soon as it finishes. A WAV or AIFF is turned into a 256 kbps MP3 first; your master stays on your computer.' : 'Nothing is missing.';
+    $('#msSt').textContent = items.length ? items.length + ' still to fix. Tap Upload file and pick the audio, or, if you already added the song with New release (from a YouTube link or a file), tap Link an added song to use that one. It goes live for everyone as soon as it is done. A WAV or AIFF is turned into a 256 kbps MP3 first; your master stays on your computer.' : 'Nothing is missing.';
     const by = {}; items.forEach(it => (by[it.release] = by[it.release] || []).push(it));
     $('#msList').innerHTML = Object.keys(by).map(r => `<div><b>${esc(r)}</b>${by[r].sort((a, b) => (a.no || 0) - (b.no || 0) || String(a.label).localeCompare(b.label)).map(it => `
-      <div class="msrow" data-ms="${esc(it.id)}" style="display:grid;gap:6px;padding:10px 0;border-top:1px solid var(--line)">
+      <div class="msrow" data-ms="${esc(it.id)}">
         <div><span>${it.no ? '#' + esc(it.no) + ' ' : ''}${esc(it.title)}</span> <span class="cs">· ${esc(it.label)}${it.kind === 'song' ? ' · never added' : ''}</span></div>
         <div class="cs msst" role="status"></div><div class="msbar" hidden style="height:4px;border-radius:4px;background:var(--raise);overflow:hidden"><i style="display:block;height:100%;width:0;background:var(--text)"></i></div>
-        <div style="display:flex;gap:8px"><button class="pill main" data-ms-up="${esc(it.id)}">Upload file</button>${it.kind === 'version' ? `<button class="pill soft" data-ms-hide="${esc(it.id)}">Hide it</button>` : ''}</div></div>`).join('')}</div>`).join('');
+        <div class="msbtns"><button class="pill main" data-ms-up="${esc(it.id)}">Upload file</button><button class="pill soft" data-ms-link="${esc(it.id)}">Link an added song</button>${it.kind === 'version' ? `<button class="pill soft" data-ms-hide="${esc(it.id)}">Hide it</button>` : ''}</div><div class="mslink" hidden></div></div>`).join('')}</div>`).join('');
   };
   const rowOf = id => [...$$('#msList [data-ms]')].find(x => x.dataset.ms === id);
   try { items = await run('missingList', BOOT.key); draw(); } catch (e) { $('#msSt').textContent = (e && e.message) || 'Could not load the list.'; return; }
+  // Link a song you already added with New release (from YouTube or a file) to a missing one. The added song's file moves onto the missing song,
+  // the broken one is hidden, and the missing item comes off this list.
+  const candidates = (it, q) => {
+    const bad = new Set(items.map(x => x.id).concat(it.oldVersionIds || [])), tr = id => S.lib.tracks.find(t => t.track_id === id), rl = id => S.lib.releases.find(r => r.release_id === id);
+    q = String(q || '').trim().toLowerCase();
+    return S.lib.versions.filter(v => v.native === true && !bad.has(v.version_id) && v.track_id !== it.trackId && tr(v.track_id)).reverse()
+      .map(v => { const t = tr(v.track_id), r = rl(t.release_id) || {}; return { id: v.version_id, title: t.title, release: r.title || '', hidden: !!r.hidden, how: v.format === 'YOUTUBE' ? 'plays through YouTube' : (v.duration || 'audio file') }; })
+      .filter(x => !q || (x.title + ' ' + x.release).toLowerCase().includes(q)).slice(0, 25);
+  };
+  const drawLink = (row, it, q) => {
+    const box = row.querySelector('.mslink'), list = candidates(it, q);
+    box.hidden = false;
+    box.innerHTML = `<label class="cs" style="display:grid;gap:6px">Songs you added with New release<input class="field" type="search" data-ms-q placeholder="Search by song or release" value="${esc(q || '')}" autocomplete="off"></label>
+      ${list.length ? `<ul class="mspick">${list.map(c => `<li><button type="button" class="pill soft" data-ms-pick="${esc(c.id)}"><span class="t">${esc(c.title)}</span><span class="cs">${esc(c.release)}${c.hidden ? ' (hidden release)' : ''} · ${esc(c.how)}</span></button></li>`).join('')}</ul>`
+        : `<p class="cs">${q ? 'No match.' : 'No added songs to link yet. Add one with New release first, from a YouTube link or a file.'}</p>`}
+      <div class="msbtns"><button type="button" class="pill soft" data-ms-cancel>Cancel</button></div>`;
+    const inp = box.querySelector('[data-ms-q]'); inp.addEventListener('input', () => { const pos = inp.selectionStart; drawLink(row, it, inp.value); const n = row.querySelector('[data-ms-q]'); n.focus(); n.setSelectionRange(pos, pos); });
+  };
+  const linkFlow = async (e, lnk, pick, go, cancel) => {
+    const row = e.target.closest('[data-ms]'); if (!row) return;
+    const it = items.find(x => x.id === row.dataset.ms); if (!it) return;
+    const box = row.querySelector('.mslink');
+    if (lnk) { drawLink(row, it, ''); const q = box.querySelector('[data-ms-q]'); if (q) q.focus(); return; }
+    if (cancel) { box.hidden = true; box.innerHTML = ''; return; }
+    if (pick) {
+      const c = candidates(it, '').find(x => x.id === pick.dataset.msPick); if (!c) return;
+      box.innerHTML = `<p>Use <b>${esc(c.title)}</b> (${esc(c.release)}) as the file for <b>${esc(it.title)}</b>${it.label && it.label !== 'Original' ? ` (${esc(it.label)})` : ''}?</p>
+        <p class="cs">${esc(c.title)} moves onto ${esc(it.title)}${it.kind === 'version' ? ' and the broken file is hidden from fans' : ' and it shows for fans'}. The song it was added as is removed from ${esc(c.release || 'its release')}. Nothing is deleted from storage.</p>
+        <div class="msbtns"><button type="button" class="pill main" data-ms-go="${esc(c.id)}">Link it</button><button type="button" class="pill soft" data-ms-cancel>Cancel</button></div><div class="cs msst" role="status"></div>`;
+      return;
+    }
+    if (go) {
+      const st = box.querySelector('.msst'); go.disabled = true; st.textContent = 'Linking…'; st.style.color = '';
+      try {
+        const r = await run('missingLink', BOOT.key, it.id, go.dataset.msGo);
+        const v = S.lib.versions.find(x => x.version_id === r.version.version_id); if (v) Object.assign(v, r.version);
+        S.lib.versions.forEach(x => { if ((r.hiddenVersionIds || []).indexOf(x.version_id) > -1) x.hidden = true; });
+        const t = S.lib.tracks.find(x => x.track_id === it.trackId); if (t && r.unhide) t.hidden = false;
+        if (r.removedTrackId) S.lib.tracks = S.lib.tracks.filter(x => x.track_id !== r.removedTrackId);
+        if (typeof libCacheSet === 'function') libCacheSet(S.lib);
+        items = items.filter(x => x.id !== it.id); draw();
+        toast('Linked: ' + it.title);
+        if (r.fromReleaseEmpty) $('#msSt').textContent = `Linked “${it.title}”. The release “${r.fromRelease}” you added it in is empty now. It is still hidden; delete it from its page if you do not need it. ` + $('#msSt').textContent;
+        if (S.view === 'release') renderRelease(it.relId);
+      } catch (er) { go.disabled = false; st.textContent = (er && er.message) || 'Could not link it.'; st.style.color = 'var(--red, #ff6b6b)'; }
+    }
+  };
   $('#msList').addEventListener('click', e => {
+    const lnk = e.target.closest('[data-ms-link]'), pick = e.target.closest('[data-ms-pick]'), go = e.target.closest('[data-ms-go]'), cancel = e.target.closest('[data-ms-cancel]');
+    if (lnk || pick || go || cancel) { linkFlow(e, lnk, pick, go, cancel); return; }
     const up = e.target.closest('[data-ms-up]'), hide = e.target.closest('[data-ms-hide]');
     if (hide) {
       const id = hide.dataset.msHide; hide.disabled = true;

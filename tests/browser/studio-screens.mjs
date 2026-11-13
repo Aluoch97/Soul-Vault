@@ -33,6 +33,7 @@ for (const [ago, v, dev, out, tok, device] of [[0.2, 'ver_a1', 'devA', 'complete
   await w.db.prepare('INSERT INTO listens (at, track_id, version_id, release_id, share_token, device_id, seconds, pct, outcome, device) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(Date.now() - ago * DAYMS, ver[v][0], v, ver[v][1], tok, dev, out === 'skip' ? 5 : 120, out === 'skip' ? 4 : 100, out, device).run();
 assert.equal((await w.call('listeningNow', ['', 'FAN', 'liveA', 'ver_a1', 'phone'])).result, true);
 assert.equal((await w.call('listeningNow', ['', 'PUB', 'liveB', 'ver_sg', 'desktop'])).result, true);
+assert.equal((await w.owner('missingAdd', { versionId: 'ver_sg' })).result, true);   // a song whose file is missing (for the Missing files screens)
 const KEY = 'ownerkey0123456789';   // the app keeps only letters and digits from ?k= (the real key has no dashes)
 w.env.OWNER_KEY = KEY;
 const store = async () => { const o = await w.kv('owned'); return o && o.domains && o.domains.catalog ? o : await w.kv('native'); };   // the catalog is owned by Cloudflare, so new releases are stored there
@@ -117,6 +118,24 @@ await step('the player tells the site it is playing (about every 30 s) and says 
   assert.deepEqual(await live(), [], 'pausing clears it');
   await page.evaluate(() => { delete audio.paused; S.now = null; });
 });
+await step('every Settings screen that used to be a grey pop-up now opens as a full page with a back link and a big title', async () => {
+  const rows = [['[data-missing]', 'Missing files', 'missing'], ['[data-fans]', 'Soul Tribe fan list', 'tribe'], ['[data-backups]', 'Backups', 'backups'], ['[data-areas]', 'Move off the Sheet', 'sheet'], ['[data-ownerpw]', 'Set owner password', 'password'], ['[data-problems]', 'Problems reported', 'problems'], ['[data-check-yt]', 'Check YouTube setup', 'youtube']];
+  for (const [sel, name, word] of rows) {
+   try {
+    await page.click(sel + ':visible');
+    await page.waitForFunction(() => { const m = document.querySelector('#modal'); return m && !m.hidden && m.classList.contains('pagemode') && m.querySelector('h2.pgtitle') && m.querySelector('.pgback'); }, null, { timeout: 8000 }).catch(async () => { throw new Error(`${name}: did not open as a page (modal: ${await page.evaluate(() => { const m = document.querySelector('#modal'); return m ? `hidden=${m.hidden} class=${m.className} text=${m.innerText.slice(0, 80)}` : 'none'; })})`); });
+    const m = await page.evaluate(() => { const m = document.querySelector('#modal'), h = m.querySelector('h2.pgtitle'), r = h.getBoundingClientRect(), bg = getComputedStyle(m.querySelector('.sheet')).backgroundColor, tabs = document.querySelector('.tabs'); return { title: h.textContent, bold: !!h.querySelector('b'), size: parseFloat(getComputedStyle(h).fontSize), top: Math.round(r.top), sheetBg: bg, tabsOn: !!tabs && getComputedStyle(tabs).display !== 'none' }; });
+    assert.ok(m.title.toLowerCase().includes(word), `${name}: title is "${m.title}"`);
+    assert.ok(m.bold && m.size >= 30, `${name}: the title is big and bold like the other pages (${m.size}px)`);
+    assert.ok(/rgba\(0, 0, 0, 0\)|transparent/.test(m.sheetBg), `${name}: no grey box behind the content (${m.sheetBg})`);
+    await noSideways(name + ' page');
+    if (process.env.SHOT3 && name === 'Missing files') await page.screenshot({ path: process.env.SHOT3, fullPage: false });
+    await page.click('#modal .pgback');
+    await page.waitForFunction(() => document.querySelector('#modal').hidden && !document.querySelector('#modal').classList.contains('pagemode'), null, { timeout: 5000 });
+    await seen('Check YouTube setup');
+   } finally { await page.evaluate(() => { const m = document.querySelector('#modal'); if (m && !m.hidden) { m.hidden = true; m.innerHTML = ''; } }); }   // never leave a page open for the next steps
+  }
+});
 await step('"Check YouTube setup" says YouTube is connected', async () => { await page.click('[data-check-yt]:visible'); await seen('YouTube is connected').catch(async e => { throw new Error('modal says: ' + (await page.evaluate(() => (document.querySelector('#modal') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await noSideways('youtube check'); await page.click('#modal [data-close]'); });
 let releaseId = null;
 await step('a new release from a YouTube playlist is created, hidden, with its songs', async () => {
@@ -143,6 +162,27 @@ await step('a voice note uploads and is saved on the song', async () => {
   const saved = (await store()).tracks.find(t => t.track_id === tid);
   assert.match(saved.voice_note_id, /^r2:/, 'the song points at the uploaded file');
   assert.ok(await w.media.head(saved.voice_note_id.slice(3)), 'the file is in storage');
+});
+await step('Missing files: link a song you added with New release to the missing one', async () => {
+  const lib = async () => { const o = await store(); return o; };
+  await page.evaluate(() => renderVault());                                                                // (the voice note step left us on the release page)
+  await page.click('[data-missing]:visible'); await page.waitForSelector('#modal .msrow', { timeout: 8000 });
+  const row = '#modal .msrow[data-ms="ver_sg"]';
+  assert.ok(await page.$(row), 'the missing song is listed');
+  await page.click(row + ' [data-ms-link]'); await page.waitForSelector(row + ' [data-ms-q]');
+  assert.ok(await page.$(row + ' [data-ms-pick]'), 'the songs you added are offered');
+  await page.fill(row + ' [data-ms-q]', 'second test');
+  await page.waitForFunction((r) => { const b = [...document.querySelectorAll(r + ' [data-ms-pick]')]; return b.length === 1 && /Second Test Song/.test(b[0].innerText); }, row, { timeout: 5000 });
+  await noSideways('missing files with the chooser open');
+  await page.click(row + ' [data-ms-pick]'); await page.waitForSelector(row + ' [data-ms-go]');
+  await page.click(row + ' [data-ms-go]');
+  await page.waitForFunction(() => !document.querySelector('#modal .msrow[data-ms="ver_sg"]'), null, { timeout: 8000 });
+  const o = await lib(), moved = o.versions.find((v) => v.track_id === 'trk_sg' && v.native);
+  assert.ok(moved, 'the added file is now on the missing song');
+  assert.ok(!o.tracks.some((t) => t.title === 'Second Test Song'), 'the added song it came from is gone');
+  assert.deepEqual((await w.call('missingList', [KEY])).result, [], 'it is off the Missing files list');
+  assert.ok(await page.evaluate(() => S.lib.versions.some((v) => v.track_id === 'trk_sg' && v.native)), 'the app shows the change without a reload');
+  await page.click('#modal .pgback');
 });
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;

@@ -7,7 +7,7 @@ import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpe
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
 const OWNER_ONLY = ['setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
-  'missingList', 'missingResolve', 'missingHide', 'missingRemove', 'missingAdd'];
+  'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
 
 // ---------------------------------------------------------------- the owner gate
@@ -516,6 +516,62 @@ test('Studio: the missing-files list - add, hide a broken version from fans, res
   const ids = (await w.call('getShare', ['PUB'])).result.versions.map(x => x.version_id);
   assert.ok(ids.includes(v.version_id) && !ids.includes('ver_sg'));
   assert.equal((await w.owner('missingRemove', 'whatever')).result, true);
+}));
+
+const YT_ID = 'abcdefghijk';
+async function addedFromYoutube(w, title) {   // a song added through "New release from YouTube": its own hidden release, song and version
+  w.env.YOUTUBE_API_KEY = 'yt-test-key'; w.youtube.videos[YT_ID] = title;
+  const out = (await w.owner('createReleaseFromYoutube', { url: 'https://youtu.be/' + YT_ID })).result;
+  return { rel: out.release.release_id, trk: out.tracks[0].track_id, ver: out.versions[0].version_id };
+}
+test('missing files: link a song you already added (from YouTube or a file) to the missing one', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'catalog'); await w.owner('adoptDomain', 'extras');
+  await w.owner('missingAdd', { versionId: 'ver_sg' });                                                    // a version of A Single whose file is gone
+  const add = await addedFromYoutube(w, 'Recovered Song');
+  assert.ok(!(await w.call('getShare', ['PUB'])).result.versions.some(v => v.version_id === add.ver));      // the new release is hidden from fans
+  const r = (await w.owner('missingLink', 'ver_sg', add.ver)).result;
+  assert.deepEqual([r.version.track_id, r.version.label, r.version.is_primary], ['trk_sg', 'Original', false]);   // it takes the missing version's place and name
+  assert.deepEqual([r.removedTrackId, r.hiddenVersionIds, r.fromReleaseEmpty], [add.trk, ['ver_sg'], true]);
+  assert.deepEqual((await w.owner('missingList')).result, []);                                              // off the list
+  const fan = (await w.call('getShare', ['PUB'])).result.versions.map(v => v.version_id);
+  assert.ok(fan.includes(add.ver) && !fan.includes('ver_sg'), 'fans now get the linked file, not the broken one');
+  assert.ok(!(await w.owner('studioGet')).result.tracks.some(t => t.track_id === add.trk), 'the empty song it came from is gone');
+  assert.ok((await w.owner('studioGet')).result.releases.some(x => x.release_id === add.rel), 'its (now empty, hidden) release is left for you to delete');
+}));
+test('missing files: a song that was never added gets the linked file as its main version and shows up for fans', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'catalog'); await w.owner('adoptDomain', 'extras');
+  await w.owner('missingAdd', { trackId: 'trk_a2' });                                                      // hidden song with a broken file
+  assert.deepEqual((await w.owner('missingList')).result.map(x => [x.kind, x.unhide]), [['song', true]]);
+  const add = await addedFromYoutube(w, 'Never Added Song');
+  const r = (await w.owner('missingLink', 'trk_a2', add.ver)).result;
+  assert.deepEqual([r.version.track_id, r.version.is_primary, r.unhide], ['trk_a2', true, true]);
+  const g = (await w.call('getShare', ['PUB'])).result;
+  assert.ok(g.tracks.some(t => t.track_id === 'trk_a2'), 'the song is visible now');
+  assert.deepEqual(g.versions.filter(v => v.track_id === 'trk_a2').map(v => v.version_id), [add.ver]);
+}));
+test('missing files: linking refuses what would be wrong', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'catalog'); await w.owner('adoptDomain', 'extras');
+  await w.owner('missingAdd', { versionId: 'ver_sg' }); await w.owner('missingAdd', { versionId: 'ver_a1' });
+  const add = await addedFromYoutube(w, 'Recovered Song');
+  assert.match((await w.owner('missingLink', 'nope', add.ver)).error, /not on the list/);
+  assert.match((await w.owner('missingLink', 'ver_sg', 'ghost')).error, /not found/);
+  assert.match((await w.owner('missingLink', 'ver_sg', 'ver_sg')).error, /already on this song|missing its file/);   // not itself
+  assert.match((await w.owner('missingLink', 'ver_sg', 'ver_a1')).error, /also missing its file/);               // not another broken one
+  assert.match((await w.owner('missingLink', 'ver_sg', 'ver_h1')).error, /only songs you added/i);               // a song from the old Sheet is not one you added here: left alone
+  assert.equal((await w.owner('missingList')).result.length, 2);                                                  // nothing changed
+  assert.ok((await w.call('getShare', ['PUB'])).result.versions.some(v => v.version_id === 'ver_sg'));
+  assert.equal((await w.call('missingLink', ['wrong', 'ver_sg', add.ver])).ok, false);                            // owner only
+}));
+test('missing files: linking works before the catalog moves over too (native songs, the broken one is hidden by an overlay)', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'extras');                                                                   // YouTube tools run once extras are owned; the catalog is still the Sheet's
+  await w.owner('missingAdd', { versionId: 'ver_sg' });
+  const add = await addedFromYoutube(w, 'Recovered Song');
+  const r = (await w.owner('missingLink', 'ver_sg', add.ver)).result;
+  assert.equal(r.version.track_id, 'trk_sg');
+  const fan = (await w.call('getShare', ['PUB'])).result.versions.map(v => v.version_id);
+  assert.ok(fan.includes(add.ver) && !fan.includes('ver_sg'));
+  assert.deepEqual((await w.owner('missingList')).result, []);
+  assert.match((await w.owner('missingLink', 'ver_sg', 'ver_h1')).error, /not on the list|Switch the catalog/);
 }));
 
 // ---------------------------------------------------------------- moving areas off the Sheet

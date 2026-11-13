@@ -183,6 +183,38 @@ async function studio(ctx, fn, a) {
     await MS.saveMissing(env.DB, list.filter(x => x.id !== id));
     return true;
   }
+  if (fn === 'missingLink') {
+    // The file is already in the library (added with "New release", from a YouTube link or a file). Move that version onto the missing song, hide the broken old version(s),
+    // show the song if it was hidden, drop the now-empty song it came from, and tick the item off. Nothing is deleted from storage.
+    const id = String(a[1] || ''), srcId = String(a[2] || '');
+    const list = await MS.loadMissing(env.DB), it = list.find(x => x.id === id); if (!it) throw new Error('That item is not on the list any more.');
+    const sv = all.versions.find(v => v.version_id === srcId); if (!sv) throw new Error('That song was not found.');
+    if (sv.track_id === it.trackId) throw new Error('That file is already on this song.');
+    if (list.some(x => x.id === srcId) || (it.oldVersionIds || []).indexOf(srcId) > -1) throw new Error('That one is also missing its file, so it cannot replace this one.');
+    if (sv.native !== true) throw new Error('Only songs you added with New release (from a YouTube link or a file) can be linked this way. Songs that came from the old Sheet are left alone so one wrong tap cannot move them.');
+    if (!isNat('versions', 'version_id', srcId)) throw new Error(NO_CATALOG);
+    if (!all.tracks.some(t => t.track_id === it.trackId)) throw new Error('The missing song is not in the library any more.');
+    const fromTrack = all.tracks.find(t => t.track_id === sv.track_id), fromRel = fromTrack ? relOf(fromTrack.release_id) : null;
+    const srcTrackId = sv.track_id;                                       // (patchRow below can change the shared row, so remember where it came from)
+    const primary = it.kind === 'song';                                  // a song with no working file gets this as its main version; an alternate version stays an alternate
+    patchRow(store, 'versions', 'version_id', srcId, { track_id: it.trackId, label: it.kind === 'version' ? it.label : 'Original', is_primary: primary, hidden: false });
+    const old = (it.oldVersionIds || []).filter(x => x !== srcId);
+    if (primary) store.versions.forEach(v => { if (v.track_id === it.trackId && v.version_id !== srcId) v.is_primary = false; });
+    let removedTrackId = '';
+    if (fromTrack && fromTrack.native === true && !store.versions.some(v => v.track_id === srcTrackId) && isNat('tracks', 'track_id', srcTrackId)) { store.tracks = store.tracks.filter(t => t.track_id !== srcTrackId); removedTrackId = srcTrackId; }
+    if (cat) {
+      own.versions.forEach(v => { if (old.indexOf(v.version_id) > -1) v.hidden = true; });
+      if (it.unhide) own.tracks.forEach(t => { if (t.track_id === it.trackId) t.hidden = false; });
+      await saveNat();
+    } else {
+      old.forEach(x => { ov.vhide[x] = true; }); if (it.unhide) ov.show[it.trackId] = true;
+      await saveNat(); await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; mem.at = Date.now(); await forgetCached(all);
+    }
+    await MS.saveMissing(env.DB, list.filter(x => x.id !== id));
+    const moved = store.versions.find(v => v.version_id === srcId);
+    const emptyRelease = !!fromTrack && !all.tracks.some(t => t.release_id === fromTrack.release_id && t.track_id !== fromTrack.track_id);
+    return { version: moved, removedTrackId, hiddenVersionIds: old, unhide: !!it.unhide, fromRelease: fromRel ? fromRel.title : '', fromReleaseId: fromTrack ? fromTrack.release_id : '', fromReleaseEmpty: emptyRelease };
+  }
   if (fn === 'studioSaveRelease') {
     const rid = String(a[1] || ''), f = a[2] || {};
     const cur = relOf(rid); if (!cur) throw new Error('Release not found.');
@@ -629,7 +661,7 @@ export async function onRequestPost(ctx) {
     } else if (env.DB && /^(addYoutubeSong|createReleaseFromYoutube|addYoutubePlaylistVideos|refreshYoutubeTitles|youtubeTitleStatus|checkYoutube)$/.test(fn) && await youtubeOnEdge(env)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add))$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {
