@@ -36,6 +36,11 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   body { overflow-x: clip; max-width: 100%; touch-action: pan-y pinch-zoom; }
   #main, .wrap { overflow-x: clip; }
   /* Carousels still swipe sideways inside themselves without dragging the page along. */
+  .xkind { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; vertical-align: middle; border: 1px solid currentColor; color: var(--dim); white-space: nowrap; }
+  .xkind[data-k="draft"] { color: #e0b84a; } .xkind[data-k="audio-note"] { color: var(--green-hi); } .xkind[data-k="remix"] { color: var(--red-hi); } .xkind[data-k="cover"] { color: #8fb4ff; } .xkind[data-k="b-side"] { color: #d9d9e3; }
+  .xfilter { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+  .xfilter button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--dim); }
+  .xfilter button[aria-pressed="true"] { color: #0A0A0B; background: var(--text); border-color: var(--text); } .xfilter .n { opacity: .7; font-weight: 600; }
   .hrow, .ctrack, .sparts, .eranav, .seg, .songtabs { overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
   .rowwrap { position: relative; }
   .rowarr { position: absolute; top: 50%; transform: translateY(-50%); z-index: 4; width: 44px; height: 44px; border-radius: 50%;
@@ -164,7 +169,7 @@ function videosMetaDraft() {
 }
 function songOptsTags(d) {
   const t = [];
-  if (d.category !== 'Main') t.push(d.category === 'B-Side' ? 'B-Side' : 'Drafts');
+  if (d.category !== 'Main') t.push(d.extraKind || (d.category === 'B-Side' ? 'B-Side' : 'Draft'));
   if (d.single) t.push('Single');
   if (d.hidden) t.push('<span class="tag warn">Hidden</span>');
   if (d.artist && d.artist.toLowerCase() !== relArtist(rel(S.releaseId)).toLowerCase()) t.push(esc(d.artist));
@@ -406,7 +411,7 @@ function companionsOf(relId) {
 function companionTracks(relId) { return companionsOf(relId).flatMap(c => tracksOf(c.release_id)); }
 function songListsFor(relId) {
   const L = songLists(tracksOf(relId)), extra = companionTracks(relId);
-  if (extra.length) L.bsides = L.bsides.concat(extra);
+  if (extra.length) { L.bsides = L.bsides.concat(extra); L.extras = L.extras.concat(extra); }   // the songs of a companion (b-sides) release are extras here
   return L;
 }
 function bsidesPicker(r) {

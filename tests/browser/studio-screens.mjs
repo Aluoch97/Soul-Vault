@@ -21,6 +21,7 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.css': '
 
 const w = await harness();
 w.env.YOUTUBE_API_KEY = 'yt-test-key';
+w.youtube.playlists.PLextrastest0123456789abcdefghijk = { title: 'Extras Test EP', videos: [{ id: 'vidBBBBBBB1', title: 'Main Song' }, { id: 'vidBBBBBBB2', title: 'Remix Song' }, { id: 'vidBBBBBBB3', title: 'Demo Song' }] };
 w.youtube.playlists.PLbrowsertest0123456789abcdefghij = { title: 'Browser Test EP', videos: [{ id: 'vidAAAAAAA1', title: 'First Test Song' }, { id: 'vidAAAAAAA2', title: 'Second Test Song' }] };
 w.youtube.videos.vidAAAAAAA1 = 'First Test Song'; w.youtube.videos.vidAAAAAAA2 = 'Second Test Song';
 for (const area of ['catalog', 'extras', 'activity']) assert.equal((await w.owner('adoptDomain', area)).ok, true, 'switch ' + area);   // like Settings > Move off the Sheet
@@ -162,6 +163,43 @@ await step('a voice note uploads and is saved on the song', async () => {
   const saved = (await store()).tracks.find(t => t.track_id === tid);
   assert.match(saved.voice_note_id, /^r2:/, 'the song points at the uploaded file');
   assert.ok(await w.media.head(saved.voice_note_id.slice(3)), 'the file is in storage');
+});
+await step('Extras: the release page says what each extra is (draft, remix, ...), can filter them, and the editor offers all five labels', async () => {
+  const made = (await w.call('createReleaseFromYoutube', [KEY, { url: 'https://www.youtube.com/playlist?list=PLextrastest0123456789abcdefghijk' }])).result;
+  const ids = made.tracks.map((t) => t.track_id), relId = made.release.release_id;
+  assert.equal(ids.length, 3);
+  const save = await w.call('saveTracklist', [KEY, relId, 'Extras Test EP', [{ track_id: ids[0], category: 'Main' }, { track_id: ids[1], category: 'Deluxe', extra_kind: 'Remix' }, { track_id: ids[2], category: 'Deluxe', extra_kind: 'Draft' }], true, 'Album']);
+  assert.equal(save.ok, true, JSON.stringify(save));
+  await page.evaluate(async (id) => { await syncCatalog(); S.songTab = 'full'; renderRelease(id); }, relId);
+  await seen('Extras Test EP');
+  const tabs = await page.evaluate(() => [...document.querySelectorAll('.songtabs button')].map((b) => b.innerText.replace(/\s+/g, ' ').trim()));
+  assert.deepEqual(tabs, ['Full project 1', 'Extras 2'], 'the old Drafts and B-Sides tabs are one Extras tab: ' + tabs.join(' | '));
+  assert.ok(!/\bDrafts\b/.test(await page.evaluate(() => document.body.innerText)), 'the word "Drafts" is gone from the release page');
+  assert.ok(/With extras: 3 songs/.test(await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '))), 'the summary line says "With extras"');
+  await page.click('[data-songtab="extras"]');
+  await page.waitForFunction(() => document.querySelectorAll('#era-songs .xkind').length === 2, null, { timeout: 5000 });
+  const chips = await page.evaluate(() => [...document.querySelectorAll('#era-songs .tracks > li, #era-songs .tracks > *')].filter((e) => e.querySelector('.xkind')).map((e) => e.querySelector('.tt').textContent + ' = ' + e.querySelector('.xkind').textContent));
+  assert.deepEqual(chips.sort(), ['Demo Song = Draft', 'Remix Song = Remix'], 'each extra shows its label: ' + chips.join(' | '));
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.xfilter button')].map((b) => b.innerText.replace(/\s+/g, ' ').trim())), ['All 2', 'Draft 1', 'Remix 1'], 'filter by kind');
+  await page.click('[data-xkind="Remix"]');
+  await page.waitForFunction(() => document.querySelectorAll('#era-songs .tracks .tt').length === 1 && /Remix Song/.test(document.querySelector('#era-songs .tracks .tt').innerText), null, { timeout: 5000 });
+  await page.click('[data-xkind="all"]'); await page.waitForFunction(() => document.querySelectorAll('#era-songs .tracks .tt').length === 2, null, { timeout: 5000 });
+  if (process.env.SHOT4) { await page.evaluate(() => document.querySelector('#era-songs').scrollIntoView()); await page.screenshot({ path: process.env.SHOT4 }); }
+  await page.click('[data-xkind="Remix"]');
+  await noSideways('release page with extras');
+  // the editor: every label is offered; change the draft to a cover and save
+  await page.click('[data-edit]:visible'); await page.waitForSelector('[data-cat]', { state: 'attached', timeout: 10000 });
+  const opts = await page.evaluate(() => [...document.querySelector('[data-cat]').options].map((o) => o.text));
+  assert.deepEqual(opts, ['Full project', 'Extra: Draft', 'Extra: Audio note', 'Extra: Remix', 'Extra: Cover', 'Extra: B-Side']);
+  await page.evaluate(() => { const sel = document.querySelector('[data-cat="2"]'); sel.value = 'Cover'; sel.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.evaluate(() => document.querySelector('[data-edit-save]').click());
+  await page.waitForFunction(() => !document.querySelector('[data-cat]'), null, { timeout: 8000 });
+  await page.evaluate(() => { S.songTab = 'extras'; S.xkind = 'all'; renderRelease(S.releaseId); });
+  await page.waitForFunction(() => [...document.querySelectorAll('#era-songs .xkind')].some((e) => e.textContent === 'Cover'), null, { timeout: 8000 });
+  const fan = (await w.call('getShare', ['PUB'])).result;
+  assert.ok(!JSON.stringify(fan).includes('Extras Test EP'), 'still hidden from fans');
+  const saved = (await store()).tracks.find((t) => t.track_id === ids[2]);
+  assert.deepEqual([saved.category, saved.extra_kind], ['Deluxe', 'Cover'], 'the label was saved on the server');
 });
 await step('Missing files: link a song you added with New release to the missing one', async () => {
   const lib = async () => { const o = await store(); return o; };
