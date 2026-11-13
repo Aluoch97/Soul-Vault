@@ -348,6 +348,15 @@ await step('a new release from a YouTube playlist is created, hidden, with its s
   assert.match(rel.cover_file_id, /^c/, 'it has a cover'); for (const size of ['t', '160', '400', '1200', '1600']) assert.ok(await w.media.head('img/' + rel.cover_file_id + '/' + size), 'cover size ' + size);
   await noSideways('new release page');
 });
+await step('Studio is calm: a release card, four tabs (Info, Songs, Links, Add) showing one panel at a time, songs collapsed, a Save bar in reach', async () => {
+  await page.evaluate(() => { S.stuRel = 'rel_pub'; S.stuTab = 'info'; renderStudio(); }); await page.waitForSelector('[data-stutab]');
+  const m = await page.evaluate(() => ({ tabs: [...document.querySelectorAll('[data-stutab]')].map((b) => b.textContent.replace(/\s+/g, ' ').trim() + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), shown: [...document.querySelectorAll('[data-stupanel]')].filter((x) => !x.hidden).map((x) => x.dataset.stupanel), card: !!document.querySelector('.stuhead .stumeta b'), chip: (document.querySelector('.stuhead .tag') || {}).textContent, open: document.querySelectorAll('.studio details.scard[open]').length, groups: [...document.querySelectorAll('#stuInfo details.stu')].map((d) => d.querySelector('summary').textContent.trim() + (d.open ? '*' : '')), sticky: getComputedStyle(document.querySelector('.stusticky')).position, sw: document.documentElement.scrollWidth <= innerWidth + 1 }));
+  assert.deepEqual(m.tabs, ['Info*', 'Songs 2', 'Links', 'Add'], 'tabs: ' + JSON.stringify(m)); assert.deepEqual(m.shown, ['info'], 'one panel at a time');
+  assert.ok(m.card && /Visible to fans|Hidden from fans/.test(m.chip), 'a release card says whether fans can see it'); assert.deepEqual(m.groups, ['Basics*', 'Story & mood', 'Series & credits'], 'the long form is in groups, only Basics open'); assert.equal(m.sticky, 'sticky', 'the Save bar stays in reach'); assert.ok(m.sw, 'no sideways scroll');
+  await page.click('[data-stutab="songs"]'); assert.deepEqual(await page.evaluate(() => [[...document.querySelectorAll('[data-stupanel]')].filter((x) => !x.hidden).map((x) => x.dataset.stupanel).join(), document.querySelectorAll('.studio details.scard[open]').length, document.querySelectorAll('.studio details.scard').length]), ['songs', 0, 2], 'songs are listed collapsed');
+  await page.click('[data-stutab="links"]'); await page.waitForSelector('#stuSaveLinks', { state: 'visible' }); await page.click('[data-stutab="add"]'); await page.waitForSelector('#stuAddSong', { state: 'visible' }); await noSideways('studio add');
+  await page.click('[data-stutab="info"]'); await page.waitForSelector('#stuSaveInfo', { state: 'visible' });
+});
 await step('Studio lists the new release and its songs', async () => {
   await page.evaluate(() => renderVault()); await page.click('[data-nav="studio"]:visible'); await page.waitForSelector('#stuRel');   // (the release page has no Settings button on a phone, so this hop calls the app's own renderVault)
   await page.selectOption('#stuRel', releaseId);
