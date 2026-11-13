@@ -134,6 +134,7 @@ await step('Music tab: the Unreleased area is its own secret-access area with it
   if (process.env.SHOT5) { await page.evaluate(() => document.querySelector('#unreleased').scrollIntoView()); await page.screenshot({ path: process.env.SHOT5 }); }
 });
 await step('Music tab: Features lists only my guest spots (no "my features" tab): one project card each, songs by name, "by <artist>", same-height cards', async () => {
+  await page.evaluate(() => { S.sec = {}; renderLibrary(); }); await page.waitForSelector('#extras [data-extab="features"]'); await page.click('#extras [data-extab="features"]');
   await page.waitForSelector('#features .vsc');
   const info = await page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), tabs: el.querySelectorAll('.vs-tabs, [data-sectab]').length, chips: [...el.querySelectorAll('[data-secsel] option')].map((o) => o.textContent.trim()),
     tags: [...el.querySelectorAll('.vtag')].map((b) => b.textContent.trim()), subs: [...el.querySelectorAll('.vsub2')].map((b) => b.textContent.trim()), titles: [...el.querySelectorAll('.vsc .agt')].map((b) => b.textContent.trim()), songs: [...el.querySelectorAll('.vsc')].map((c) => [...c.querySelectorAll('.vsong')].map((x) => x.textContent).join(' / ')) }; });
@@ -156,15 +157,16 @@ await step('Studio: tell an unreleased song what it counts as, and the Unrelease
   for (let i = 0; i < 50; i++) { const t = (await store()).tracks.find((x) => x.track_id === 'trk_sg'); if (t && t.unrel_kind === 'Album') break; await new Promise((r) => setTimeout(r, 100)); }
   assert.equal((await store()).tracks.find((x) => x.track_id === 'trk_sg').unrel_kind, 'Album', 'saved on the server');
   await page.waitForFunction(() => trk('trk_sg').unrel_kind === 'Album', null, { timeout: 8000 });   // the page has taken the saved answer
-  await page.evaluate(() => { S.sec.unreleased.chip = 'all'; renderLibrary(); });
+  await page.evaluate(() => { S.sec = {}; renderLibrary(); });
   await page.waitForSelector('#unreleased .vs-chips');
   assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#unreleased .vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim())), ['All 3', 'Albums 2', 'EPs 1']);
 });
 await step('fans see the Unreleased and Features areas too (without the owner hint)', async () => {
   const fctx = await phoneContext(), fan = await fctx.newPage(); fan.on('pageerror', (e) => problems.push('fan page error: ' + e.message));
   await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLibrary()); await fan.waitForSelector('#unreleased .vsc', { timeout: 15000 });
-  const t = await fan.evaluate(() => ({ chips: [...document.querySelectorAll('#unreleased .vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), feat: !!document.querySelector('#features .vsc'), hint: !!document.querySelector('.vs-hint'), sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
-  assert.deepEqual(t.chips, ['All 3', 'Albums 2', 'EPs 1']); assert.ok(t.feat && !t.hint && t.sw <= t.iw + 1);
+  const t = await fan.evaluate(() => ({ chips: [...document.querySelectorAll('#unreleased .vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), feat: false, hint: !!document.querySelector('.vs-hint'), sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+  assert.deepEqual(t.chips, ['All 3', 'Albums 2', 'EPs 1']); assert.ok(!t.hint && t.sw <= t.iw + 1);
+  await fan.click('#extras [data-extab="features"]'); await fan.waitForSelector('#features .vsc', { timeout: 8000 });   // the Features tab is there for fans too
   await fctx.close();
 });
 await step('the page reports each page view with the time on it, from a phone, with the city; robots and Do-Not-Track are left out', async () => {
@@ -508,7 +510,7 @@ await step('a song\'s Options (release page > Edit) has a guest-spot checkbox: i
   await page.evaluate((i) => { const a = document.querySelector('[data-tart="' + i + '"]'); a.value = 'Zeta Artist'; a.dispatchEvent(new Event('input', { bubbles: true })); }, idx);
   await page.evaluate(() => document.querySelector('[data-edit-save]').click());
   await page.waitForFunction((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); return x && x.feature_role === 'mine' && !S.editing; }, tid, { timeout: 15000 });
-  await page.evaluate(() => { S.filter = 'All'; renderLibrary(); }); await page.waitForSelector('#features .vsc');
+  await page.evaluate(() => { S.filter = 'All'; S.sec = {}; renderLibrary(); }); await page.waitForSelector('#extras [data-extab="features"]'); await page.click('#extras [data-extab="features"]'); await page.waitForSelector('#features .vsc');
   await page.waitForFunction(() => /Open Album/.test(document.querySelector('#features').innerText) && /Guest spot/.test(document.querySelector('#features .vtag').textContent), null, { timeout: 8000 });
   await page.evaluate((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); x.feature_role = ''; }, tid);
 });
@@ -532,7 +534,7 @@ await step('Unreleased is not in the type lists (filters, new release, Studio); 
   await page.evaluate(() => openNewRelease()); await page.waitForSelector('#nrType');
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('#nrType option')].some((o) => o.textContent === 'Unreleased')), false, 'new release form');
   await page.evaluate(() => closeModal());
-  assert.ok(await page.evaluate(() => UNREL_KINDS.join() === 'Single,Album,EP,Mixtape,Compilation'), 'unreleased songs can still be labelled Single, Album, EP, ...'); assert.ok(await page.evaluate(() => !!document.querySelector('#unreleased')), 'and the Unreleased section is still there');
+  assert.ok(await page.evaluate(() => UNREL_KINDS.join() === 'Single,Album,EP,Mixtape,Compilation'), 'unreleased songs can still be labelled Single, Album, EP, ...'); assert.ok(await page.evaluate(() => !!document.querySelector('#extras [data-extab="unreleased"]')), 'and the Unreleased tab of Extras is still there');
 });
 await step('on a 320 px phone all six tabs fit on the screen, and the Music tab still has no sideways scroll', async () => {
   await page.setViewportSize({ width: 320, height: 700 });
@@ -555,6 +557,15 @@ featLine: !q('#features .vs-tabs') && (!q('#features [data-secsel]') || (c(q('#f
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('#all-releases .slide')].every((x) => /EP/.test(x.querySelector('.tag, .as, .cap') ? x.textContent : 'EP'))), true, 'the dropdown filters the shelf');
   await page.selectOption('[data-filtersel]', 'All');
 });
+await step('Extras has a Series tab when two releases share a series, and switching tabs works', async () => {
+  const saved = await page.evaluate(() => { const rs = S.lib.releases.filter((r) => !r.locked).slice(0, 2); const old = rs.map((r) => [r.release_id, r.series_name, r.series_part]); rs.forEach((r, i) => { r.series_name = 'Test Saga'; r.series_part = String(i + 1); }); S.sec = {}; renderLibrary(); return old; });
+  await page.waitForSelector('#extras [data-extab="series"]');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#extras [data-extab]')].map((b) => b.textContent.trim())), ['Unreleased', 'Features', 'Series'], 'three tabs, in this order');
+  await page.click('#extras [data-extab="series"]'); await page.waitForSelector('#extras .scard');
+  assert.deepEqual(await page.evaluate(() => [document.querySelectorAll('#extras .vsec').length, /Test Saga/.test(document.querySelector('#extras .scard').textContent), document.querySelectorAll('#extras > .sh, #extras .ex-body > .sh').length]), [0, true, 1], 'the series cards show, with no second "Series" heading');
+  await page.click('#extras [data-extab="unreleased"]'); await page.waitForSelector('#unreleased .vsc'); await noSideways('extras tabs');
+  await page.evaluate((old) => { old.forEach(([id, n, p]) => { const r = S.lib.releases.find((x) => x.release_id === id); r.series_name = n; r.series_part = p; }); S.sec = {}; renderLibrary(); }, saved);
+});
 await step('every row that scrolls sideways (Music shelves, Unreleased, Features, Lore eras and photos) has arrows, only where there is more to scroll', async () => {
   const check = async (label, min = 2) => {
     await page.waitForTimeout(700);
@@ -564,8 +575,10 @@ await step('every row that scrolls sideways (Music shelves, Unreleased, Features
     return rows;
   };
   await page.evaluate(() => { recordRecent(S.lib.tracks.find((t) => primaryOf(t))); renderLibrary(); }); await page.waitForSelector('#unreleased .vsc');
-  const order = await page.evaluate(() => { const at = (q) => { const e = document.querySelector('#libBody ' + q); return e ? e.compareDocumentPosition(document.body) : null; }; const ids = ['#recent', '#discography', '#features', '#unreleased', '#playlists']; const els = ids.map((q) => document.querySelector('#libBody ' + q)); return { found: ids.filter((q, i) => els[i]), inOrder: els.filter(Boolean).every((e, i, a) => i === 0 || (a[i - 1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING) > 0), disc: (document.querySelector('#discography') || {}).textContent, series: [...document.querySelectorAll('#libBody h2.sh')].map((h) => h.textContent.trim()) }; });
-  assert.deepEqual(order.found.slice(0, 4), ['#recent', '#discography', '#features', '#unreleased'], 'Music tab sections: ' + JSON.stringify(order)); assert.ok(order.inOrder, 'sections in the order Recently played, Discography, Features, Unreleased, Series, Playlists');
+  const order = await page.evaluate(() => { const at = (q) => { const e = document.querySelector('#libBody ' + q); return e ? e.compareDocumentPosition(document.body) : null; }; const ids = ['#recent', '#discography', '#extras', '#playlists']; const els = ids.map((q) => document.querySelector('#libBody ' + q)); return { found: ids.filter((q, i) => els[i]), inOrder: els.filter(Boolean).every((e, i, a) => i === 0 || (a[i - 1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING) > 0), disc: (document.querySelector('#discography') || {}).textContent, series: [...document.querySelectorAll('#libBody h2.sh')].map((h) => h.textContent.trim()) }; });
+  assert.deepEqual(order.found.slice(0, 3), ['#recent', '#discography', '#extras'], 'Music tab sections: ' + JSON.stringify(order)); assert.ok(order.inOrder, 'sections in the order Recently played, Discography, Extras, Playlists');
+  const ex = await page.evaluate(() => ({ title: (document.querySelector('#extras > .sh') || {}).textContent, tabs: [...document.querySelectorAll('#extras [data-extab]')].map((b) => b.textContent.trim() + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), sections: ['#unreleased', '#features'].map((q) => !!document.querySelector('#extras ' + q)) }));
+  assert.equal(ex.title.trim(), 'Extras', 'the area is called Extras'); assert.ok(ex.tabs[0] === 'Unreleased*' && ex.tabs.includes('Features'), 'tabs Unreleased, Features (and Series when there is one): ' + ex.tabs.join(' | ')); assert.deepEqual(ex.sections, [true, false], 'one tab shows at a time');
   assert.equal(order.disc.trim(), 'Discography'); assert.ok(!order.series.some((t) => /sagas/i.test(t)), 'Series is just called Series: ' + order.series.join(' | '));
   const rows = await check('Music'); assert.ok(rows.some((x) => x.over), 'at least one row scrolls on a phone');
   const r = await page.evaluate(() => { const row = [...document.querySelectorAll('#main .vrow, #main .ctrack')].find((x) => x.scrollWidth - x.clientWidth > 4), w = row.closest('.scrollwrap'); w.querySelector('.sarrow.r').click(); return new Promise((res) => setTimeout(() => res({ x: Math.round(row.scrollLeft), l: !w.querySelector('.sarrow.l').hidden, bar: document.documentElement.scrollWidth <= innerWidth + 1 }), 900)); });

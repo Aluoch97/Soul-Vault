@@ -80,7 +80,7 @@ const secState = id => { S.sec = S.sec || {}; return (S.sec[id] = S.sec[id] || {
 const songArt = t => t.track_cover || (rel(t.release_id) || {}).cover_file_id || '';
 function redrawSection(id) {
   const el = $('#' + id); if (!el) return;
-  el.outerHTML = id === 'unreleased' ? unreleasedSection() : featuresSection();
+  el.outerHTML = id === 'extras' ? extrasSection() : id === 'unreleased' ? unreleasedSection() : featuresSection();
   const now = $('#' + id); loadCovers(); markPlaying(); if (now) wireRows(now);
 }
 /** cfg: { id, cls, ribbon (html), title (html), blurb (html), songs, chips: [[key, label, count]], inChip(t, key), tagOfGroup(g), subOfGroup(g), hint }
@@ -136,6 +136,14 @@ function featuresSection() {
     inChip: (t, k) => k.indexOf('a:') === 0 && who(t).indexOf(k.slice(2)) > -1,
     tagOfGroup: g => 'Guest spot',
     subOfGroup: g => { const n = []; g.songs.forEach(t => who(t).forEach(x => { if (n.indexOf(x) < 0) n.push(x); })); return 'by ' + (n.slice(0, 3).join(', ') + (n.length > 3 ? ' +' + (n.length - 3) : '')); } });
+}
+// Extras: Unreleased, Features and Series in one area with three tabs (a tab only shows when it has something in it).
+function extrasSection() {
+  const parts = [['unreleased', 'Unreleased', unreleasedSection()], ['features', 'Features', featuresSection()], ['series', 'Series', seriesRow(true)]].filter(p => p[2]);
+  if (!parts.length) return '';
+  const cur = parts.find(p => p[0] === secState('extras').tab) || parts[0];   // (the default is not remembered: if Unreleased shows up a moment later, it becomes the first tab)
+  const tabs = `<div class="vs-tabs ex-tabs" role="tablist" aria-label="Extras">${parts.map(([k, l]) => `<button type="button" role="tab" data-extab="${k}" aria-selected="${k === cur[0]}">${l}</button>`).join('')}</div>`;
+  return `<section id="extras" class="extras" aria-label="Extras"><h2 class="sh"><span><b>Extras</b></span></h2>${tabs}<div class="ex-body">${cur[2]}</div></section>`;
 }
 function dropsRow() {
   const ds = S.lib.releases.filter(isLocked).sort((a, b) => new Date(a.unlock_at) - new Date(b.unlock_at));
