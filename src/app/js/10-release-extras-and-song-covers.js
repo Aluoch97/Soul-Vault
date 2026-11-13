@@ -204,12 +204,27 @@ async function uploadPhotos(btn) {
 }
 
 /* GIF covers keep their animation: uploaded as-is, with a still first frame for the grid */
+// On our own storage (once the catalog is on Cloudflare): the GIF is kept as the 1200 and 1600 pictures (that is what the app asks for when a cover is shown big),
+// and the small sizes the grid uses are still pictures made from its first frame. Returns { id, thumb }, or null when the catalog is still on the Sheet.
+async function gifCoverToEdge(file, relId, thumb) {
+  try { await run('studioSetCover', BOOT.key, { relId, coverId: 'preflight0', kind: 'cover', animated: true, preflight: true }); }   // asks first, so nothing is uploaded for nothing
+  catch (e) { if (/Switch the catalog/.test(e.message || '')) return null; throw e; }
+  const id = newImgId('c');
+  await uploadPicture(file, id, ['t', '160', '400']);
+  await putFile('img/' + id + '/1200', file, 'image/gif'); await putFile('img/' + id + '/1600', file, 'image/gif');
+  const out = await run('studioSetCover', BOOT.key, { relId, coverId: id, kind: 'cover', animated: true, thumb });
+  return { id, thumb: out.thumb || '' };
+}
 async function uploadGifCover(file, relId) {
   if (file.size > 15 * 1048576) throw new Error('That GIF is over 15 MB. Export a smaller one (under 8 MB loads fast on phones).');
   let thumb = await shrinkImage(file, 320, 0.72); if (thumb.length > 44000) thumb = await shrinkImage(file, 240, 0.6);
-  const ticket = await run('getUploadTicket', BOOT.key, relId);
-  const id = await driveUpload(file, 'Soul Vault cover (animated).gif', 'image/gif', ticket);
-  const out = await run('setAnimatedCover', BOOT.key, relId, id, thumb);
+  let id, out = EDGE_UPLOADS() ? await gifCoverToEdge(file, relId, thumb) : null;
+  if (out) id = out.id;
+  else {   // the Google Drive way (the catalog is still on the Sheet)
+    const ticket = await run('getUploadTicket', BOOT.key, relId);
+    id = await driveUpload(file, 'Soul Vault cover (animated).gif', 'image/gif', ticket);
+    out = await run('setAnimatedCover', BOOT.key, relId, id, thumb);
+  }
   const r = rel(relId);
   r.cover_file_id = id; r.cover_type = 'gif'; r.cover_thumb = out.thumb || '';
   S.covers[id] = out.thumb || thumb; S.coverP[id] = Promise.resolve(S.covers[id]); delete S.coverP[id + '|f'];

@@ -92,20 +92,36 @@ async function uploadPicture(file, id, sizes, onProg) {
   const px = { t: 400, 160: 160, 400: 400, 1200: 1200, 1600: 1600 };
   for (let i = 0; i < sizes.length; i++) await putFile('img/' + id + '/' + sizes[i], await resizeJpeg(file, px[sizes[i]]), 'image/jpeg', p => onProg && onProg((i + p) / sizes.length));
 }
-async function uploadSongToEdge(file, relId, tid, title, label, primary, stat, bar) {
+// The file as it will be streamed: an MP3/M4A/AAC/OGG goes as it is; WAV, AIFF, FLAC and the like become a 256 kbps MP3 (your master stays on your own drive).
+async function streamingCopy(file, stat, bar) {
   const ext0 = (file.name.match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase();
-  let blob = file, ext = ext0, type, seconds = await audioDuration(file);
-  if (['mp3', 'm4a', 'aac', 'ogg'].indexOf(ext0) < 0) {   // WAV, AIFF, FLAC and the like: make a 256 kbps MP3 for streaming (your master stays on your own drive)
+  let blob = file, ext = ext0, seconds = await audioDuration(file);
+  if (['mp3', 'm4a', 'aac', 'ogg'].indexOf(ext0) < 0) {
     stat('Making a streaming copy…');
     const out = await toMp3(await file.arrayBuffer(), p => bar(p * 0.45), 256); blob = out.blob; ext = 'mp3'; seconds = seconds || out.duration;
   }
-  type = ext === 'mp3' ? 'audio/mpeg' : ext === 'ogg' ? 'audio/ogg' : 'audio/mp4';
+  const type = ext === 'mp3' ? 'audio/mpeg' : ext === 'ogg' ? 'audio/ogg' : 'audio/mp4';
   if (blob.size > 90 * 1048576) throw new Error('That file is over 90 MB. Use an MP3 or AAC copy.');
+  return { blob, ext, type, seconds };
+}
+async function uploadSongToEdge(file, relId, tid, title, label, primary, stat, bar) {
+  const { blob, ext, type, seconds } = await streamingCopy(file, stat, bar);
   stat('Uploading…');
   const plan = await run('studioPlanUpload', BOOT.key, { relId, trackId: tid || undefined, title, label, ext });
   await putFile(plan.key, blob, type, p => bar(0.45 + p * 0.5));
   stat('Adding it to your library…');
   return run('studioAddSong', BOOT.key, { relId, trackId: tid || undefined, title, label, primary, seconds, key: plan.key, ext });
+}
+// Replace the audio of an existing version on our own storage. Returns the updated version, or null when the catalog is still on the Sheet (the caller then uses the Drive way).
+async function replaceAudioOnEdge(file, v, t, stat, bar) {
+  try { await run('studioReplaceAudio', BOOT.key, { versionId: v.version_id, preflight: true }); }   // asks first, so nothing is uploaded for nothing
+  catch (e) { if (/Switch the catalog/.test(e.message || '')) return null; throw e; }
+  const { blob, ext, type, seconds } = await streamingCopy(file, stat, bar);
+  stat('Uploading…');
+  const plan = await run('studioPlanUpload', BOOT.key, { relId: t.release_id, trackId: t.track_id, label: v.label, ext });
+  await putFile(plan.key, blob, type, p => bar(0.45 + p * 0.5));
+  stat('Swapping it in…');
+  return run('studioReplaceAudio', BOOT.key, { versionId: v.version_id, key: plan.key, seconds });
 }
 
 // Studio: the buttons for adding things to a release, and a New release form.
@@ -158,9 +174,11 @@ function wireStuAdd(rid) {
   $('#stuCoverFile').addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     try {
-      say('Uploading the cover…'); const id = newImgId('c'); await uploadPicture(f, id, ['t', '1200']);
+      say('Uploading the cover…');
+      if (f.type === 'image/gif') { await uploadGifCover(f, rid); say('Cover changed.'); toast('Cover changed'); return; }   // keeps its animation
+      const id = newImgId('c'); await uploadPicture(f, id, ['t', '1200']);
       await run('studioSetCover', BOOT.key, { relId: rid, coverId: id });
-      const mine = rel(rid); if (mine) { mine.cover_file_id = id; mine.cover_thumb = ''; }
+      const mine = rel(rid); if (mine) { mine.cover_file_id = id; mine.cover_thumb = ''; mine.cover_type = ''; }
       say('Cover changed.'); toast('Cover changed');
     } catch (er) { say(er.message || 'Could not upload the cover.', true); }
   });
