@@ -382,6 +382,7 @@ document.addEventListener('input', e => {
 
 document.addEventListener('change', e => {
   const ds = e.target.dataset || {};
+  if (ds.secsel) { secState(ds.secsel).chip = e.target.value; redrawSection(ds.secsel); return; }
   if (ds.nrSpot != null && S.nr) { S.nr.files[+ds.nrSpot].spot = e.target.checked; nrRender(); const a = $('[data-nr-art="' + ds.nrSpot + '"]'); if (a && e.target.checked) a.focus(); return; }
   if (e.target.id === 'insMine') { S.insMine = e.target.checked; renderInsights(); return; }
   if (e.target.id === 'siMine') { S.siMine = e.target.checked; renderSiteInsights(); return; }

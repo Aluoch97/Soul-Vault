@@ -147,3 +147,32 @@
     .herob .pill { flex: 1; justify-content: center; min-height: 48px; }
   }
 
+
+  /* Video tab: an artist's video wall */
+  .vidhead { padding: 18px 0 6px; } .vidh1 { font: 800 30px/1.05 var(--sans); letter-spacing: -.01em; margin: 0; } .vidh1 span { color: var(--red-hi, #ff3b5c); }
+  .vidhead .cs { margin: 6px 0 0; }
+  .vidhero { margin: 8px 0 22px; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,.04); box-shadow: 0 18px 40px -22px rgba(0,0,0,.9); }
+  .vidstage { position: relative; display: block; width: 100%; padding: 0; border: 0; cursor: pointer; aspect-ratio: 16 / 9; background: #000; }
+  .vidstage img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vidstage::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.55)); pointer-events: none; }
+  .vidhero .latplayer { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; background: #000; }
+  .vidplay { position: absolute; left: 50%; top: 50%; z-index: 1; width: 68px; height: 68px; margin: -34px 0 0 -34px; border-radius: 50%; display: grid; place-items: center; background: var(--red); color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+  .vidplay svg { width: 26px; height: 26px; } .vidplay.sm { width: 40px; height: 40px; margin: -20px 0 0 -20px; opacity: .92; } .vidplay.sm svg { width: 16px; height: 16px; }
+  .vidmeta { display: grid; gap: 6px; padding: 14px 16px 16px; justify-items: start; }
+  .vidtag { padding: 3px 10px; border-radius: 999px; font: 800 11px/1.2 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: #0A0A0B; background: var(--text); }
+  .vidtitle { margin: 0; font: 800 22px/1.2 var(--sans); overflow-wrap: anywhere; }
+  .vidyt { display: inline-flex; align-items: center; min-height: 44px; color: var(--dim); font-weight: 700; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+  .vidmore { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 12px; font: 800 18px/1.2 var(--sans); } .vidmore span { font-size: 13px; color: var(--dim); font-weight: 700; }
+  .vidwall { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; margin-bottom: 18px; }
+  @media (min-width: 640px) { .vidwall { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .vidcard { display: grid; gap: 8px; align-content: start; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
+  .vidpost { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; transition: transform .2s ease, box-shadow .2s ease; }
+  .vidpost img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vidcard:hover .vidpost, .vidcard:focus-visible .vidpost { transform: translateY(-2px); box-shadow: 0 10px 24px -12px rgba(210,16,52,.7); }
+  .vidname { font-size: 14px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  @media (prefers-reduced-motion: reduce) { .vidpost { transition: none; } }
+
+  .vidsort { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 14px; } .vidsort .cs { margin: 0 2px 0 0; }
+  .vidsort button { min-height: 44px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--dim); }
+  .vidsort button[aria-pressed="true"] { color: #0A0A0B; background: var(--text); border-color: var(--text); }
+  .vidstat { font-size: 12px; font-weight: 600; color: var(--dim); }

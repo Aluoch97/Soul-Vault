@@ -93,14 +93,15 @@ function vaultSection(cfg) {
   const list = st.chip === 'all' ? cfg.songs : cfg.songs.filter(t => cfg.inChip(t, st.chip)), groups = projectsOf(list);
   const card = g => `<button type="button" class="agc vsc" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}">
     <span class="vart"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="vtag">${esc(cfg.tagOfGroup(g))}</span></span>
-    <span class="agt">${esc(g.r.title)}</span><span class="cs">${esc(cfg.subOfGroup(g))}</span>${songLines(g)}</button>`;
-  const songLines = g => cfg.songLine ? `<span class="vsongs">${g.songs.slice(0, 4).map(t => `<span class="vsong">${esc(cfg.songLine(t))}</span>`).join('')}${g.songs.length > 4 ? `<span class="vsong more">+${g.songs.length - 4} more</span>` : ''}</span>` : '';
-  const row = g => `<button type="button" class="alr" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="alt"><b>${esc(g.r.title)}</b><span class="cs">${esc([cfg.tagOfGroup(g), cfg.subOfGroup(g)].filter(Boolean).join(' · '))}</span>${songLines(g)}</span></button>`;
+    <span class="agt">${esc(g.r.title)}</span><span class="cs vsub2">${esc(cfg.subOfGroup(g))}</span>${songLines(g, false)}</button>`;
+  const songLines = (g, full) => cfg.songLine ? `<span class="vsongs">${g.songs.slice(0, full ? 4 : 3).map(t => { const s = cfg.songLine(t); return `<span class="vsong"><b>${esc(s.t)}</b>${full && s.w ? ' <i>' + esc(s.w) + '</i>' : ''}</span>`; }).join('')}${g.songs.length > (full ? 4 : 3) ? `<span class="vsong more">+${g.songs.length - (full ? 4 : 3)} more</span>` : ''}</span>` : '';
+  const row = g => `<button type="button" class="alr" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="alt"><b>${esc(g.r.title)}</b><span class="cs">${esc([cfg.tagOfGroup(g), cfg.subOfGroup(g)].filter(Boolean).join(' · '))}</span>${songLines(g, true)}</span></button>`;
   const body = !groups.length ? '<p class="cs">Nothing here yet.</p>'
     : view === 'list' ? `<section class="alllist" aria-label="${esc(cfg.label)}">${groups.map(row).join('')}</section>`
     : view === 'scroll' ? `<div class="hrow vrow" aria-label="${esc(cfg.label)}">${groups.map(card).join('')}</div>`
     : `<div class="allgrid vgrid ${view === 'small' ? 'small' : 'large'}">${groups.map(card).join('')}</div>`;
-  const chips = cfg.chips.length > 2 ? `<div class="seg vs-chips" role="group" aria-label="Filter ${esc(cfg.label)}">${cfg.chips.map(([k, l, n]) => `<button type="button" data-secchip="${esc(cfg.id)}|${esc(k)}" aria-pressed="${k === st.chip}">${esc(l)} <span class="n">${n}</span></button>`).join('')}</div>` : '';
+  const chips = cfg.chips.length > 2 && cfg.chipSelect ? `<label class="vs-who"><span>${esc(cfg.chipSelect)}</span><select class="field" data-secsel="${esc(cfg.id)}" aria-label="${esc(cfg.chipSelect)}">${cfg.chips.map(([k, l, n]) => `<option value="${esc(k)}"${k === st.chip ? ' selected' : ''}>${esc(l)} (${n})</option>`).join('')}</select></label>`
+    : cfg.chips.length > 2 ? `<div class="seg vs-chips" role="group" aria-label="Filter ${esc(cfg.label)}">${cfg.chips.map(([k, l, n]) => `<button type="button" data-secchip="${esc(cfg.id)}|${esc(k)}" aria-pressed="${k === st.chip}">${esc(l)} <span class="n">${n}</span></button>`).join('')}</div>` : '';
   return `<section id="${cfg.id}" class="vsec ${cfg.cls}" aria-label="${esc(cfg.label)}">
     <div class="vs-ribbon">${cfg.ribbon}</div>
     <div class="vs-head"><h2 class="sh"><span>${cfg.title}</span></h2></div>
@@ -132,12 +133,13 @@ function featuresSection() {
   const st = secState('features'); if (!TABS.some(x => x[0] === st.tab)) st.tab = TABS[0][0];
   const ts = TABS.find(x => x[0] === st.tab)[2], isSpots = st.tab === 'spots';
   const byPerson = {}; ts.forEach(t => who(t).forEach(n => { (byPerson[n] = byPerson[n] || []).push(t); }));
-  const names = Object.keys(byPerson).sort((a, b) => nProjects(byPerson[b]) - nProjects(byPerson[a]) || a.localeCompare(b)).slice(0, 10);
+  const names = Object.keys(byPerson).sort((a, b) => nProjects(byPerson[b]) - nProjects(byPerson[a]) || a.localeCompare(b));
   const chips = [['all', 'All', nProjects(ts)]].concat(names.map(n => ['a:' + n, n, nProjects(byPerson[n])]));
   const tabsHtml = TABS.length > 1 ? `<div class="vs-tabs" role="tablist" aria-label="Features">${TABS.map(([k, l, a]) => `<button type="button" role="tab" data-sectab="features|${k}" aria-selected="${k === st.tab}">${esc(l)} <span class="n">${nProjects(a)}</span></button>`).join('')}</div>` : '';
   // The song's name, and who is on it (leaving out a name the title already shows).
-  const songLine = t => { const title = String(t.title || ''), extra = who(t).filter(n => title.toLowerCase().indexOf(n.toLowerCase()) < 0).join(', '); return title + (extra ? (isSpots ? ' · by ' : ' · feat. ') + extra : ''); };
-  return vaultSection({ id: 'features', cls: 'spot', label: isSpots ? 'Projects with my guest spots' : 'Projects with my features', songs: ts, chips, tabsHtml, songLine,
+  // The song's name without the "(feat. …)" tail (the guests are shown on their own line), and who is on it.
+  const songLine = t => ({ t: String(t.title || '').replace(/\s*[(\[]\s*(?:feat\.?|ft\.?|featuring)\s+[^)\]]+[)\]]\s*/ig, ' ').replace(/\s+/g, ' ').trim() || String(t.title || ''), w: (isSpots ? 'by ' : 'feat. ') + who(t).join(', ') });
+  return vaultSection({ id: 'features', cls: 'spot', label: isSpots ? 'Projects with my guest spots' : 'Projects with my features', songs: ts, chips, chipSelect: 'Featuring', tabsHtml, songLine,
     ribbon: `<span class="vs-lock">${I.mic || ''}</span><span class="vs-acc">Special guests</span><i class="vs-dot" aria-hidden="true"></i><span class="vs-sub">Features</span>`,
     title: '<b>Features</b>', blurb: (isSpots ? 'My guest spots on other artists\' songs. ' : 'Guests on my songs. ') + `${plural(ts.length, 'song')} in ${plural(nProjects(ts), 'project')}.`,
     inChip: (t, k) => k.indexOf('a:') === 0 && who(t).indexOf(k.slice(2)) > -1,

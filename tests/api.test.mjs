@@ -890,4 +890,19 @@ test('Video tab: anyone can read the Originals and Remixes playlists; a missing 
   w.youtube.playlists[R] = { title: 'Remixes', videos: [{ id: 'ccccccccccc', title: 'Remix' }] };
   const full = (await w.call('getVideoLists', [])).result.lists;
   assert.deepEqual(full.map(l => [l.key, l.videos.length]), [['originals', 1], ['remixes', 1]]);
+  assert.equal(full[0].videos[0].views, undefined, 'no statistics from YouTube: the list still works, just without them');
+}));
+
+test('Video tab: each video carries its upload date, views and likes (likes can be hidden), read 50 at a time', () => withWorld(async (w) => {
+  const O = 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK', R = 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV';
+  w.env.YOUTUBE_API_KEY = 'test-yt-key';
+  const ids = Array.from({ length: 60 }, (_, i) => 'v' + String(i).padStart(10, '0'));
+  w.youtube.videos = Object.fromEntries(ids.map((id, i) => [id, 'Song ' + i]));
+  w.youtube.stats = Object.fromEntries(ids.map((id, i) => [id, { at: '2025-01-' + String(1 + (i % 28)).padStart(2, '0') + 'T10:00:00Z', views: i * 10, likes: i === 3 ? null : i }]));
+  w.youtube.playlists = { [O]: { title: 'Originals', videos: ids.map((id, i) => ({ id, title: 'Song ' + i })) }, [R]: { title: 'Remixes', videos: [{ id: ids[0], title: 'Song 0' }] } };
+  const r = (await w.call('getVideoLists', [])).result.lists;
+  assert.equal(r[0].videos.length, 60); assert.deepEqual([r[0].videos[7].views, r[0].videos[7].likes, r[0].videos[7].at], [70, 7, '2025-01-08T10:00:00Z']);
+  assert.equal(r[0].videos[3].likes, null, 'hidden likes are null, not 0');
+  assert.equal(r[0].videos[59].views, 590, 'the second batch of 50 is read too');
+  assert.equal(w.ytCalls.filter(c => c.path === 'videos').length >= 2, true);
 }));

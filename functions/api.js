@@ -89,7 +89,17 @@ async function videoLists(ctx) {
   try { const hit = await caches.default.match(ck); if (hit) return await hit.json(); } catch (e) { /* no cache here */ }
   let allOk = true;
   const lists = await Promise.all(VIDEO_LISTS.map(async ([key, name, id]) => {
-    try { const r = await YT.source(env, 'https://www.youtube.com/playlist?list=' + id); return { key, name, id, videos: r.videos }; }
+    try {
+      const r = await YT.source(env, 'https://www.youtube.com/playlist?list=' + id), videos = r.videos.map(v => ({ id: v.id, title: v.title }));
+      try {   // upload date, views and likes (one call per 50 videos); if this part fails the list still works, only the sorting by them is missing
+        for (let i = 0; i < videos.length; i += 50) {
+          const d = await YT.api(env, 'videos', { part: 'snippet,statistics', id: videos.slice(i, i + 50).map(v => v.id).join(',') }), by = {};
+          (d.items || []).forEach(it => { by[it.id] = it; });
+          videos.slice(i, i + 50).forEach(v => { const it = by[v.id]; if (!it) return; v.at = String((it.snippet && it.snippet.publishedAt) || ''); const st = it.statistics || {}; v.views = st.viewCount != null ? Number(st.viewCount) : null; v.likes = st.likeCount != null ? Number(st.likeCount) : null; });
+        }
+      } catch (e) { /* no stats */ }
+      return { key, name, id, videos };
+    }
     catch (e) { allOk = false; return { key, name, id, videos: [], error: 'not-available' }; }
   }));
   const body = { lists };

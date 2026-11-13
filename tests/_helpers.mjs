@@ -137,7 +137,7 @@ export async function harness({ lib = fixtureLib(), seed = true, bucket = true, 
       h.ytCalls.push({ path, params: Object.fromEntries(q.searchParams) });
       if (yt.error) return new Response(JSON.stringify({ error: { message: yt.error.message || 'no', errors: [{ reason: yt.error.reason }] } }), { status: yt.error.status || 403, headers: { 'content-type': 'application/json' } });
       const ids = (q.searchParams.get('id') || '').split(',').filter(Boolean);
-      if (path === 'videos') return reply({ items: ids.filter(i => i in yt.videos).map(i => ({ id: i, snippet: { title: yt.videos[i], channelTitle: 'Soul' } })) });
+      if (path === 'videos') return reply({ items: ids.filter(i => i in yt.videos).map(i => { const st = (yt.stats || {})[i]; return { id: i, snippet: { title: yt.videos[i], channelTitle: 'Soul', publishedAt: st && st.at }, statistics: st ? { viewCount: st.views == null ? undefined : String(st.views), likeCount: st.likes == null ? undefined : String(st.likes) } : undefined }; }) });
       if (path === 'playlists') return reply({ items: ids.filter(i => i in yt.playlists).map(i => ({ id: i, snippet: { title: yt.playlists[i].title, channelTitle: 'Soul' } })) });
       if (path === 'playlistItems') { const pl = yt.playlists[q.searchParams.get('playlistId')]; return pl ? reply({ items: pl.videos.map(v => ({ snippet: { title: v.title, resourceId: { videoId: v.id } } })) }) : new Response(JSON.stringify({ error: { errors: [{ reason: 'playlistNotFound' }] } }), { status: 404 }); }
     }
