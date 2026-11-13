@@ -230,8 +230,7 @@ function renderVideo() {
   $('#main').innerHTML = `<div class="wrap sitepg presspg videopg">
     <header class="vidhead"><h1 class="vidh1">Soul <span>Videos</span></h1><p class="cs">Freestyles, music videos and press, straight from the channel.</p></header>
     <div class="vidtabs" role="tablist" aria-label="Video">${VIDEO_SECTIONS.map(x => `<button role="tab" data-vidtab="${x[0]}">${x[1]}</button>`).join('')}</div>
-    <div id="videoSub"></div>
-    <div id="videoSort"></div>
+    <div class="vidbar"><div id="videoSub"></div><div id="videoSort"></div></div>
     <div id="videoBody"><p class="cs">Loading videos…</p></div></div>`;
   const body = $('#videoBody'), btns = [...$$('[data-vidtab]')];
   const draw = (k, idx, autoplay) => {
@@ -240,7 +239,7 @@ function renderVideo() {
     if (['all', 'originals', 'remixes'].indexOf(S.videoSub) < 0) S.videoSub = 'all';
     if (k === 'freestyles') {   // Originals and Remixes are one section; these small tabs separate them again
       const n = x => videosOf('freestyles', x).length;
-      $('#videoSub').innerHTML = `<div class="vidsub" role="tablist" aria-label="Freestyles">${[['all', 'All'], ['originals', 'Originals'], ['remixes', 'Remixes']].map(([x, l]) => `<button type="button" role="tab" data-vidsub="${x}" aria-selected="${x === S.videoSub}">${l} <span>${n(x)}</span></button>`).join('')}</div>`;
+      $('#videoSub').innerHTML = `<div class="vidsub" role="tablist" aria-label="Freestyles">${[['all', 'All'], ['originals', 'Originals'], ['remixes', 'Remixes']].map(([x, l]) => `<button type="button" role="tab" data-vidsub="${x}" aria-selected="${x === S.videoSub}" aria-label="${l}, ${n(x)} videos">${l}</button>`).join('')}</div>`;
       $$('[data-vidsub]').forEach(b => b.addEventListener('click', () => { S.videoSub = b.dataset.vidsub; syncUrl(); draw(k, 0); }));
     } else $('#videoSub').innerHTML = '';
     const all = videosOf(k, k === 'freestyles' ? S.videoSub : '');
@@ -248,7 +247,7 @@ function renderVideo() {
     const have = h => all.some(v => v[vidField[h]] != null);
     const opts = VIDEO_SORTS.filter(o => o[0] === 'az' || have(o[0]));
     if (S.videoSort !== 'orig' && !opts.some(o => o[0] === S.videoSort)) S.videoSort = opts[0][0];   // newest first when YouTube told us the dates, else A-Z
-    $('#videoSort').innerHTML = opts.length > 1 ? `<div class="vidsort" role="group" aria-label="Sort videos">${opts.map(o => `<button type="button" data-vidsort="${o[0]}" aria-pressed="${o[0] === S.videoSort}">${o[1]}</button>`).join('')}</div>` : '';
+    $('#videoSort').innerHTML = opts.length > 1 ? `<label class="vidsort"><span class="sr-only">Sort videos</span><select data-vidsortsel aria-label="Sort videos">${opts.map(o => `<option value="${o[0]}"${o[0] === S.videoSort ? ' selected' : ''}>${o[1]}</option>`).join('')}</select></label>` : '';
     const vs = sortVids(all, S.videoSort), cur = Math.min(Math.max(+idx || 0, 0), vs.length - 1), f = vs[cur];
     const hero = `<section class="vidhero" aria-label="Featured video">
       <button class="vidstage" type="button" data-yt="${esc(f.id)}" aria-label="Play ${esc(vidTitle(f.title))}"><img src="https://i.ytimg.com/vi/${esc(f.id)}/hqdefault.jpg" alt="" onerror="this.remove()"><i class="vidplay">${I.play}</i></button>
@@ -260,7 +259,7 @@ function renderVideo() {
       + (yt && !(k === 'freestyles' && S.videoSub !== 'all') ? `<p class="cs sitefoot"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the whole playlist on YouTube</a></p>` : '');
     wireYt(body);
     if (autoplay) { const st = $('.vidstage', body); if (st) st.click(); }
-    $$('[data-vidsort]').forEach(b => b.addEventListener('click', () => { S.videoSort = b.dataset.vidsort; draw(k, 0); }));
+    $$('[data-vidsortsel]').forEach(sel => sel.addEventListener('change', () => { S.videoSort = sel.value; draw(k, 0); }));
     $$('[data-vidpick]', body).forEach(b => b.addEventListener('click', () => { draw(k, +b.dataset.vidpick, true); window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }));
   };
   const pick = k => { S.videoTab = k; syncUrl(); btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.vidtab === k))); draw(k, 0); };

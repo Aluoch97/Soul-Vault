@@ -172,18 +172,22 @@
   .vidname { font-size: 14px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   @media (prefers-reduced-motion: reduce) { .vidpost { transition: none; } }
 
-  .vidsort { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 14px; } .vidsort .cs { margin: 0 2px 0 0; }
-  .vidsort button { min-height: 44px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--dim); }
-  .vidsort button[aria-pressed="true"] { color: #0A0A0B; background: var(--text); border-color: var(--text); }
   .vidstat { font-size: 12px; font-weight: 600; color: var(--dim); }
 
   .vidhead { text-align: center; } .vidhead .cs { margin-left: auto; margin-right: auto; max-width: 30em; }
   .vidtabs { display: flex; justify-content: center; gap: 6px; padding: 10px 0 8px; background: none; }
   .vidtabs button { min-height: 44px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--dim); background: rgba(255,255,255,.07); white-space: nowrap; }
   .vidtabs button[aria-selected="true"] { color: #fff; background: var(--red); }
-  .vidsort { justify-content: center; }
-  .vidsub { display: flex; justify-content: center; gap: 6px; margin: 2px 0 10px; }
-  .vidsub button { min-height: 44px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--dim); white-space: nowrap; }
-  .vidsub button span { opacity: .7; font-weight: 600; }
-  .vidsub button[aria-selected="true"] { color: var(--text); border-color: var(--red); background: rgba(210,16,52,.18); }
   .videopg .vidmore { justify-content: center; }
+
+  /* Video: one quiet toolbar (Freestyles: All / Originals / Remixes on the left, a Sort dropdown on the right) instead of three rows of pills */
+  .vidbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 0 14px; min-height: 44px; }
+  .vidbar > div:empty { display: none; }
+  .vidbar #videoSort { margin-left: auto; }
+  .vidsub { display: flex; justify-content: flex-start; gap: 18px; margin: 0; }
+  .vidsub button { min-height: 44px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; font-size: 15px; font-weight: 700; color: var(--dim); }
+  .vidsub button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--red); background: none; }
+  .vidsort { display: block; margin: 0; }
+  .vidsort select { min-height: 40px; max-width: 150px; padding: 0 28px 0 14px; border-radius: 999px; border: 1px solid var(--line); background-color: rgba(255,255,255,.07); color: var(--text); font: 700 16px/1 var(--sans); }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
