@@ -22,6 +22,7 @@ function renderVault() {
       row('data-nav="studio"', I.edit, 'Studio', 'Edit titles, songs, info and links'),
       row('data-newrel', I.plus, 'Upload a new release', 'Songs, cover and details'),
       edge ? row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio') : '',
+      edge ? row('data-linkonly', I.link, 'Songs on links only', linkOnlySongs().length ? linkOnlySongs().length + ' depend on a YouTube or SoundCloud link' : 'All songs have their own file') : '',
     ])}
     ${group('Fans &amp; activity', [
       row('data-nav="siteinsights"', I.chart, 'Website insights', 'Visitors, pages, cities and devices'),
@@ -51,6 +52,7 @@ function renderVault() {
   if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
   if ($('[data-fans]')) $('[data-fans]').addEventListener('click', openFans);
   if ($('[data-missing]')) $('[data-missing]').addEventListener('click', openMissing);
+  if ($('[data-linkonly]')) $('[data-linkonly]').addEventListener('click', openLinkOnly);
   if ($('[data-backups]')) $('[data-backups]').addEventListener('click', openBackups);
   $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });
   const ok = $('[data-ownerkey]');

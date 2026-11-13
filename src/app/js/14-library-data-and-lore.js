@@ -320,7 +320,7 @@ async function addScSong(relId, btn) {
   try {
     const o = await run('addSoundcloudSong', BOOT.key, { releaseId: relId, url, title: ($('#uTitle') || {}).value || '' });
     S.lib.tracks.push(o.track); S.lib.versions.push(o.version);
-    closeModal(); renderRelease(relId); toast(`Added "${o.track.title}" from SoundCloud`);
+    closeModal(); renderRelease(relId); toast(`Added "${o.track.title}" from SoundCloud. Tip: add the audio file too (Settings, Songs on links only).`);
   } catch (e) { btn.disabled = false; btn.innerHTML = I.play + 'Add from SoundCloud'; er.hidden = false; er.textContent = e.message || 'Could not add it.'; }
 }
 // A SoundCloud song: SoundCloud's own player fills the Now Playing picture area (SoundCloud does not give out audio files). It keeps going when Now Playing is closed, until another song starts.
@@ -333,6 +333,65 @@ function clearSc() {
   if (!S.scSong) return;
   S.scSong = false; const box = $('#npVid'); box.innerHTML = ''; box.hidden = true; $('#npArt').hidden = false;
 }
+function openSoundcloudRelease() {
+  $('#modal').innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h2 id="mTitle">New release from SoundCloud</h2>
+    <p class="cs">Paste the link to one song (on SoundCloud: open the song, tap Share, then Copy link). It plays in SoundCloud's player and SoundCloud's picture becomes the cover. It stays hidden from fans until you show it. Afterwards, add the audio file too (Settings, Songs on links only) so it can't disappear if the link is taken down.</p>
+    <label>SoundCloud link<input class="field" id="srUrl" type="url" inputmode="url" placeholder="https://soundcloud.com/artist/song" maxlength="1000"></label>
+    <label>Title (optional: SoundCloud's title is used)<input class="field" id="srTitle" maxlength="120"></label>
+    <div class="nrrow"><label>Type<select class="field" id="srType">${REL_TYPES.map(t => `<option${t === 'Single' ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label>Year<input class="field" id="srYear" type="number" inputmode="numeric" min="1990" max="2100" value="${new Date().getFullYear()}"></label></div>
+    <p class="err" id="srErr" hidden></p>
+    <div class="end"><button class="pill soft" data-close>Cancel</button><button class="pill main" data-scr-go>Create release</button></div></div>`;
+  $('#modal').hidden = false; $('#srUrl').focus();
+}
+async function createFromSoundcloud(btn) {
+  const url = $('#srUrl').value.trim(), err = $('#srErr');
+  if (!/^https:\/\/(www\.|m\.)?soundcloud\.com\/[^/]+\/[^/?#]+/i.test(url)) { err.hidden = false; err.textContent = 'Paste the link to one song from SoundCloud (open the song, tap Share, then Copy link).'; return; }
+  btn.disabled = true; btn.textContent = 'Creating…'; err.hidden = true;
+  try {
+    const out = await run('createReleaseFromSoundcloud', BOOT.key, { url, title: $('#srTitle').value.trim(), type: $('#srType').value, year: $('#srYear').value });
+    const add = normalizeLib({ releases: [out.release], tracks: out.tracks, versions: out.versions, extras: [] });
+    S.lib.releases.push(...add.releases); S.lib.tracks.push(...add.tracks); S.lib.versions.push(...add.versions);
+    primeThumbs(); libCacheSet(S.lib); closeModal(); renderRelease(out.release.release_id);
+    toast(`Created “${out.release.title}”. It's hidden from fans until you show it. Add the audio file under Settings, Songs on links only.`);
+  } catch (e) { btn.disabled = false; btn.textContent = 'Create release'; err.hidden = false; err.textContent = e.message || 'Could not create it.'; }
+}
+// Songs that only exist as a YouTube or SoundCloud link: if the link is taken down, the song is gone. Settings > Songs on links only lists them so you can add the audio file.
+const linkOnlySongs = () => {
+  const by = {}; S.lib.versions.forEach(v => (by[v.track_id] = by[v.track_id] || []).push(v));
+  return S.lib.tracks.filter(t => { const vs = (by[t.track_id] || []).filter(v => !v.hidden); return vs.length && vs.every(v => !v.audio && !v.preview && (v.format === 'YOUTUBE' || v.format === 'SOUNDCLOUD')); });
+};
+function openLinkOnly() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Songs on links only"><h2>Songs on links only</h2><p class="cs" id="loSt"></p>
+    <div id="loList" class="mslistbox"></div><input type="file" id="loFile" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+    <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
+  m.hidden = false;
+  let pickFor = null;
+  const draw = () => {
+    const ts = linkOnlySongs(), rl = id => S.lib.releases.find(r => r.release_id === id) || {};
+    $('#loSt').textContent = ts.length ? `${ts.length} ${ts.length === 1 ? 'song plays' : 'songs play'} only through a YouTube or SoundCloud link. If a link is taken down, that song disappears. Tap Add file and pick the audio (a WAV, MP3 or M4A); the link keeps working as the video.` : 'Every song has its own audio file. Nothing depends on a link.';
+    const by = {}; ts.forEach(t => (by[rl(t.release_id).title || ''] = by[rl(t.release_id).title || ''] || []).push(t));
+    $('#loList').innerHTML = Object.keys(by).map(r => `<div><b>${esc(r)}</b>${by[r].map(t => { const v = S.lib.versions.find(x => x.track_id === t.track_id && !x.hidden);
+      return `<div class="msrow" data-lo="${esc(t.track_id)}"><div><span>${esc(t.title)}</span> <span class="cs">· ${v && v.format === 'SOUNDCLOUD' ? 'SoundCloud' : 'YouTube'}</span></div>
+        <div class="cs msst" role="status"></div><div class="msbar" hidden style="height:4px;border-radius:4px;background:var(--raise);overflow:hidden"><i style="display:block;height:100%;width:0;background:var(--red)"></i></div>
+        <div class="msbtns"><button class="pill main" data-lo-up="${esc(t.track_id)}">Add file</button></div></div>`; }).join('')}</div>`).join('');
+  };
+  draw();
+  m.addEventListener('click', e => { const b = e.target.closest('[data-lo-up]'); if (b) { pickFor = b.dataset.loUp; $('#loFile').value = ''; $('#loFile').click(); } });
+  $('#loFile').addEventListener('change', async e => {
+    const f = e.target.files[0], tid = pickFor; if (!f || !tid) return;
+    const row = [...$$('#loList [data-lo]')].find(x => x.dataset.lo === tid), t = S.lib.tracks.find(x => x.track_id === tid); if (!row || !t) return;
+    const st = row.querySelector('.msst'), bar = row.querySelector('.msbar'), fill = bar.firstElementChild; bar.hidden = false;
+    row.querySelectorAll('button').forEach(b => (b.disabled = true));
+    try {
+      const out = await uploadSongToEdge(f, t.release_id, tid, t.title, 'Original', true, x => (st.textContent = x), p => (fill.style.width = Math.round(p * 100) + '%'));
+      S.lib.versions.forEach(v => { if (v.track_id === tid) v.is_primary = false; });
+      S.lib.versions.push(Object.assign({}, out.version, { is_primary: true })); libCacheSet(S.lib);
+      toast('Saved. “' + t.title + '” now has its own file.'); draw();
+    } catch (er) { st.textContent = (er && er.message) || 'The upload did not finish.'; row.querySelectorAll('button').forEach(b => (b.disabled = false)); bar.hidden = true; }
+  });
+}
 async function addYtSong(relId, btn) {
   const url = ($('#uYt') || {}).value || '';
   if (!ytId(url)) { const er = $('#uErr'); er.hidden = false; er.textContent = "That doesn't look like a YouTube video link."; return; }
@@ -340,7 +399,7 @@ async function addYtSong(relId, btn) {
   try {
     const o = await run('addYoutubeSong', BOOT.key, { releaseId: relId, url: url.trim(), title: ($('#uTitle') || {}).value || '' });
     S.lib.tracks.push(o.track); S.lib.versions.push(o.version);
-    closeModal(); renderRelease(relId); toast(`Added "${o.track.title}" from YouTube`);
+    closeModal(); renderRelease(relId); toast(`Added "${o.track.title}" from YouTube. Tip: add the audio file too (Settings, Songs on links only).`);
   } catch (e) { btn.disabled = false; btn.textContent = 'Add from YouTube'; const er = $('#uErr'); er.hidden = false; er.textContent = e.message || 'Could not add it.'; }
 }
 

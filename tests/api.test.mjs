@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpers.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
-const OWNER_ONLY = ['addSoundcloudSong', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
+const OWNER_ONLY = ['addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
@@ -931,4 +931,15 @@ test('SoundCloud: a song link becomes a song with no audio file; one song only; 
   const g = await w.owner('addSoundcloudSong', { releaseId: 'rel_pub', url: 'https://soundcloud.com/some-guest/their-song', title: 'My own title' });
   assert.deepEqual([g.result.track.title, g.result.track.artist], ['My own title', 'Some Guest'], 'a typed title wins; another artist is remembered');
   const lib = (await w.owner('getLibrary')).result; assert.ok(lib.tracks.some((t) => t.sc_url === 'https://soundcloud.com/nicolas-soul/spiderman'), 'the owner library carries sc_url');
+}));
+
+test('SoundCloud: a release from one song link (hidden, cover from SoundCloud\'s picture, no audio file); bad links refused', () => withWorld(async (w) => {
+  w.soundcloud = { 'https://soundcloud.com/nicolas-soul/new-single': { title: 'New Single by Nicolas Soul', author_name: 'Nicolas Soul', thumbnail_url: 'https://i1.sndcdn.com/artworks-abc-large.jpg' } };
+  assert.equal((await w.call('createReleaseFromSoundcloud', [undefined, { url: 'https://soundcloud.com/nicolas-soul/new-single' }])).ok, false, 'owner key needed');
+  assert.match((await w.owner('createReleaseFromSoundcloud', { url: 'https://soundcloud.com/nicolas-soul/sets/x' })).error, /ONE song from SoundCloud/);
+  assert.match((await w.owner('createReleaseFromSoundcloud', { url: 'https://soundcloud.com/nicolas-soul/gone' })).error, /couldn't find that song/);
+  const r = await w.owner('createReleaseFromSoundcloud', { url: 'https://soundcloud.com/nicolas-soul/new-single?si=x', year: 2026 });
+  assert.equal(r.ok, true); const { release, tracks, versions } = r.result;
+  assert.deepEqual([release.title, release.type, !!release.hidden, tracks.length, tracks[0].sc_url, versions[0].format, versions[0].audio], ['New Single', 'Single', true, 1, 'https://soundcloud.com/nicolas-soul/new-single', 'SOUNDCLOUD', ''], JSON.stringify(r.result));
+  assert.ok(release.cover_file_id, 'the cover came from SoundCloud\'s picture');
 }));

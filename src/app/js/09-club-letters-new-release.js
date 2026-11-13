@@ -323,6 +323,7 @@ function openNewRelease() {
   $('#modal').innerHTML = `<div class="sheet wide nr" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <h2 id="mTitle">New release</h2>
     <button class="pill soft" type="button" data-nr-yt>${I.film}Start from a YouTube link instead</button>
+    ${EDGE_UPLOADS() ? `<button class="pill soft" type="button" data-nr-sc>${I.film}Start from a SoundCloud link instead</button>` : ''}
     <div class="nrtop">
       <button class="nrcover" type="button" data-nr-cover aria-label="Add cover art"><img id="nrCoverImg" alt="" hidden><span id="nrCoverTxt">${I.img}<span>Add cover</span></span></button>
       <div class="nrfields">
