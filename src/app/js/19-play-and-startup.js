@@ -11,6 +11,10 @@ async function play(vid) {
   updateNowUI();
   audio.pause();
   clearWatchdog(); releaseMem();
+  clearSc();
+  if (isScSong(v) && t.sc_url) {   // plays in SoundCloud's own player
+    S.ytSong = false; S.scSong = true; S.videoMode = false; msg(''); recordRecent(t); setToggle(true); openNp(); showSc(t); return;
+  }
   const wasYt = S.ytSong; S.ytSong = isYtSong(v);
   if (S.ytSong) {   // no audio file: the YouTube video is the song
     msg(''); recordRecent(t); openNp(); setMode('video'); ytHello(); $('#npMode').hidden = true; return;
@@ -144,7 +148,7 @@ async function refreshYtTitles(btn) {
 /* ── events ── */
 document.addEventListener('click', e => {
   if (e.target.closest && e.target.closest('a.alink')) return;   // artist links open in a new tab
-  const el = e.target.closest('[data-rel],[data-play],[data-share],[data-nav],[data-copy],[data-close],[data-playall],[data-ctl],[data-year],[data-filter],[data-edit],[data-edit-save],[data-edit-cancel],[data-move],[data-cover-change],#openNp,[data-more],[data-sheet],[data-shuffleall],[data-qi],[data-track-play],[data-np-shuffle],[data-np-details],[data-details-save],[data-upload],[data-upload-go],[data-comment-add],[data-comment-post],[data-comment-cancel],[data-seek-to],[data-resolve],[data-cdel],[data-install-x],[data-retry],[data-dot],[data-jump],[data-mode],[data-watch],[data-world-edit],[data-story],[data-color-clear],[data-card],[data-letter-edit],[data-letter-save],[data-letter-clear],[data-letter-more],[data-vn],[data-vn-toggle],[data-vn-close],[data-lyrics],[data-voice-go],[data-unlock-clear],[data-newrel],[data-nr-cover],[data-nr-add],[data-nr-move],[data-nr-del],[data-nr-go],[data-open-rel],[data-song],[data-song-play],[data-song-watch],[data-song-voice],[data-song-edit],[data-era],[data-era-add],[data-xadd],[data-xsave],[data-xdel],[data-photo],[data-photo-step],[data-xvideo],[data-ph-go],[data-songtab],[data-xkind],[data-shelf],[data-play-rel],[data-lyrics-all],[data-lyrics-save],[data-song-cover],[data-song-cover-del],[data-chap-add],[data-chap-del],[data-bg-pick],[data-bg-clear],[data-np-lyrics],[data-lt],[data-sync-start],[data-sync-tap],[data-sync-undo],[data-sync-cancel],[data-sync-save],[data-num-reset],[data-backup],[data-resume],[data-resume-x],[data-ins-days],[data-ins-metric],[data-si-days],[data-si-metric],[data-check-playback],[data-vplay],[data-vtype-edit],[data-vtype-save],[data-al-add],[data-al-del],[data-lylink],[data-lyfetch],[data-lore-bio],[data-lore-copy],[data-yt-add],[data-np-rel],[data-pl],[data-pl-new],[data-pl-play],[data-pl-shuffle],[data-pl-edit],[data-pl-save],[data-pl-cancel],[data-pl-delete],[data-pl-rm],[data-pl-add],[data-pl-create],[data-qs],[data-slide],[data-ss-del],[data-clean-pick],[data-clean-clear],[data-series],[data-ser-all],[data-ser-play],[data-ser-open],[data-del-tvideo],[data-del-song],[data-del-ver],[data-del-release],[data-del-release-go],[data-del-photo],[data-lyclear],[data-pl-play-id],[data-note-play],[data-note-go],[data-xeach],[data-check-yt],[data-nr-yt],[data-yr-go],[data-cover-cycle],[data-cov-pick],[data-cov-main],[data-cov-del],[data-vq-next],[data-ss-cred],[data-problems],[data-yt-titles]');
+  const el = e.target.closest('[data-rel],[data-play],[data-share],[data-nav],[data-copy],[data-close],[data-playall],[data-ctl],[data-year],[data-filter],[data-edit],[data-edit-save],[data-edit-cancel],[data-move],[data-cover-change],#openNp,[data-more],[data-sheet],[data-shuffleall],[data-qi],[data-track-play],[data-np-shuffle],[data-np-details],[data-details-save],[data-upload],[data-upload-go],[data-comment-add],[data-comment-post],[data-comment-cancel],[data-seek-to],[data-resolve],[data-cdel],[data-install-x],[data-retry],[data-dot],[data-jump],[data-mode],[data-watch],[data-world-edit],[data-story],[data-color-clear],[data-card],[data-letter-edit],[data-letter-save],[data-letter-clear],[data-letter-more],[data-vn],[data-vn-toggle],[data-vn-close],[data-lyrics],[data-voice-go],[data-unlock-clear],[data-newrel],[data-nr-cover],[data-nr-add],[data-nr-move],[data-nr-del],[data-nr-go],[data-open-rel],[data-song],[data-song-play],[data-song-watch],[data-song-voice],[data-song-edit],[data-era],[data-era-add],[data-xadd],[data-xsave],[data-xdel],[data-photo],[data-photo-step],[data-xvideo],[data-ph-go],[data-songtab],[data-xkind],[data-shelf],[data-play-rel],[data-lyrics-all],[data-lyrics-save],[data-song-cover],[data-song-cover-del],[data-chap-add],[data-chap-del],[data-bg-pick],[data-bg-clear],[data-np-lyrics],[data-lt],[data-sync-start],[data-sync-tap],[data-sync-undo],[data-sync-cancel],[data-sync-save],[data-num-reset],[data-backup],[data-resume],[data-resume-x],[data-ins-days],[data-ins-metric],[data-si-days],[data-si-metric],[data-check-playback],[data-vplay],[data-vtype-edit],[data-vtype-save],[data-al-add],[data-al-del],[data-lylink],[data-lyfetch],[data-lore-bio],[data-lore-copy],[data-yt-add],[data-sc-add],[data-np-rel],[data-pl],[data-pl-new],[data-pl-play],[data-pl-shuffle],[data-pl-edit],[data-pl-save],[data-pl-cancel],[data-pl-delete],[data-pl-rm],[data-pl-add],[data-pl-create],[data-qs],[data-slide],[data-ss-del],[data-clean-pick],[data-clean-clear],[data-series],[data-ser-all],[data-ser-play],[data-ser-open],[data-del-tvideo],[data-del-song],[data-del-ver],[data-del-release],[data-del-release-go],[data-del-photo],[data-lyclear],[data-pl-play-id],[data-note-play],[data-note-go],[data-xeach],[data-check-yt],[data-nr-yt],[data-yr-go],[data-cover-cycle],[data-cov-pick],[data-cov-main],[data-cov-del],[data-vq-next],[data-ss-cred],[data-problems],[data-yt-titles]');
   if (!el) { if (e.target === $('#modal')) closeModal(); return; }
   const d = el.dataset;
   if ('retry' in el.dataset) { location.reload(); return; }
@@ -152,6 +156,7 @@ document.addEventListener('click', e => {
   else if (d.vplay != null) openVideoList(rel(S.releaseId), +d.vplay);
   else if (d.vtypeEdit != null) openVideoType(+d.vtypeEdit);
   else if (d.ytAdd) addYtSong(d.ytAdd, el);
+  else if (d.scAdd) addScSong(d.scAdd, el);
   else if ('problems' in d) showProblems();
   else if ('ytTitles' in d) refreshYtTitles(el);
   else if ('ssCred' in d) toggleSsCredits(el);
@@ -336,6 +341,7 @@ document.addEventListener('click', e => {
     if (S.view !== 'library' || S.filter !== 'All' || S.q) { S.filter = 'All'; S.q = ''; renderLibrary(); }
     shelfYear(d.year);
   }
+  else if (d.ctl === 'toggle' && S.scSong) { if ($('#np').hidden) openNp(); }   // SoundCloud's player has its own play and pause button
   else if (d.ctl === 'toggle' && S.ytSong) { if (S.ytPlaying) ytCommand('pauseVideo'); else { if ($('#np').hidden) openNp(); ytCommand('playVideo'); } }
   else if (d.ctl === 'toggle') {
     if (!audio.src || audio.src === SILENT) { if (S.now) play(S.now.v.version_id); }

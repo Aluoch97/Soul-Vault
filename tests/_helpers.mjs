@@ -141,6 +141,7 @@ export async function harness({ lib = fixtureLib(), seed = true, bucket = true, 
       if (path === 'playlists') return reply({ items: ids.filter(i => i in yt.playlists).map(i => ({ id: i, snippet: { title: yt.playlists[i].title, channelTitle: 'Soul' } })) });
       if (path === 'playlistItems') { const pl = yt.playlists[q.searchParams.get('playlistId')]; return pl ? reply({ items: pl.videos.map(v => ({ snippet: { title: v.title, resourceId: { videoId: v.id } } })) }) : new Response(JSON.stringify({ error: { errors: [{ reason: 'playlistNotFound' }] } }), { status: 404 }); }
     }
+    if (u.startsWith('https://soundcloud.com/oembed')) { const x = (h.soundcloud || {})[new URL(u).searchParams.get('url')]; return x ? reply(x) : new Response('no', { status: 404 }); }
     if (u.startsWith('https://www.youtube.com/oembed')) { const id = new URL(new URL(u).searchParams.get('url')).searchParams.get('v'); return id in h.youtube.videos && !h.youtube.noOembed ? reply({ title: h.youtube.videos[id] }) : new Response('no', { status: 404 }); }
     if (u.startsWith('https://i.ytimg.com/vi/')) return h.ytImages[u.split('/').pop()] === false ? new Response('no', { status: 404 }) : new Response(new Uint8Array(6000), { status: 200, headers: { 'content-type': 'image/jpeg' } });
     return new Response('not found', { status: 404 });

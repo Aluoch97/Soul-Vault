@@ -5,7 +5,7 @@ import cfg from '../site.config.json';
 import { ERR_LINK, findShare, shareScope, shareBody, bodyTtl, shareBlock, overlayFor } from './_lib/share.js';
 import { loadLib, saveLib, readMeta, loadOverlay, saveOverlay } from './_lib/mirror.js';
 import { makeRecord, checkPassword, PW_MIN, MAX_TRIES, LOGIN_LOCK_MS, failKey } from './_lib/auth.js';
-import { loadNative, saveNative, mergeNative, newRelease, newTrack, newVersion, newYoutubeVersion, relSlug, slug, MEDIA_BASE, rid as rand } from './_lib/native.js';
+import { loadNative, saveNative, mergeNative, newRelease, newTrack, newVersion, newYoutubeVersion, newSoundcloudVersion, relSlug, slug, MEDIA_BASE, rid as rand } from './_lib/native.js';
 import * as YT from './_lib/youtube.js';
 import * as OW from './_lib/owned.js';
 import * as CT from './_lib/catalog.js';
@@ -417,6 +417,22 @@ async function studio(ctx, fn, a) {
     store.tracks.push(track); store.versions.push(version); await saveNat();
     return { track, version };
   }
+  if (fn === 'addSoundcloudSong') {   // a song that plays through SoundCloud's own player (no audio file, no key needed)
+    const o = a[1] || {}, relId = String(o.releaseId || ''), url = YT.scUrl(o.url);
+    if (!url) throw new Error("Paste the link to ONE song from SoundCloud: open the song, tap Share, then Copy link (it looks like soundcloud.com/artist/song).");
+    if (!relOf(relId)) throw new Error('Release not found.');
+    if (all.tracks.some(t => t.release_id === relId && String(t.sc_url || '').toLowerCase() === url.toLowerCase())) throw new Error('That SoundCloud song is already in this release.');
+    const info = await YT.scInfo(url);
+    if (!info) throw new Error("SoundCloud couldn't find that song. If it's private, use its secret share link; otherwise check the link.");
+    const title = (String(o.title || '').trim() || info.title || 'SoundCloud song').slice(0, 200);
+    const no = Math.max(0, ...all.tracks.filter(t => t.release_id === relId).map(t => Number(t.track_no) || 0)) + 1;
+    const track = Object.assign(newTrack(relId, no, title), { sc_url: url });
+    const rel = relOf(relId); const plain = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();   // (SoundCloud names often drop accents)
+    if (info.artist && plain(rel.artist_name || 'Nicólas Soul') !== plain(info.artist)) track.artist = info.artist.slice(0, 120);
+    const version = newSoundcloudVersion(track.track_id, url);
+    store.tracks.push(track); store.versions.push(version); await saveNat();
+    return { track, version };
+  }
   if (fn === 'createReleaseFromYoutube') {
     const o = a[1] || {}, src = await YT.source(env, o.url);
     const title = String(o.title || src.title || '').trim().slice(0, 120) || 'From YouTube';
@@ -696,7 +712,7 @@ export async function onRequestPost(ctx) {
     } else if (env.DB && /^(addYoutubeSong|createReleaseFromYoutube|addYoutubePlaylistVideos|refreshYoutubeTitles|youtubeTitleStatus|checkYoutube)$/.test(fn) && await youtubeOnEdge(env)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add))$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong)$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {

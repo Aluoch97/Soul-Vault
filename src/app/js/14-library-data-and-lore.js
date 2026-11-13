@@ -292,7 +292,8 @@ audio.addEventListener('playing', () => document.body.classList.add('house-dim')
 audio.addEventListener('pause', () => { if (!S.ytSong) document.body.classList.remove('house-dim'); });
 
 /* ── songs that play from YouTube (no audio file) ── */
-const isYtSong = v => !!v && !v.audio && !v.preview;
+const isScSong = v => !!v && v.format === 'SOUNDCLOUD' && !v.audio && !v.preview;   // plays in SoundCloud's own player
+const isYtSong = v => !!v && !v.audio && !v.preview && !isScSong(v);
 // Listen to the YouTube player so a YouTube song can move on when it ends, and play/pause from the mini player.
 window.addEventListener('message', e => {
   if (!/youtube(-nocookie)?\.com$/.test((() => { try { return new URL(e.origin).hostname; } catch (x) { return ''; } })())) return;
@@ -311,6 +312,26 @@ function ytHello() {
   const f = $('#npVid iframe'); if (!f) return;
   const hello = () => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 'np', channel: 'widget' }), '*'); } catch (x) {} };
   f.addEventListener('load', () => { hello(); setTimeout(hello, 800); });
+}
+async function addScSong(relId, btn) {
+  const url = (($('#uSc') || {}).value || '').trim(), er = $('#uErr');
+  if (!/^https:\/\/(www\.|m\.)?soundcloud\.com\/[^/]+\/[^/?#]+/i.test(url)) { er.hidden = false; er.textContent = "Paste the link to one song from SoundCloud (open the song, tap Share, then Copy link)."; return; }
+  btn.disabled = true; btn.textContent = 'Adding…'; er.hidden = true;
+  try {
+    const o = await run('addSoundcloudSong', BOOT.key, { releaseId: relId, url, title: ($('#uTitle') || {}).value || '' });
+    S.lib.tracks.push(o.track); S.lib.versions.push(o.version);
+    closeModal(); renderRelease(relId); toast(`Added "${o.track.title}" from SoundCloud`);
+  } catch (e) { btn.disabled = false; btn.innerHTML = I.play + 'Add from SoundCloud'; er.hidden = false; er.textContent = e.message || 'Could not add it.'; }
+}
+// A SoundCloud song: SoundCloud's own player fills the Now Playing picture area (SoundCloud does not give out audio files). It keeps going when Now Playing is closed, until another song starts.
+function showSc(t) {
+  const box = $('#npVid');
+  box.innerHTML = `<iframe src="https://w.soundcloud.com/player/?url=${encodeURIComponent(t.sc_url)}&auto_play=true&visual=true&hide_related=true&show_comments=false&show_user=true" title="SoundCloud: ${esc(t.title)}" allow="autoplay" loading="eager"></iframe>`;
+  box.dataset.vid = ''; box.hidden = false; $('#npArt').hidden = true; $('#npMode').hidden = true;
+}
+function clearSc() {
+  if (!S.scSong) return;
+  S.scSong = false; const box = $('#npVid'); box.innerHTML = ''; box.hidden = true; $('#npArt').hidden = false;
 }
 async function addYtSong(relId, btn) {
   const url = ($('#uYt') || {}).value || '';

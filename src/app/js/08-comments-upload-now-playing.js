@@ -141,7 +141,9 @@ function openUpload(relId, tid) {
     <p class="err" id="uErr" hidden></p>
     <div class="end"><button class="pill soft" data-close>Cancel</button><button class="pill main" data-upload-go="${esc(relId)}" data-track="${esc(tid || '')}">Upload</button></div>
     ${t ? '' : `<div class="ytadd"><label>Or add it from a YouTube link (plays through the video)<input class="field" id="uYt" type="url" inputmode="url" placeholder="https://youtu.be/…"></label>
-      <div class="end" style="margin:0"><button class="pill soft" data-yt-add="${esc(relId)}">${I.play}Add from YouTube</button></div></div>`}</div>`;
+      <div class="end" style="margin:0"><button class="pill soft" data-yt-add="${esc(relId)}">${I.play}Add from YouTube</button></div></div>
+    <div class="ytadd"><label>Or add it from a SoundCloud link (plays in SoundCloud's player)<input class="field" id="uSc" type="url" inputmode="url" placeholder="https://soundcloud.com/artist/song"></label>
+      <div class="end" style="margin:0"><button class="pill soft" data-sc-add="${esc(relId)}">${I.play}Add from SoundCloud</button></div></div>`}</div>`;
   $('#modal').hidden = false;
   $('#uFile').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;

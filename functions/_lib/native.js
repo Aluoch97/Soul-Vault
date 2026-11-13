@@ -48,6 +48,11 @@ export function newYoutubeVersion(trackId, vid, srcUrl) {
   return { version_id: 'ver_' + rid(), track_id: trackId, label: 'YouTube', is_primary: true, audio: '', preview: '', format: 'YOUTUBE', duration: '', specs: 'Added from YouTube: ' + String(srcUrl || ('https://youtu.be/' + vid)).slice(0, 200),
     size_mb: 0, hidden: false, url: '', native: true };
 }
+/** A song that plays through SoundCloud's own player: no audio file, format SOUNDCLOUD, the track's sc_url is the song. */
+export function newSoundcloudVersion(trackId, srcUrl) {
+  return { version_id: 'ver_' + rid(), track_id: trackId, label: 'SoundCloud', is_primary: true, audio: '', preview: '', format: 'SOUNDCLOUD', duration: '', specs: 'Added from SoundCloud: ' + String(srcUrl || '').slice(0, 200),
+    size_mb: 0, hidden: false, url: '', native: true };
+}
 export function newVersion(trackId, label, primary, key, ext, sizeBytes, seconds) {
   return { version_id: 'ver_' + rid(), track_id: trackId, label, is_primary: !!primary, audio: 'r2:' + key, preview: '', format: String(ext).toUpperCase(), duration: fmtDur(seconds), specs: '',
     size_mb: Math.round(sizeBytes / 1048576 * 10) / 10, hidden: false, url: MEDIA_BASE + key.split('/').map(encodeURIComponent).join('/'), native: true };

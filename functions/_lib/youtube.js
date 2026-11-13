@@ -60,6 +60,22 @@ export async function oembedTitle(vid) {
   catch (e) { return ''; }
 }
 
+/** One SoundCloud song link (soundcloud.com/<artist>/<song>, optionally with a private /s-… part); anything else gives ''. Sets and profiles are refused. */
+export function scUrl(u) {
+  const m = /^https:\/\/(?:www\.|m\.)?soundcloud\.com\/([A-Za-z0-9_-]+)\/([A-Za-z0-9_%.-]+)(\/s-[A-Za-z0-9]+)?\/?(?:[?#].*)?$/.exec(String(u || '').trim());
+  if (!m || ['sets', 'likes', 'reposts', 'tracks', 'albums', 'popular-tracks', 'following', 'followers'].indexOf(m[2].toLowerCase()) > -1) return '';
+  return 'https://soundcloud.com/' + m[1] + '/' + m[2] + (m[3] || '');
+}
+/** SoundCloud's public oEmbed answer (no key): { title, artist } or null when SoundCloud cannot find the song (private, deleted, or a typo). */
+export async function scInfo(url) {
+  try {
+    const res = await fetch('https://soundcloud.com/oembed?format=json&url=' + encodeURIComponent(url)); if (!res.ok) return null;
+    const j = await res.json(), artist = String(j.author_name || '').trim(); let title = String(j.title || '').trim();
+    if (artist && title.toLowerCase().endsWith(' by ' + artist.toLowerCase())) title = title.slice(0, title.length - artist.length - 4).trim();
+    return { title, artist };
+  } catch (e) { return null; }
+}
+
 /** Settings page button: is YouTube switched on for the key? (The key is its own secret here, so it is never the one fans' phones use.) */
 export async function check(env) {
   try { await api(env, 'videos', { part: 'id', id: 'dQw4w9WgXcQ' }); return { ok: true, shared: false }; }

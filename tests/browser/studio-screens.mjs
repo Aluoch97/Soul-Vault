@@ -441,6 +441,26 @@ await step('the + New release form has a Features section for each song, and sav
   assert.equal(trks.length, 2); assert.equal(trks[0].features, 'Aziza, Khairro', 'guests saved on the first song');
   assert.deepEqual([trks[1].feature_role, trks[1].artist], ['mine', 'Berhani'], 'the guest spot saved with its main artist');
 });
+await step('add a song from a SoundCloud link: it is added with no audio file and plays in SoundCloud\'s player', async () => {
+  w.soundcloud = { 'https://soundcloud.com/nicolas-soul/spiderman': { title: 'Spiderman by Nicolas Soul', author_name: 'Nicolas Soul' } };
+  await page.evaluate((id) => { S.releaseId = id; renderRelease(id); }, releaseId); await seen('Browser Test EP');
+  await page.evaluate((id) => openUpload(id), releaseId); await page.waitForSelector('#uSc');
+  await noSideways('add song form');
+  await page.fill('#uSc', 'https://soundcloud.com/nicolas-soul'); await page.click('[data-sc-add]');
+  await seen('Paste the link to one song from SoundCloud');                                                    // a profile link is refused, right in the form
+  await page.fill('#uSc', 'https://soundcloud.com/nicolas-soul/spiderman?si=abc'); await page.click('[data-sc-add]');
+  await seen('Added "Spiderman" from SoundCloud');
+  const nat = await store(); const t = nat.tracks.find((x) => x.release_id === releaseId && x.title === 'Spiderman'); assert.ok(t && t.sc_url === 'https://soundcloud.com/nicolas-soul/spiderman', 'saved with its SoundCloud link');
+  const v = nat.versions.find((x) => x.track_id === t.track_id); assert.deepEqual([v.format, v.audio], ['SOUNDCLOUD', '']);
+  await page.evaluate((vid) => play(vid), v.version_id);
+  await page.waitForSelector('#npVid iframe[src*="w.soundcloud.com/player/"]', { timeout: 8000 });
+  assert.match(await page.getAttribute('#npVid iframe', 'src'), /url=https%3A%2F%2Fsoundcloud\.com%2Fnicolas-soul%2Fspiderman/, 'the player is pointed at the song');
+  assert.equal(await page.evaluate(() => document.querySelector('#npMode').hidden), true, 'no Song/Video switch for a SoundCloud song');
+  await page.evaluate(() => closeNp());
+  await page.evaluate((id) => { const first = S.lib.versions.find((x) => x.track_id !== id && (x.audio || x.url)); if (first) play(first.version_id); }, t.track_id);
+  await page.waitForFunction(() => !document.querySelector('#npVid iframe'), null, { timeout: 8000 });         // another song replaces SoundCloud's player
+  await page.evaluate(() => { try { closeNp(); } catch (e) {} audio.pause(); });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
