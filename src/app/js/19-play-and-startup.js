@@ -372,12 +372,17 @@ document.addEventListener('input', e => {
   if (ci != null && S.draft) S.draft[+ci].chapter = e.target.value;
   const ni = e.target.dataset && e.target.dataset.nrTitle;
   if (ni != null && S.nr) S.nr.files[+ni].title = e.target.value;
+  const nf = e.target.dataset && e.target.dataset.nrFeat;
+  if (nf != null && S.nr) S.nr.files[+nf].features = e.target.value;
+  const na = e.target.dataset && e.target.dataset.nrArt;
+  if (na != null && S.nr) S.nr.files[+na].artist = e.target.value;
   const i = e.target.dataset && e.target.dataset.draft;
   if (i != null && S.draft) S.draft[+i].title = e.target.value;
 });
 
 document.addEventListener('change', e => {
   const ds = e.target.dataset || {};
+  if (ds.nrSpot != null && S.nr) { S.nr.files[+ds.nrSpot].spot = e.target.checked; nrRender(); const a = $('[data-nr-art="' + ds.nrSpot + '"]'); if (a && e.target.checked) a.focus(); return; }
   if (e.target.id === 'insMine') { S.insMine = e.target.checked; renderInsights(); return; }
   if (e.target.id === 'siMine') { S.siMine = e.target.checked; renderSiteInsights(); return; }
   if (ds.plattach != null && S.plattach) { const pid = ds.plattach; S.plattach = S.plattach.filter(x => x !== pid); if (e.target.checked) S.plattach.push(pid); return; }

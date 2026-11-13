@@ -405,6 +405,25 @@ await step('Missing files: link a song you added with New release to the missing
   assert.ok(await page.evaluate(() => S.lib.versions.some((v) => v.track_id === 'trk_sg' && v.native)), 'the app shows the change without a reload');
   await page.click('#modal .pgback');
 });
+await step('the + New release form has a Features section for each song, and saves it', async () => {
+  await page.evaluate(() => openNewRelease()); await page.waitForSelector('#nrFiles', { state: 'attached' });
+  await page.fill('#nrTitle', 'Plus Button EP');
+  await page.setInputFiles('#nrFiles', [{ name: '01 Own Song.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('fake song one'.repeat(30)) }, { name: '02 Guest Song.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('fake song two'.repeat(30)) }]);
+  await page.waitForSelector('[data-nr-feat="1"]');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.nrfeat').length), 2, 'every song has a Features box');
+  await noSideways('new release form with features');
+  await page.fill('[data-nr-feat="0"]', 'Aziza, Khairro');
+  await page.check('[data-nr-spot="1"]'); await page.waitForSelector('[data-nr-art="1"]');
+  assert.equal(await page.evaluate(() => !document.querySelector('[data-nr-feat="1"]')), true, 'a guest spot asks for the main artist instead of guests');
+  await page.check('[name="nrVis"][value="hide"]');
+  await page.click('[data-nr-go]'); await seen('Give the main artist'.slice(0, 0) + 'main artist');   // a guest spot without the main artist is refused
+  await page.fill('[data-nr-art="1"]', 'Berhani');
+  await page.click('[data-nr-go]'); await seen('Plus Button EP', 20000); await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 30000 });
+  const nat = await store(); const rel = nat.releases.find((r) => r.title === 'Plus Button EP'); assert.ok(rel, 'the release exists'); assert.equal(!!rel.hidden, true, 'kept hidden as asked');
+  const trks = nat.tracks.filter((t) => t.release_id === rel.release_id).sort((x, y) => x.track_no - y.track_no);
+  assert.equal(trks.length, 2); assert.equal(trks[0].features, 'Aziza, Khairro', 'guests saved on the first song');
+  assert.deepEqual([trks[1].feature_role, trks[1].artist], ['mine', 'Berhani'], 'the guest spot saved with its main artist');
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
