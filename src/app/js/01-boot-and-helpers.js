@@ -71,7 +71,8 @@ async function runFetch(fn, ...a) {
 const runBase = (fn, ...a) => TRANSPORT === 'fetch' ? runFetch(fn, ...a) : runGas(fn, ...a);
 // Covers, song covers, page backgrounds and photos are kept on our own storage (media.soulnicolas.com/img/<file id>/<size>, copied by tools/mirror-images.py).
 // The old way (Apps Script reading Google Drive) is the spare: used when a picture is not there, for private/sealed releases, and for animated covers.
-const IMG_BASE = 'https://media.soulnicolas.com/img/', imgMiss = {};
+const MEDIA_BASE = 'https://media.soulnicolas.com/';   // our own storage (same address as MEDIA_BASE in functions/_lib/native.js)
+const IMG_BASE = MEDIA_BASE + 'img/', imgMiss = {};
 const imgSizeKey = full => { if (!full) return 't'; if (full === true) return '1200'; const n = +full || 1200; return n <= 240 ? '160' : n <= 600 ? '400' : n <= 1300 ? '1200' : '1600'; };
 const loadOurImg = url => new Promise((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(url); i.onerror = () => rej(new Error('img')); i.src = url; });
 async function ourImage(id, full) {

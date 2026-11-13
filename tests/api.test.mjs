@@ -6,7 +6,7 @@ import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpe
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
 const OWNER_ONLY = ['setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
-  'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioAddPhoto',
+  'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
 
@@ -257,6 +257,43 @@ test('Studio: covers and photos must have arrived, and show to visitors once sav
   assert.equal(x.kind, 'photo'); assert.equal(x.release_id, 'rel_pub');
   assert.ok((await w.call('getShare', ['PUB'])).result.extras.some(e => e.extra_id === x.extra_id));
 }));
+
+test('Voice notes: kept on our own storage, only once the catalog is on Cloudflare, only inside their own release, and removable', () => withWorld(async (w) => {
+  const plan = { relId: 'rel_pub', trackId: 'trk_a1', kind: 'voice', ext: 'm4a' };
+  assert.match((await w.owner('studioPlanUpload', plan)).error, /Switch the catalog/);                    // catalog still on the Sheet: the old Drive way applies, and nothing is uploaded first
+  assert.match((await w.owner('studioSetVoice', { relId: 'rel_pub', trackId: 'trk_a1', key: '' })).error, /Switch the catalog/);
+  assert.equal((await w.owner('adoptDomain', 'catalog')).ok, true);
+  assert.match((await w.owner('studioPlanUpload', { ...plan, trackId: 'ghost' })).error, /Song not found/);
+  assert.match((await w.owner('studioPlanUpload', { ...plan, relId: 'ghost' })).error, /not found/);
+  assert.match((await w.owner('studioPlanUpload', { ...plan, ext: 'exe' })).error, /MP3, M4A/);
+  const key = (await w.owner('studioPlanUpload', plan)).result.key;
+  assert.match(key, /^pub\/voice-01-song-trk-a1-[0-9a-f]{4}\.m4a$/);                                       // next to the songs, safe name, a short random tail so a re-upload never collides
+  assert.match((await w.owner('studioSetVoice', { relId: 'rel_pub', trackId: 'trk_a1', key })).error, /did not arrive/);
+  assert.match((await w.owner('studioSetVoice', { relId: 'rel_pub', trackId: 'trk_a1', key: 'other/voice-01-x.m4a' })).error, /not a voice note for this release/);
+  assert.match((await w.owner('studioSetVoice', { relId: 'rel_pub', trackId: 'trk_a1', key: 'pub/01-song-trk-a1-live-aaaa.mp3' })).error, /not a voice note/);   // a song file is not a voice note
+  assert.match((await w.owner('studioSetVoice', { relId: 'rel_pub', trackId: 'trk_a1', key: 'pub/voice-../../x.m4a' })).error, /not a voice note/);
+  assert.match((await w.owner('studioSetVoice', { relId: 'rel_pub', trackId: 'ghost', key })).error, /Song not found/);
+  assert.equal((await w.put(key, { type: 'audio/mp4', bytes: new Uint8Array(1024) })).status, 200);
+  assert.deepEqual((await w.owner('studioSetVoice', { relId: 'rel_pub', trackId: 'trk_a1', key })).result, { voice_note_id: 'r2:' + key });
+  const pub = async () => (await w.call('getShare', ['PUB'])).result;
+  assert.equal((await pub()).tracks.find(t => t.track_id === 'trk_a1').voice_note_id, 'r2:' + key);       // fans see it
+  assert.equal((await w.owner('studioGet')).result.tracks.find(t => t.track_id === 'trk_a1').voice_note_id, 'r2:' + key);   // so does the owner
+  assert.equal((await w.owner('studioPlanUpload', plan)).result.key === key, false);                     // a new plan never reuses the name
+  assert.deepEqual((await w.owner('studioSetVoice', { relId: 'rel_pub', trackId: 'trk_a1', key: '' })).result, { voice_note_id: '' });
+  assert.equal((await pub()).tracks.find(t => t.track_id === 'trk_a1').voice_note_id, '');
+  assert.ok(await w.env.MEDIA.head(key), 'removing a voice note never deletes the uploaded file');
+  assert.deepEqual(w.appsCalls(), []);                                                                    // none of it went to Apps Script
+}));
+
+test('Voice notes: the app plays "r2:" notes from our storage address and uses the Cloudflare way when it is on', () => {
+  const app = readFileSync(new URL('../src/app/js/09-club-letters-new-release.js', import.meta.url), 'utf8');
+  const boot = readFileSync(new URL('../src/app/js/01-boot-and-helpers.js', import.meta.url), 'utf8');
+  const native = readFileSync(new URL('../functions/_lib/native.js', import.meta.url), 'utf8');
+  assert.equal((/MEDIA_BASE = '([^']+)'/.exec(boot) || [])[1], (/MEDIA_BASE = '([^']+)'/.exec(native) || [])[1]);   // one address for our storage, in the app and the backend
+  assert.match(app, /\/\^r2:\/\.test\(t\.voice_note_id\) \? MEDIA_BASE \+ t\.voice_note_id\.slice\(3\)/);
+  assert.match(app, /studioPlanUpload', BOOT\.key, \{ relId: t\.release_id, trackId: tid, kind: 'voice'/);
+  assert.match(app, /studioSetVoice/);
+});
 
 test('Studio: the missing-files list - add, hide a broken version from fans, resolve with a new upload', () => withWorld(async (w) => {
   assert.deepEqual((await w.owner('missingList')).result, []);

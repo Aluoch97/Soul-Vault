@@ -129,6 +129,7 @@ async function ownerState(ctx) {
   return { lib, ov: normOverlay(await loadOverlay(ctx.env.DB)), nat: await loadNative(ctx.env.DB) };
 }
 const EXTS = ['mp3', 'm4a', 'aac', 'ogg', 'wav'];
+const NO_CATALOG = 'Switch the catalog to Cloudflare first (Settings, then Move off the Sheet).';
 async function studio(ctx, fn, a) {
   const { env } = ctx;
   if (!env.DB) throw new Error('Studio needs the Cloudflare database.');
@@ -259,7 +260,11 @@ async function studio(ctx, fn, a) {
     if (!relOf(rid)) throw new Error('Release not found.');
     if (EXTS.indexOf(ext) < 0) throw new Error('Use an MP3, M4A, AAC, OGG or WAV file.');
     let name;
-    if (o.trackId) {
+    if (o.kind === 'voice') {   // a voice memo about a song: it lives next to the release's songs, named voice-NN-<song>, and is attached with studioSetVoice
+      if (!cat) throw new Error(NO_CATALOG);
+      const t = all.tracks.find(x => x.track_id === o.trackId && x.release_id === rid); if (!t) throw new Error('Song not found in this release.');
+      name = 'voice-' + String(t.track_no).padStart(2, '0') + '-' + slug(t.title);
+    } else if (o.trackId) {
       const t = all.tracks.find(x => x.track_id === o.trackId && x.release_id === rid); if (!t) throw new Error('Song not found in this release.');
       name = String(t.track_no).padStart(2, '0') + '-' + slug(t.title) + '-' + slug(o.label || 'version');
     } else {
@@ -306,7 +311,7 @@ async function studio(ctx, fn, a) {
     if (['cover', 'bg', 'clean', 'song'].indexOf(kind) < 0) throw new Error('Unknown picture type.');
     if (env.MEDIA && !(await env.MEDIA.head('img/' + coverId + '/' + (kind === 'bg' ? '1600' : '1200')))) throw new Error('The picture did not arrive. Try again.');
     if (kind !== 'cover') {   // page background, clean cover, song cover: stored on the row, so they need the catalog to be on Cloudflare
-      if (!cat) throw new Error('Switch the catalog to Cloudflare first (Settings, then Move off the Sheet).');
+      if (!cat) throw new Error(NO_CATALOG);
       if (kind === 'song') { const tid = String(o.trackId || ''); if (!all.tracks.some(t => t.track_id === tid && t.release_id === rid)) throw new Error('Song not found in this release.'); patchRow(store, 'tracks', 'track_id', tid, { track_cover: coverId }); }
       else patchRow(store, 'releases', 'release_id', rid, kind === 'bg' ? { bg_file_id: coverId } : { clean_cover_file_id: coverId, clean_cover_thumb: '' });
       await saveNat(); return true;
@@ -314,6 +319,21 @@ async function studio(ctx, fn, a) {
     if (isNat('releases', 'release_id', rid)) { patchRow(store, 'releases', 'release_id', rid, { cover_file_id: coverId }); await saveNat(); }
     else { ov.cover[rid] = coverId; await saveOverlay(env.DB, ov); mem.ov = ov; mem.lib = null; await forgetCached(all); }
     return true;
+  }
+  if (fn === 'studioSetVoice') {
+    // Attach an uploaded voice memo to a song (key from studioPlanUpload with kind 'voice'), or remove it (key ''). The file itself is never deleted: uploads are permanent.
+    const o = a[1] || {}, rid = String(o.relId || ''), tid = String(o.trackId || ''), key = String(o.key || '');
+    if (!relOf(rid)) throw new Error('Release not found.');
+    if (!all.tracks.some(t => t.track_id === tid && t.release_id === rid)) throw new Error('Song not found in this release.');
+    if (!cat) throw new Error(NO_CATALOG);
+    if (key) {
+      if (!env.MEDIA) throw new Error('Uploads are not set up yet.');
+      if (key.indexOf(relSlug(rid) + '/voice-') !== 0 || /\.\./.test(key)) throw new Error('That file is not a voice note for this release.');
+      if (!(await env.MEDIA.head(key))) throw new Error('The upload did not arrive. Try again.');
+    }
+    patchRow(store, 'tracks', 'track_id', tid, { voice_note_id: key ? 'r2:' + key : '' });
+    await saveNat();
+    return { voice_note_id: key ? 'r2:' + key : '' };
   }
   if (fn === 'studioAddPhoto') {
     const o = a[1] || {}, rid = String(o.relId || ''), fileId = String(o.fileId || '');
@@ -506,7 +526,7 @@ export async function onRequestPost(ctx) {
       return res;
     } else if (fn === 'getOverlay' && env.DB) {
       return json({ ok: true, result: normOverlay(await loadOverlay(env.DB)) });
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|AddPhoto)|missing(List|Resolve|Hide|Remove|Add))$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {
