@@ -380,6 +380,7 @@ document.addEventListener('input', e => {
   if (ni != null && S.nr) S.nr.files[+ni].title = e.target.value;
   const nf = e.target.dataset && e.target.dataset.nrFeat;
   if (nf != null && S.nr) S.nr.files[+nf].features = e.target.value;
+  if (e.target.id === 'nrMain' && S.nr) S.nr.main = e.target.value;
   const na = e.target.dataset && e.target.dataset.nrArt;
   if (na != null && S.nr) S.nr.files[+na].artist = e.target.value;
   const i = e.target.dataset && e.target.dataset.draft;
@@ -389,6 +390,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const ds = e.target.dataset || {};
   if (ds.secsel) { secState(ds.secsel).chip = e.target.value; redrawSection(ds.secsel); return; }
+  if (ds.nrKind != null && S.nr) { S.nr.kind = ds.nrKind; const m = $('#nrMain'); if (m) { m.hidden = ds.nrKind !== 'feature'; if (!m.hidden) m.focus(); } nrRender(); return; }
   if (ds.nrSpot != null && S.nr) { S.nr.files[+ds.nrSpot].spot = e.target.checked; nrRender(); const a = $('[data-nr-art="' + ds.nrSpot + '"]'); if (a && e.target.checked) a.focus(); return; }
   if (e.target.id === 'insMine') { S.insMine = e.target.checked; renderInsights(); return; }
   if (e.target.id === 'siMine') { S.siMine = e.target.checked; renderSiteInsights(); return; }

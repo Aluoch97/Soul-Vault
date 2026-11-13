@@ -449,6 +449,23 @@ await step('the + New release form has a Features section for each song, and sav
   assert.equal(trks.length, 2); assert.equal(trks[0].features, 'Aziza, Khairro', 'guests saved on the first song');
   assert.deepEqual([trks[1].feature_role, trks[1].artist], ['mine', 'Berhani'], 'the guest spot saved with its main artist');
 });
+await step('the + New release form asks whose song it is: my own music, or a feature (my guest spot on someone else\'s song)', async () => {
+  await page.evaluate(() => openNewRelease()); await page.waitForSelector('#nrFiles', { state: 'attached' });
+  assert.equal(await page.evaluate(() => document.querySelector('[data-nr-kind="own"]').checked), true, 'my own music is the default');
+  await page.fill('#nrTitle', 'Feature Cut');
+  await page.setInputFiles('#nrFiles', [{ name: '01 My Verse.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('fake verse'.repeat(30)) }]);
+  await page.waitForSelector('.nrfeat');
+  await page.check('[data-nr-kind="feature"]'); await page.waitForSelector('#nrMain:not([hidden])');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.nrfeat').length), 0, 'a feature has no guest boxes: the whole release is the guest spot');
+  await noSideways('new release form, feature');
+  await page.check('[name="nrVis"][value="hide"]');
+  await page.click('[data-nr-go]'); await seen('type the main artist');                                         // no main artist: refused
+  await page.fill('#nrMain', 'Berhani'); await page.click('[data-nr-go]');
+  await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 30000 });
+  const nat = await store(); const rel = nat.releases.find((r) => r.title === 'Feature Cut'); assert.ok(rel, 'the release exists');
+  assert.deepEqual([rel.artist_name, !!rel.hidden], ['Berhani', true], 'the release belongs to the main artist');
+  const t = nat.tracks.find((x) => x.release_id === rel.release_id); assert.deepEqual([t.feature_role, t.artist], ['mine', 'Berhani'], 'its song is my guest spot');
+});
 await step('add a song from a SoundCloud link: it is added with no audio file and plays in SoundCloud\'s player', async () => {
   w.soundcloud = { 'https://soundcloud.com/nicolas-soul/spiderman': { title: 'Spiderman by Nicolas Soul', author_name: 'Nicolas Soul' } };
   await page.evaluate((id) => { S.releaseId = id; renderRelease(id); }, releaseId); await seen('Browser Test EP');
