@@ -369,6 +369,134 @@ test('Replace audio: the app uses the Cloudflare way when it is on and the Drive
   assert.equal((st.match(/await streamingCopy\(file, stat, bar\)/g) || []).length, 2);                      // adding a song and replacing audio make the same streaming copy
 });
 
+// ---------------------------------------------------------------- YouTube songs, releases and videos (the key is the Cloudflare secret YOUTUBE_API_KEY)
+const YT = { fn: ['addYoutubeSong', 'createReleaseFromYoutube', 'addYoutubePlaylistVideos', 'refreshYoutubeTitles', 'youtubeTitleStatus', 'checkYoutube'] };
+const todayTag = () => 'api:' + new Date().toISOString().slice(0, 10);
+async function ytWorld(w, { catalog = true } = {}) {
+  w.env.YOUTUBE_API_KEY = 'test-yt-key';
+  w.youtube.videos = { dQw4w9WgXcQ: 'Never Gonna Give You Up (Official)', aaaaaaaaaaa: 'One', ccccccccccc: 'Three' };
+  w.youtube.playlists = { PLabcdefghij1: { title: 'My Mixtape', videos: [{ id: 'aaaaaaaaaaa', title: 'One' }, { id: 'bbbbbbbbbbb', title: 'Private video' }, { id: 'ccccccccccc', title: 'Three' }] } };
+  if (catalog) assert.equal((await w.owner('adoptDomain', 'catalog')).ok, true);
+}
+
+test('YouTube: until the catalog or the extras are switched over the old script does it; after that it is done here and needs the key', () => withWorld(async (w) => {
+  w.youtube.videos = { dQw4w9WgXcQ: 'x' };
+  const r = await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/dQw4w9WgXcQ' });
+  assert.equal(r.ok, true); assert.ok(w.appsCalls().some(c => c.fn === 'addYoutubeSong'));                 // the old way, unchanged
+  assert.deepEqual(w.ytCalls, []);
+  assert.equal((await w.owner('adoptDomain', 'catalog')).ok, true);
+  const noKey = /YOUTUBE_API_KEY/;                                                                            // no key: a clear message, never the old script's "not available yet"
+  assert.match((await w.owner('createReleaseFromYoutube', { url: 'https://youtu.be/dQw4w9WgXcQ' })).error, noKey);
+  assert.match((await w.owner('addYoutubePlaylistVideos', 'rel_pub', 'https://www.youtube.com/playlist?list=PLabcdefghij1')).error, noKey);
+  assert.match((await w.owner('checkYoutube')).result.message, noKey);
+  assert.deepEqual((await w.owner('youtubeTitleStatus')).result, { total: 0, stale: 0 });
+  assert.deepEqual((await w.owner('refreshYoutubeTitles', false)).result, { checked: 0, updated: 0, gone: 0 });
+  const song = (await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/dQw4w9WgXcQ' })).result.track;   // a single song needs no key: its title comes from YouTube's public lookup
+  assert.equal(song.title, 'x'); assert.equal(song.title_src || '', '');                                       // (and is not refreshed later, because only the key can)
+  assert.deepEqual(w.ytCalls, []);
+  const apps = w.appsCalls().length;
+  for (const fn of YT.fn) for (const args of [[], [''], ['wrong-key']]) assert.equal((await w.call(fn, [...args, { releaseId: 'rel_pub', url: 'https://youtu.be/dQw4w9WgXcQ' }])).ok, false, fn);   // owner-only
+  assert.equal(w.appsCalls().length, apps); assert.deepEqual(w.ytCalls, []);
+}));
+
+test('YouTube: a song from a link plays through YouTube; the title comes from YouTube unless you typed one; no duplicates', () => withWorld(async (w) => {
+  await ytWorld(w);
+  const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5s';
+  assert.match((await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://example.com/x' })).error, /doesn't look like a YouTube video link/);
+  assert.match((await w.owner('addYoutubeSong', { releaseId: 'ghost', url })).error, /Release not found/);
+  const r = (await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url })).result;
+  assert.equal(r.track.title, 'Never Gonna Give You Up (Official)'); assert.equal(r.track.video_url, 'https://youtu.be/dQw4w9WgXcQ'); assert.equal(r.track.track_no, 3); assert.equal(r.track.title_src, todayTag());
+  assert.deepEqual([r.version.label, r.version.format, r.version.is_primary, r.version.audio, r.version.track_id], ['YouTube', 'YOUTUBE', true, '', r.track.track_id]);
+  assert.ok(w.ytCalls.every(c => c.params.key === 'test-yt-key'));                                           // the Cloudflare secret is what is sent
+  const fan = (await w.call('getShare', ['PUB'])).result;
+  assert.ok(fan.tracks.some(t => t.track_id === r.track.track_id && t.video_url === 'https://youtu.be/dQw4w9WgXcQ') && fan.versions.some(v => v.version_id === r.version.version_id));
+  assert.match((await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/dQw4w9WgXcQ' })).error, /already a song in this release/);
+  const typed = (await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/aaaaaaaaaaa', title: '  My own words ' })).result;
+  assert.equal(typed.track.title, 'My own words'); assert.equal(typed.track.title_src || '', '');            // your own words are never refreshed from YouTube
+  w.youtube.error = { status: 403, reason: 'quotaExceeded' };                                                  // the key's allowance used up: the song is still added, titled by YouTube's public lookup
+  const viaLookup = (await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/ccccccccccc' })).result.track;
+  assert.equal(viaLookup.title, 'Three'); assert.equal(viaLookup.title_src || '', '');
+  assert.equal((await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/eeeeeeeeeee' })).result.track.title, 'YouTube song');   // nothing can read the title: a plain one
+  assert.deepEqual(w.appsCalls().filter(c => /Youtube/i.test(c.fn)), []);
+}));
+
+test('YouTube: a release from a playlist or a video starts hidden, keeps the first video as its cover at every size, and caps at 100 songs', () => withWorld(async (w) => {
+  await ytWorld(w);
+  assert.match((await w.owner('createReleaseFromYoutube', { url: 'https://example.com' })).error, /doesn't look like a YouTube video or playlist link/);
+  const r = (await w.owner('createReleaseFromYoutube', { url: 'https://www.youtube.com/playlist?list=PLabcdefghij1', year: '2024' })).result;
+  assert.deepEqual([r.release.title, r.release.type, r.release.year, r.release.hidden, r.playlist, r.total, r.truncated], ['My Mixtape', 'Album', '2024', true, 'My Mixtape', 2, false]);   // the "Private video" entry is left out
+  assert.deepEqual(r.tracks.map(t => [t.track_no, t.title, t.video_url, t.title_src]), [[1, 'One', 'https://youtu.be/aaaaaaaaaaa', todayTag()], [2, 'Three', 'https://youtu.be/ccccccccccc', todayTag()]]);
+  assert.ok(r.versions.every(v => v.format === 'YOUTUBE' && v.is_primary && v.audio === ''));
+  assert.match(r.release.cover_file_id, /^c[0-9a-f]{16}$/);
+  for (const size of ['t', '160', '400', '1200', '1600']) assert.ok(await w.env.MEDIA.head('img/' + r.release.cover_file_id + '/' + size), 'cover size ' + size);
+  assert.ok(!JSON.stringify((await w.call('getShare', ['PUB'])).result).includes('My Mixtape'), 'hidden from fans until you show it');
+  assert.ok((await w.owner('studioGet')).result.releases.some(x => x.release_id === r.release.release_id));
+  const single = (await w.owner('createReleaseFromYoutube', { url: 'https://youtu.be/dQw4w9WgXcQ', title: 'Just One', type: 'Tape' })).result;      // an unknown type falls back to automatic
+  assert.deepEqual([single.release.title, single.release.type, single.tracks.length], ['Just One', 'Single', 1]);
+  w.ytImages['maxresdefault.jpg'] = false;                                                                     // no big picture: the smaller one is used
+  assert.match((await w.owner('createReleaseFromYoutube', { url: 'https://youtu.be/aaaaaaaaaaa' })).result.release.cover_file_id, /^c/);
+  w.ytImages['hqdefault.jpg'] = false;                                                                         // no picture at all: still made, without a cover
+  assert.equal((await w.owner('createReleaseFromYoutube', { url: 'https://youtu.be/ccccccccccc' })).result.release.cover_file_id, '');
+  w.youtube.playlists.PLbigbigbig1 = { title: 'Big', videos: Array.from({ length: 150 }, (_, i) => ({ id: 'v' + String(i).padStart(10, '0'), title: 'Song ' + i })) };
+  const big = (await w.owner('createReleaseFromYoutube', { url: 'https://www.youtube.com/playlist?list=PLbigbigbig1' })).result;
+  assert.deepEqual([big.tracks.length, big.total, big.truncated], [100, 150, true]);
+  w.youtube.playlists.PLemptyempt1 = { title: 'Empty', videos: [{ id: 'zzzzzzzzzzz', title: 'Deleted video' }] };
+  assert.match((await w.owner('createReleaseFromYoutube', { url: 'https://www.youtube.com/playlist?list=PLemptyempt1' })).error, /no public videos/);
+  assert.deepEqual(w.appsCalls().filter(c => /Youtube/i.test(c.fn)), []);
+}));
+
+test('YouTube: every video of a playlist becomes a video on the release page, once each, wherever the extras live', () => withWorld(async (w) => {
+  await ytWorld(w);
+  const url = 'https://www.youtube.com/playlist?list=PLabcdefghij1';
+  assert.match((await w.owner('addYoutubePlaylistVideos', 'ghost', url)).error, /Release not found/);
+  const first = (await w.owner('addYoutubePlaylistVideos', 'rel_pub', url)).result;
+  assert.deepEqual([first.added.length, first.skipped, first.total, first.playlist, first.truncated], [2, 0, 2, 'My Mixtape', false]);
+  assert.deepEqual(first.added.map(x => [x.kind, x.url, x.title, x.site, x.image, x.title_src]), [['video', 'https://youtu.be/aaaaaaaaaaa', 'One', 'YouTube', 'https://i.ytimg.com/vi/aaaaaaaaaaa/hqdefault.jpg', todayTag()], ['video', 'https://youtu.be/ccccccccccc', 'Three', 'YouTube', 'https://i.ytimg.com/vi/ccccccccccc/hqdefault.jpg', todayTag()]]);
+  assert.equal((await w.call('getShare', ['PUB'])).result.extras.filter(x => x.kind === 'video' && x.release_id === 'rel_pub').length >= 2, true);   // fans see them
+  const again = (await w.owner('addYoutubePlaylistVideos', 'rel_pub', url)).result;
+  assert.deepEqual([again.added.length, again.skipped], [0, 2]);                                               // nothing is added twice
+  assert.equal((await w.owner('adoptDomain', 'extras')).ok, true);                                             // once the extras are Cloudflare's own, they are kept there
+  w.youtube.playlists.PLsecondsecon = { title: 'Second', videos: [{ id: 'ddddddddddd', title: 'Four' }] };
+  assert.equal((await w.owner('addYoutubePlaylistVideos', 'rel_pub', 'https://www.youtube.com/playlist?list=PLsecondsecon')).result.added.length, 1);
+  assert.deepEqual((await w.owner('addYoutubePlaylistVideos', 'rel_pub', url)).result.added, []);              // still remembers the first ones
+  assert.equal((await w.call('getShare', ['PUB'])).result.extras.filter(x => x.kind === 'video' && x.release_id === 'rel_pub').length >= 3, true);
+}));
+
+test('YouTube: titles taken from YouTube are kept fresh (every 25 days), your own words never are, and a video that is gone says so', () => withWorld(async (w) => {
+  await ytWorld(w);
+  const a1 = (await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/dQw4w9WgXcQ' })).result.track;
+  await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/aaaaaaaaaaa', title: 'Mine' });
+  await w.owner('addYoutubePlaylistVideos', 'rel_pub', 'https://www.youtube.com/playlist?list=PLabcdefghij1');
+  assert.deepEqual((await w.owner('youtubeTitleStatus')).result, { total: 3, stale: 0 });                      // the song + 2 videos; "Mine" is not counted
+  const calls = w.ytCalls.length;
+  assert.deepEqual((await w.owner('refreshYoutubeTitles', false)).result, { checked: 0, updated: 0, gone: 0 });   // nothing is due yet
+  assert.equal(w.ytCalls.length, calls, 'nothing due means no YouTube request');
+  w.db._raw.exec("UPDATE kv SET v = REPLACE(v, '" + todayTag() + "', 'api:2020-01-01')");                       // pretend they were read long ago
+  assert.deepEqual((await w.owner('youtubeTitleStatus')).result, { total: 3, stale: 3 });
+  w.youtube.videos.dQw4w9WgXcQ = 'Renamed on YouTube'; delete w.youtube.videos.ccccccccccc;                    // one renamed, one removed
+  const out = (await w.owner('refreshYoutubeTitles', false)).result;
+  assert.deepEqual(out, { checked: 3, updated: 2, gone: 1 });
+  const songs = (await w.owner('studioGet')).result.tracks;
+  assert.equal(songs.find(t => t.track_id === a1.track_id).title, 'Renamed on YouTube');
+  assert.equal(songs.find(t => t.title === 'Mine').title, 'Mine');                                              // your own words stay
+  assert.deepEqual((await w.owner('youtubeTitleStatus')).result, { total: 2, stale: 0 });                      // fresh again; the removed one is no longer tracked
+  assert.equal((await w.owner('refreshYoutubeTitles', true)).result.checked, 2);                                // "force" re-reads all
+  assert.deepEqual(w.appsCalls().filter(c => /Youtube/i.test(c.fn)), []);
+}));
+
+test('YouTube: the key check and YouTube refusals are explained in plain words', () => withWorld(async (w) => {
+  await ytWorld(w);
+  assert.deepEqual((await w.owner('checkYoutube')).result, { ok: true, shared: false });                       // its own secret, never the key fans use
+  for (const [error, pattern] of [[{ status: 403, reason: 'accessNotConfigured' }, /not switched on for your API key/], [{ status: 400, reason: 'keyInvalid', message: 'API key not valid' }, /not valid/], [{ status: 403, reason: 'quotaExceeded' }, /daily limit/], [{ status: 404, reason: 'playlistNotFound' }, /couldn't open that playlist/], [{ status: 500, reason: 'backendError', message: 'oops' }, /YouTube said no \(500\)/]]) {
+    w.youtube.error = error;
+    const chk = (await w.owner('checkYoutube')).result; assert.equal(chk.ok, false); assert.match(chk.message, pattern);
+    assert.match((await w.owner('addYoutubePlaylistVideos', 'rel_pub', 'https://www.youtube.com/playlist?list=PLabcdefghij1')).error, pattern);
+  }
+  w.youtube.error = null;
+  assert.match((await w.owner('createReleaseFromYoutube', { url: 'https://www.youtube.com/playlist?list=PLnothereeee1' })).error, /couldn't find that playlist/);
+  assert.match((await w.owner('createReleaseFromYoutube', { url: 'https://youtu.be/xxxxxxxxxxx' })).error, /couldn't find that video/);
+}));
+
 test('Studio: the missing-files list - add, hide a broken version from fans, resolve with a new upload', () => withWorld(async (w) => {
   assert.deepEqual((await w.owner('missingList')).result, []);
   assert.match((await w.owner('missingAdd', { versionId: 'ghost' })).error, /Song not found/);

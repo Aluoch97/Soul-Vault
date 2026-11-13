@@ -117,12 +117,23 @@ export async function harness({ lib = fixtureLib(), seed = true, bucket = true, 
       return reply({ ok: true, result: true });
     }
     if (u.startsWith('https://signup.test')) return reply({ ok: true });
+    if (u.startsWith('https://www.googleapis.com/youtube/v3/')) {       // a small fake YouTube: h.youtube = { videos: { id: title }, playlists: { id: { title, videos: [{ id, title }] } }, error: { status, reason } }
+      const q = new URL(u), path = q.pathname.split('/').pop(), yt = h.youtube;
+      h.ytCalls.push({ path, params: Object.fromEntries(q.searchParams) });
+      if (yt.error) return new Response(JSON.stringify({ error: { message: yt.error.message || 'no', errors: [{ reason: yt.error.reason }] } }), { status: yt.error.status || 403, headers: { 'content-type': 'application/json' } });
+      const ids = (q.searchParams.get('id') || '').split(',').filter(Boolean);
+      if (path === 'videos') return reply({ items: ids.filter(i => i in yt.videos).map(i => ({ id: i, snippet: { title: yt.videos[i], channelTitle: 'Soul' } })) });
+      if (path === 'playlists') return reply({ items: ids.filter(i => i in yt.playlists).map(i => ({ id: i, snippet: { title: yt.playlists[i].title, channelTitle: 'Soul' } })) });
+      if (path === 'playlistItems') { const pl = yt.playlists[q.searchParams.get('playlistId')]; return pl ? reply({ items: pl.videos.map(v => ({ snippet: { title: v.title, resourceId: { videoId: v.id } } })) }) : new Response(JSON.stringify({ error: { errors: [{ reason: 'playlistNotFound' }] } }), { status: 404 }); }
+    }
+    if (u.startsWith('https://www.youtube.com/oembed')) { const id = new URL(new URL(u).searchParams.get('url')).searchParams.get('v'); return id in h.youtube.videos && !h.youtube.noOembed ? reply({ title: h.youtube.videos[id] }) : new Response('no', { status: 404 }); }
+    if (u.startsWith('https://i.ytimg.com/vi/')) return h.ytImages[u.split('/').pop()] === false ? new Response('no', { status: 404 }) : new Response(new Uint8Array(6000), { status: 200, headers: { 'content-type': 'image/jpeg' } });
     return new Response('not found', { status: 404 });
   };
   if (seed) await t.mirror.saveLib(db, lib, { synced_at: Date.now() });
   const pending = [];
   const h = {
-    t, db, env, media, log, lib,
+    t, db, env, media, log, lib, youtube: { videos: {}, playlists: {} }, ytCalls: [], ytImages: {},
     ctx(request) { return { request, env, waitUntil: p => { pending.push(Promise.resolve(p).catch(() => {})); } }; },
     async settle() { await Promise.all(pending.splice(0)); },
     /** POST /api { fn, args } -> the parsed JSON answer */
