@@ -167,9 +167,9 @@ await step('the page reports each page view with the time on it, from a phone, w
   r = await rowsOf(dev); assert.deepEqual(r.map((x) => x.path), ['/', '/vault']); assert.equal(r[1].seconds, 20, 'time on the page is saved');
   assert.equal(new Set(r.map((x) => x.visit_id)).size, 1, 'one visit'); assert.equal(new Set(r.map((x) => x.view_id)).size, 2, 'two page views');
   assert.equal(r[1].ref, '', 'the source is only noted on the first page of a visit');
-  await fan.evaluate(() => { siteT.secs = 14; });                                                           // the page's own timer: at 15 seconds it sends the time by itself
-  for (let i = 0; i < 60 && !(await rowsOf(dev)).some((x) => x.seconds === 15); i++) await new Promise((r) => setTimeout(r, 100));
-  assert.ok((await rowsOf(dev)).some((x) => x.seconds === 15), 'the time is refreshed on its own every 15 seconds');
+  await fan.evaluate(() => { siteT.secs = 29; });                                                           // the page's own timer: at 30 seconds (a multiple of 15) it sends the time by itself
+  for (let i = 0; i < 60 && !(await rowsOf(dev)).some((x) => x.seconds === 30); i++) await new Promise((r) => setTimeout(r, 100));
+  assert.ok((await rowsOf(dev)).some((x) => x.seconds === 30), 'the time is refreshed on its own every 15 seconds');
   await fctx.close();
   const dnt = await phoneContext(undefined, {}), p2 = await dnt.newPage(); await p2.addInitScript(() => Object.defineProperty(navigator, 'doNotTrack', { value: '1' }));
   await p2.goto('https://soulnicolas.com/?s=PUB'); await p2.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); const dev2 = await p2.evaluate(() => deviceId()); await new Promise((r) => setTimeout(r, 2500));
