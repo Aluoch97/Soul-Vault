@@ -719,9 +719,10 @@ export async function onRequestPost(ctx) {
         if (r.added && ctx.waitUntil) ctx.waitUntil(proxy(env, JSON.stringify({ action: 'submit', data: args[0] }), env.SIGNUP_API || SIGNUP_API).catch(() => null));
         return json({ ok: true, result: r });
       } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
-    } else if (env.DB && fn === 'getFans') {
+    } else if (env.DB && (fn === 'getFans' || fn === 'updateFan' || fn === 'deleteFan')) {
       if (!env.OWNER_KEY || String(args[0] || '') !== env.OWNER_KEY) return json({ ok: false, error: 'Not allowed.' });
-      return json({ ok: true, result: await FN.getFans(env.DB) });
+      try { return json({ ok: true, result: fn === 'getFans' ? await FN.getFans(env.DB) : fn === 'updateFan' ? await FN.updateFan(env.DB, args[1], args[2]) : await FN.deleteFan(env.DB, args[1]) }); }
+      catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (env.DB && (OW.OWNED_FNS[fn] || Object.values(OW.BLOCKED_AFTER).some(l => l.indexOf(fn) > -1))) {
       try { const r = await ownedCall(ctx, fn, args); if (r !== undefined) return json({ ok: true, result: r }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }

@@ -437,13 +437,3 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
 ` }));
 
 
-// Settings > Your bio: the bio editor used to sit in the middle of the Lore page; fans read the bio, only you edit it.
-function openBio() {
-  const m = $('#modal'); m.className = 'modal';
-  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Your bio"><h2>Your bio</h2>
-    <p class="cs">Fans on the fan club link can read this bio and the whole Lore page.</p>
-    <textarea class="field" id="loreBio" maxlength="8000" rows="10" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
-    <div class="end"><button class="pill soft" data-lore-copy>Copy all lore as text</button><button class="pill main" data-lore-bio>Save bio</button></div>
-    <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
-  m.hidden = false; $('#loreBio').focus();
-}

@@ -150,7 +150,7 @@ function renderChrome(noUrl) {
       ${main.map(m => `<button class="nav" data-nav="${m[0]}" ${cc(m[0])}>${m[1]}${m[2]}</button>`).join('')}
       ${club ? '' : `<button class="nav" data-nav="vault" ${cc('vault')}>${I.vault}Settings</button>
       <button class="nav" data-nav="shares" ${cc('shares')}>${I.link}Share links</button>
-      <button class="nav" data-newrel>${I.plus}New release</button>`}
+`}
     </nav>
     ${cur === 'library' ? `<h3>Years</h3>
     <div class="yrs">${years.map(y => `<button data-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>` : ''}`;

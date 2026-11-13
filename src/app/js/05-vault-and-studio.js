@@ -5,7 +5,6 @@ function renderVault() {
   const tracks = S.lib.tracks.filter(t => !hidden(t) && primaryOf(t));
   const rels = S.lib.releases.filter(r => tracksOf(r.release_id).length);
   const live = (S.lib.shares || []).filter(s => s.active);
-  const recentN = ls.get(recentKey(), []).length;
   const tile = (cls, nav, icon, title, sub) => `<button class="tile ${cls}" ${nav}><span class="ic">${icon}</span><strong>${title}</strong><span>${sub}</span></button>`;
   // One row = icon, a one-line title with its note underneath, a chevron. Every row is built the same way so they all line up.
   const row = (attr, icon, title, sub, subId) => `<li><button ${attr}><span class="si">${icon}</span><span class="st"><b>${title}</b><span class="cs"${subId ? ` id="${subId}"` : ''}>${sub}</span></span><span class="sc">${I.chev}</span></button></li>`;
@@ -19,9 +18,7 @@ function renderVault() {
       ${tile('g', 'data-nav="shares"', I.link, 'Share links', live.length + ' on')}
     </div>
     ${group('Create &amp; edit', [
-      row('data-nav="studio"', I.edit, 'Studio', 'Edit titles, songs, info and links'),
-      row('data-newrel', I.plus, 'Upload a new release', 'Songs, cover and details'),
-      row('data-bio', I.text, 'Your bio', S.lib.artist_bio ? 'Edit the story fans read on Lore' : 'Write the story fans read on Lore'),
+      row('data-nav="studio"', I.edit, 'Studio', 'New releases, songs, info, links and your bio'),
       edge ? row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio') : '',
       edge ? row('data-linkonly', I.link, 'Songs on links only', linkOnlySongs().length ? linkOnlySongs().length + ' depend on a YouTube or SoundCloud link' : 'All songs have their own file') : '',
     ])}
@@ -29,8 +26,7 @@ function renderVault() {
       row('data-nav="siteinsights"', I.chart, 'Website insights', 'Visitors, pages, cities and devices'),
       row('data-nav="insights"', I.chart, 'Listening insights', 'Plays and listeners'),
       edge ? row('data-fans', I.link, 'Soul Tribe fan list', 'Sign-ups from /join, to download') : '',
-      row('data-jump="recent"', I.clock, 'Recently played', recentN ? recentN + ' songs' : 'Nothing yet'),
-      row('data-nav="lore"', I.layers, 'Lore', 'Producers, places, eras, bio'),
+      row('data-nav="lore"', I.layers, 'Lore', 'Producers, places and eras'),
     ])}
     ${group('Health checks', [
       row('data-check-yt', I.film, 'Check YouTube setup', 'Needed for playlists from YouTube'),
@@ -53,7 +49,6 @@ function renderVault() {
   if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
   if ($('[data-fans]')) $('[data-fans]').addEventListener('click', openFans);
   if ($('[data-missing]')) $('[data-missing]').addEventListener('click', openMissing);
-  if ($('[data-bio]')) $('[data-bio]').addEventListener('click', openBio);
   if ($('[data-linkonly]')) $('[data-linkonly]').addEventListener('click', openLinkOnly);
   if ($('[data-backups]')) $('[data-backups]').addEventListener('click', openBackups);
   $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });
@@ -196,35 +191,6 @@ function wireStuAdd(rid) {
     } catch (er) { say(er.message || 'Could not upload the cover.', true); }
   });
 }
-function openStudioNewRelease() {
-  const m = $('#modal'); m.className = 'modal';
-  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="New release">
-    <h2>New release</h2>
-    <label class="sf" style="display:grid;gap:5px;margin-bottom:10px">Title<input class="field" id="nrT" maxlength="120"></label>
-    <div class="sf2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <label class="sf" style="display:grid;gap:5px">Type<select class="field" id="nrType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'].map(t => `<option ${t === 'Single' ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-      <label class="sf" style="display:grid;gap:5px">Year<input class="field" id="nrY" inputmode="numeric" maxlength="4" value="${new Date().getFullYear()}"></label></div>
-    <div class="sf2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <label class="sf" style="display:grid;gap:5px">Release date<input class="field" id="nrD" type="date"></label>
-      <label class="sf" style="display:grid;gap:5px">Artist (only if not Nicólas Soul)<input class="field" id="nrA" maxlength="80"></label></div>
-    <label class="sf" style="display:grid;gap:5px">Cover picture<input class="field" id="nrC" type="file" accept="image/*"></label>
-    <p class="cs" style="margin:8px 0 0">It starts hidden from fans. Add songs, then un-hide it under Release info when it's ready.</p>
-    <p class="cs" id="nrErr" role="alert" style="color:#ff8a8a;margin:8px 0 0" hidden></p>
-    <div class="end"><button class="pill soft" data-close>Cancel</button><button class="pill main" id="nrGo">Create release</button></div></div>`;
-  m.hidden = false; $('#nrT').focus();
-  $('#nrGo').addEventListener('click', async e => {
-    const btn = e.currentTarget, err = $('#nrErr'), bad = t => { err.hidden = false; err.textContent = t; btn.disabled = false; btn.textContent = 'Create release'; };
-    const title = $('#nrT').value.trim(); if (!title) return bad('Give the release a title.');
-    btn.disabled = true; btn.textContent = 'Working…'; err.hidden = true;
-    try {
-      let coverId = ''; const f = $('#nrC').files[0];
-      if (f) { coverId = newImgId('c'); btn.textContent = 'Uploading the cover…'; await uploadPicture(f, coverId, ['t', '1200']); }
-      const r = await run('studioNewRelease', BOOT.key, { title, type: $('#nrType').value, year: $('#nrY').value, release_date: $('#nrD').value, artist_name: $('#nrA').value, coverId });
-      (S.lib.releases = S.lib.releases || []).push(r); S.stuRel = r.release_id; closeModal(); toast('Release created (hidden)'); renderStudio();
-    } catch (er) { bad(er.message || 'Could not create the release.'); }
-  });
-}
-
 const STU_SERVICES = ['Spotify', 'Apple Music', 'YouTube Music', 'YouTube', 'Bandcamp', 'SoundCloud', 'DatPiff', 'Audiomack', 'Tidal', 'Amazon Music', 'Deezer'];
 async function renderStudio() {
   clearPageBg(); S.view = 'studio'; renderChrome();
@@ -306,6 +272,9 @@ function drawStudio() {
       ${f('stFirst', 'First appeared on (DatPiff, Bandcamp…)', lk.first)}
       <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></div></section>
     ${EDGE_UPLOADS() ? `<section data-stupanel="add">${stuAddSection(rid)}</section>` : ''}
+    <details class="stu" id="stuBio"><summary>Your bio</summary><div class="stubody"><p class="cs" style="margin:0">The story fans read on the Lore page.</p>
+      <textarea class="field" id="loreBio" maxlength="8000" rows="8" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
+      <div class="save"><button class="pill soft" type="button" data-lore-copy>Copy all lore as text</button><button class="pill main" type="button" data-lore-bio>Save bio</button></div></div></details>
     <details class="stu" id="stuBulk"><summary>Edit several releases at once</summary><div class="stubody">
       <p class="cs" style="margin:0">Tick the releases, tick each field you want to change and type the new value, then Apply. Anything you leave unticked stays exactly as it is.</p>
       <div class="save"><button type="button" class="pill soft" data-bk-all>Select all</button><button type="button" class="pill soft" data-bk-none>None</button><span class="st" id="bkCount">0 selected</span></div>
@@ -332,7 +301,7 @@ function drawStudio() {
   const say = (el, t, bad) => { if (el) { el.textContent = t; el.style.color = bad ? 'var(--red, #ff6b6b)' : ''; } };
   const guard = async (btn, st, fn) => { btn.disabled = true; say(st, 'Saving…'); try { await fn(); say(st, 'Saved'); toast('Saved'); } catch (e) { say(st, e.message || 'Could not save', true); } btn.disabled = false; };
   $('#stuRel').addEventListener('change', e => { S.stuRel = e.target.value; drawStudio(); });
-  if ($('#stuNewRel')) { $('#stuNewRel').addEventListener('click', openStudioNewRelease); wireStuAdd(rid); }
+  if ($('#stuNewRel')) { $('#stuNewRel').addEventListener('click', openNewRelease); wireStuAdd(rid); }
   // Edit several releases at once: each ticked release is saved the same way as the single form, with only the ticked fields changed.
   const bkCount = () => { $('#bkCount').textContent = [...$$('[data-bk-rel]')].filter(x => x.checked).length + ' selected'; };
   $$('[data-bk-rel]').forEach(c => c.addEventListener('change', bkCount));

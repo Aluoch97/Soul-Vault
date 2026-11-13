@@ -318,39 +318,44 @@ function niceTitle(name) {
 function openNewRelease() {
   if (!OWNER) return;
   S.nr = { files: [], cover: null, busy: false, kind: 'own', main: '' };
-  const year = new Date().getFullYear();
+  const year = new Date().getFullYear(), edge = EDGE_UPLOADS();
+  const opt = (name, val, attrs, title, note) => `<label class="nropt"><input type="radio" name="${name}" ${val} ${attrs}><span><b>${title}</b><span class="cs">${note}</span></span></label>`;
   $('#modal').innerHTML = `<div class="sheet wide nr" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <h2 id="mTitle">New release</h2>
-    <button class="pill soft" type="button" data-nr-yt>${I.film}Start from a YouTube link instead</button>
-    ${EDGE_UPLOADS() ? `<button class="pill soft" type="button" data-nr-sc>${I.film}Start from a SoundCloud link instead</button>` : ''}
-    <div class="nrtop">
-      <button class="nrcover" type="button" data-nr-cover aria-label="Add cover art"><img id="nrCoverImg" alt="" hidden><span id="nrCoverTxt">${I.img}<span>Add cover</span></span></button>
-      <div class="nrfields">
-        <label>Title<input class="field" id="nrTitle" maxlength="120" placeholder="SATURN RETURN" autocomplete="off"></label>
-        <div class="nrrow">
-          <label>Type<select class="field" id="nrType">${REL_TYPES.map(t => `<option${t === 'Single' ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
-          <label>Year<input class="field" id="nrYear" type="number" inputmode="numeric" min="1990" max="2100" value="${year}"></label>
+    <p class="cs nrlead">Add the details and the songs. Everything can be changed later in Studio.</p>
+    <section class="nrbox" aria-label="Release details">
+      <div class="nrtop">
+        <button class="nrcover" type="button" data-nr-cover aria-label="Add cover art"><img id="nrCoverImg" alt="" hidden><span id="nrCoverTxt">${I.img}<span>Add cover</span></span></button>
+        <div class="nrfields">
+          <label>Title<input class="field" id="nrTitle" maxlength="120" placeholder="SATURN RETURN" autocomplete="off"></label>
+          <div class="nrrow">
+            <label>Type<select class="field" id="nrType">${REL_TYPES.map(t => `<option${t === 'Single' ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+            <label>Year<input class="field" id="nrYear" type="number" inputmode="numeric" min="1990" max="2100" value="${year}"></label>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
     <input type="file" id="nrCoverFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
     <input type="file" id="nrFiles" accept=".wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,audio/*" multiple hidden>
-    <div class="nrdrop" id="nrDrop"><button class="pill soft" type="button" data-nr-add>${I.plus}Add songs</button><span class="cs"><span class="dragonly">or drag audio files here. </span>Pick them in track order, or reorder below.</span></div>
-    <ol class="nrlist" id="nrList"></ol>
-    ${EDGE_UPLOADS() ? `<fieldset class="nrvis nrkind"><legend>Whose song is it?</legend>
-      <label class="row2"><input type="radio" name="nrKind" data-nr-kind="own" checked> My own music</label>
-      <label class="row2"><input type="radio" name="nrKind" data-nr-kind="feature"> A feature: my guest spot on someone else's song</label>
+    <section class="nrbox" aria-label="Songs"><h3>Songs</h3>
+      <div class="nrdrop" id="nrDrop"><button class="pill soft" type="button" data-nr-add>${I.plus}Add songs</button><span class="cs"><span class="dragonly">or drag audio files here. </span>${edge ? 'Optional: you can add songs later.' : 'Pick them in track order, or reorder below.'}</span></div>
+      <ol class="nrlist" id="nrList"></ol>
+    </section>
+    ${edge ? `<section class="nrbox" aria-label="Whose song is it"><h3>Whose song is it?</h3>
+      <div class="nropts two">${opt('nrKind', 'checked', 'data-nr-kind="own"', 'My own music', 'A release of your own songs.')}${opt('nrKind', '', 'data-nr-kind="feature"', 'A feature', 'My guest spot on someone else\'s song.')}</div>
       <input class="field" id="nrMain" maxlength="120" placeholder="Main artist (whose song it is)" aria-label="Main artist" autocomplete="off" hidden>
-    </fieldset>` : ''}
-    <fieldset class="nrvis"><legend>Fan club</legend>
-      <label class="row2"><input type="radio" name="nrVis" value="show" checked> Show it when the upload finishes</label>
-      <label class="row2"><input type="radio" name="nrVis" value="hide"> Keep it hidden for now</label>
-      <label class="row2 nrseal"><input type="radio" name="nrVis" value="seal"> Seal it until
-        <input type="datetime-local" id="nrSeal" class="field" aria-label="Unlock date and time"></label>
-    </fieldset>
+    </section>` : ''}
+    <section class="nrbox" aria-label="Who can see it"><h3>Who can see it?</h3>
+      <div class="nropts">${opt('nrVis', 'value="show" checked', '', 'Show it when the upload finishes', 'Fans can see it right away.')}${opt('nrVis', 'value="hide"', '', 'Keep it hidden for now', 'Only you see it until you show it in Studio.')}${opt('nrVis', 'value="seal"', '', 'Seal it until a date', 'Fans see a locked card with a countdown.')}</div>
+      <div class="nrsealrow" id="nrSealRow" hidden><label>Unlocks on<input type="datetime-local" id="nrSeal" class="field" aria-label="Unlock date and time"></label></div>
+    </section>
+    <section class="nrbox nrlinks" aria-label="Start from a link"><h3>Or start from a link</h3>
+      <p class="cs" style="margin:0">Songs that already live on YouTube or SoundCloud.</p>
+      <div class="nrlinkbtns"><button class="pill soft" type="button" data-nr-yt>${I.film}YouTube</button>${edge ? `<button class="pill soft" type="button" data-nr-sc>${I.film}SoundCloud</button>` : ''}</div>
+    </section>
     <div class="prog" id="nrProg" hidden><div class="bar"><i id="nrBar"></i></div><p class="cs" id="nrStat" role="status" aria-live="polite"></p></div>
     <p class="err" id="nrErr" hidden></p>
-    <div class="end"><button class="pill soft" data-close id="nrCancel">Cancel</button><button class="pill main" data-nr-go>Upload release</button></div>
+    <div class="end nrend"><button class="pill soft" data-close id="nrCancel">Cancel</button><button class="pill main" data-nr-go>${edge ? 'Create release' : 'Upload release'}</button></div>
   </div>`;
   $('#modal').hidden = false;
   $('#nrCoverFile').addEventListener('change', e => {
@@ -358,7 +363,7 @@ function openNewRelease() {
     S.nr.cover = f; const img = $('#nrCoverImg'); img.src = URL.createObjectURL(f); img.hidden = false; $('#nrCoverTxt').hidden = true;
   });
   $('#nrFiles').addEventListener('change', e => { nrAdd([...e.target.files]); e.target.value = ''; });
-  $('#nrSeal').addEventListener('focus', () => { $$('[name="nrVis"]').forEach(r => (r.checked = r.value === 'seal')); });
+  $$('[name="nrVis"]').forEach(r => r.addEventListener('change', () => { $('#nrSealRow').hidden = ![...$$('[name="nrVis"]')].some(x => x.checked && x.value === 'seal'); if (!$('#nrSealRow').hidden) $('#nrSeal').focus(); }));
   const drop = $('#nrDrop');
   drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
@@ -392,7 +397,7 @@ function nrRender(moved) {
       <button class="ib" data-nr-del="${i}" ${S.nr.busy ? 'disabled' : ''} aria-label="Remove ${esc(x.title)}">${I.trash}</button>
     </div></li>`).join('');
   const go = $('[data-nr-go]');
-  if (go && !S.nr.busy) go.textContent = n ? `Upload release (${n} ${n === 1 ? 'song' : 'songs'})` : 'Upload release';
+  if (go && !S.nr.busy) go.textContent = n ? `${EDGE_UPLOADS() ? 'Create' : 'Upload'} release (${n} ${n === 1 ? 'song' : 'songs'})` : (EDGE_UPLOADS() ? 'Create release' : 'Upload release');
 }
 async function doNewRelease(btn) {
   const err = $('#nrErr'), fail = m => { err.hidden = false; err.textContent = m; };
@@ -403,7 +408,7 @@ async function doNewRelease(btn) {
   const sealAt = $('#nrSeal').value ? new Date($('#nrSeal').value) : null;
   if (!title) return fail('Give the release a title.');
   if (!(year >= 1990 && year <= 2100)) return fail('Year should look like ' + new Date().getFullYear() + '.');
-  if (!S.nr.files.length) return fail('Add at least one song.');
+  if (!S.nr.files.length && !EDGE_UPLOADS()) return fail('Add at least one song.');   // (on Cloudflare a release can start with no songs and get them later)
   if (S.nr.files.some(x => !x.title.trim())) return fail('Every song needs a title.');
   const isFeature = EDGE_UPLOADS() && S.nr.kind === 'feature', mainArtist = String(S.nr.main || '').trim();
   if (isFeature && !mainArtist) return fail('For a feature, type the main artist (whose song it is).');

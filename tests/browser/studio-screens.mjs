@@ -93,7 +93,8 @@ await step('opens as the owner and shows the library', async () => { await page.
 await step('at start-up the owner app loads Studio\'s saved settings (unreleased flags, listen links)', async () => {
   await page.waitForFunction(() => S.links && S.links.flags && S.links.flags.tracks && S.links.flags.tracks.trk_a1 === true, null, { timeout: 8000 });
 });
-await step('Settings opens and lists the owner tools', async () => { await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore .avatar[data-nav="vault"]'); await page.click('.wrap.lore .avatar[data-nav="vault"]'); await seen('Check YouTube setup'); await seen('Upload a new release'); await noSideways('settings'); if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true }); });
+await step('Settings opens and lists the owner tools', async () => { await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore .avatar[data-nav="vault"]'); await page.click('.wrap.lore .avatar[data-nav="vault"]'); await seen('Check YouTube setup'); await seen('Studio');
+  assert.deepEqual(await page.evaluate(() => ['Upload a new release', 'Your bio', 'Recently played'].map((t) => document.body.innerText.includes(t))), [false, false, false], 'Settings no longer lists the upload, bio or Recently played rows (uploads and the bio are in Studio)'); await noSideways('settings'); if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true }); });
 await step('Settings rows are tidy: grouped, one-line titles, same height, same layout', async () => {
   const m = await page.evaluate(() => { const rows = [...document.querySelectorAll('.acts-list button')].map((b) => ({ h: Math.round(b.getBoundingClientRect().height), t: Math.round(b.querySelector('b').getBoundingClientRect().height), x: Math.round(b.querySelector('.si').getBoundingClientRect().left), title: b.querySelector('b').textContent }));
     return { narrow: window.innerWidth < 360, rows, groups: document.querySelectorAll('.sgroup').length, headings: [...document.querySelectorAll('.sgroup .vsub')].map((h) => h.textContent) }; });
@@ -242,8 +243,8 @@ await step('Video tab: Freestyles (originals + remixes together), Music Videos a
 await step('Lore: only the new-release, share-links and Settings buttons are at the top (no Karibu tena / Soul Vault greeting)', async () => {
   await page.evaluate(() => renderLore());
   await page.waitForSelector('.wrap.lore .home-h');
-  const t = await page.evaluate(() => { const w = document.querySelector('.wrap.lore'), h = w.querySelector('.home-h'); return { first: w.firstElementChild === h, hello: !!h.querySelector('.hello'), brand: !!h.querySelector('.brand'), btns: ['[data-newrel]', '[data-nav="shares"]', '.avatar[data-nav="vault"]'].map((q) => !!h.querySelector(q)) }; });
-  assert.ok(t.first, 'it is the very first thing on the Lore page'); assert.equal(t.hello, false, 'no greeting on Lore'); assert.equal(t.brand, false, 'no Soul Vault name on Lore'); assert.deepEqual(t.btns, [true, true, true]);
+  const t = await page.evaluate(() => { const w = document.querySelector('.wrap.lore'), h = w.querySelector('.home-h'); return { first: w.firstElementChild === h, hello: !!h.querySelector('.hello'), brand: !!h.querySelector('.brand'), btns: ['[data-nav="shares"]', '.avatar[data-nav="vault"]', '[data-newrel]'].map((q) => !!h.querySelector(q)) }; });
+  assert.ok(t.first, 'it is the very first thing on the Lore page'); assert.equal(t.hello, false, 'no greeting on Lore'); assert.equal(t.brand, false, 'no Soul Vault name on Lore'); assert.deepEqual(t.btns, [true, true, false], 'share links and Settings only: new releases are made under Studio');
   await noSideways('lore page'); await page.click('.wrap.lore .home-h .avatar');
   await seen('Check YouTube setup');                                                                         // the avatar opens Settings
   const fctx = await phoneContext(), fan = await fctx.newPage();
@@ -339,7 +340,7 @@ await step('every Settings screen that used to be a grey pop-up now opens as a f
 await step('"Check YouTube setup" says YouTube is connected', async () => { await page.evaluate(() => renderVault()); await page.click('[data-check-yt]:visible'); await seen('YouTube is connected').catch(async e => { throw new Error('modal says: ' + (await page.evaluate(() => (document.querySelector('#modal') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await noSideways('youtube check'); await page.click('#modal [data-close]'); });
 let releaseId = null;
 await step('a new release from a YouTube playlist is created, hidden, with its songs', async () => {
-  await page.click('[data-newrel]:visible'); await seen('Start from a YouTube link instead').catch(async e => { throw new Error('screen says: ' + (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await page.click('[data-nr-yt]:visible');
+  await page.evaluate(() => renderStudio()); await page.waitForSelector('#stuNewRel'); await page.click('#stuNewRel'); await page.waitForSelector('[data-nr-yt]'); /* new releases are made under Studio */ await page.evaluate(() => document.querySelector('[data-nr-yt]').click());
   await page.fill('#yrUrl', 'https://www.youtube.com/playlist?list=PLbrowsertest0123456789abcdefghij'); await noSideways('new release from YouTube'); await page.click('[data-yr-go]');
   await seen('Browser Test EP'); await seen("It's hidden from fans", 8000).catch(() => {});
   const nat = await store(); const rel = nat.releases.find(r => r.title === 'Browser Test EP');
@@ -523,7 +524,7 @@ await step('a song\'s Options (release page > Edit) has a guest-spot checkbox: i
   await page.waitForFunction(() => /Open Album/.test(document.querySelector('#features').innerText) && /Guest spot/.test(document.querySelector('#features .vtag').textContent), null, { timeout: 8000 });
   await page.evaluate((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); x.feature_role = ''; }, tid);
 });
-await step('Lore is calmer: no bio editor in the middle of the page, credits in one dropdown; the bio is edited under Settings > Your bio', async () => {
+await step('Lore is calmer: no bio editor in the middle of the page, credits in one dropdown; the bio is edited in Studio', async () => {
   await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-lcatsel]');
   assert.deepEqual(await page.evaluate(() => [document.querySelectorAll('.wrap.lore textarea').length, document.querySelectorAll('.wrap.lore [data-lore-bio], .wrap.lore [data-lore-copy]').length, document.querySelectorAll('.wrap.lore .lorecats').length]), [0, 0, 0], 'no bio editor, no pills on Lore');
   const opts = await page.evaluate(() => [...document.querySelectorAll('[data-lcatsel] option')].map((o) => o.textContent.replace(/\s*\(\d+\)$/, '')));
@@ -531,7 +532,7 @@ await step('Lore is calmer: no bio editor in the middle of the page, credits in 
   await page.selectOption('[data-lcatsel]', await page.evaluate(() => [...document.querySelectorAll('[data-lcatsel] option')].find((o) => /^Featured/.test(o.textContent)).value));
   await page.waitForFunction(() => document.querySelectorAll('#lorePeople .lchip').length > 0 && /Aziza/.test(document.querySelector('#lorePeople').innerText), null, { timeout: 5000 });
   await noSideways('lore calm');
-  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-bio]'); await page.click('[data-bio]'); await page.waitForSelector('#loreBio');
+  await page.evaluate(() => renderStudio()); await page.waitForSelector('#stuBio'); await page.evaluate(() => { document.querySelector('#stuBio').open = true; }); await page.waitForSelector('#loreBio', { state: 'visible' });
   assert.equal(await page.evaluate(() => !!document.querySelector('[data-lore-bio]') && !!document.querySelector('[data-lore-copy]')), true, 'Save bio and Copy lore are here now');
   await page.fill('#loreBio', 'A short test bio.'); await page.click('[data-lore-bio]'); await seen('Bio saved');
   await page.evaluate(() => closeModal());
@@ -648,6 +649,38 @@ await step('song downloads are for the owner link only: no song download for fan
   assert.equal(await fan.evaluate(() => [(S.now && S.now.dl) || '', document.querySelector('#npDl') ? document.querySelector('#npDl').hidden : true].join('|')), '|true', 'no download link for a fan');
   await fan.evaluate(() => { renderLore(); openLorePhoto(0); }); await fan.waitForSelector('#lbStage'); assert.equal(await fan.evaluate(() => !!document.querySelector('#lbDl')), true, 'fans can still download the Lore photos (only SONG downloads are owner-only)');
   await fctx.close();
+});
+await step('Soul Tribe fan list: every submitted detail is listed, search works, a fan can be edited and deleted', async () => {
+  await w.call('joinSubmit', [{ firstName: 'Ana', lastName: 'Lee', email: 'ana@example.com', emailConsent: true, city: 'Nashville, TN', birthYear: '1995', social: '@ana', howHeard: 'Instagram', favoriteRelease: 'soulLESS' }], { ip: '5.5.5.5' });
+  await w.call('joinSubmit', [{ firstName: 'Bo', email: 'bo@example.com', emailConsent: true }], { ip: '6.6.6.6' });
+  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-fans]'); await page.evaluate(() => document.querySelector('[data-fans]').click());
+  await page.waitForSelector('.fnrow'); await noSideways('fan list');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.fnrow').length >= 2), true);
+  await page.evaluate(() => { const r = [...document.querySelectorAll('.fnrow')].find((x) => /Ana Lee/.test(x.textContent)); r.open = true; });
+  const facts = await page.evaluate(() => [...document.querySelectorAll('.fnrow[open] .fnfacts > div')].map((d) => d.innerText.replace(/\s+/g, ' ').trim()));
+  for (const want of ['Email ana@example.com', 'Location Nashville, TN', 'Birth year 1995', 'Social @ana', 'Heard about you from Instagram', 'Favorite release soulLESS', 'Agreed to e-mails Yes', 'Newsletter On']) assert.ok(facts.includes(want), 'the fan card shows "' + want + '": ' + facts.join(' | '));
+  await page.fill('#fnQ', 'nashville'); await page.waitForFunction(() => document.querySelectorAll('.fnrow').length === 1, null, { timeout: 5000 }); await page.fill('#fnQ', '');
+  await page.waitForFunction(() => document.querySelectorAll('.fnrow').length >= 2, null, { timeout: 5000 });
+  await page.evaluate(() => { const r = [...document.querySelectorAll('.fnrow')].find((x) => /Ana Lee/.test(x.textContent)); r.open = true; r.querySelector('[data-fn-edit]').click(); });
+  await page.waitForSelector('[data-fn-form]'); await page.fill('[data-fn-k="city"]', 'Memphis, TN'); await page.fill('[data-fn-k="email"]', 'nope'); await page.click('[data-fn-form] [type="submit"]'); await seen("That email doesn't look right");
+  await page.fill('[data-fn-k="email"]', 'ana@example.com'); await page.fill('[data-fn-k="first_name"]', 'Anna'); await page.uncheck('[data-fn-news]'); await page.click('[data-fn-form] [type="submit"]');
+  await page.waitForFunction(() => /Anna Lee/.test(document.querySelector('#fnList').innerText) && /Memphis, TN/.test(document.querySelector('#fnList').innerText) && /No newsletter/.test(document.querySelector('#fnList').innerText), null, { timeout: 8000 });
+  assert.deepEqual((await w.call('getFans', [KEY])).result.filter((f) => f.email === 'ana@example.com').map((f) => [f.first_name, f.city, f.news]), [['Anna', 'Memphis, TN', 0]], 'saved on the server');
+  await page.evaluate(() => { const r = [...document.querySelectorAll('.fnrow')].find((x) => /Bo/.test(x.querySelector('b').textContent)); r.open = true; r.querySelector('[data-fn-edit]').click(); });
+  await page.waitForSelector('[data-fn-del]'); await page.click('[data-fn-del]'); assert.match(await page.textContent('[data-fn-del]'), /Tap again/); await page.click('[data-fn-del]');
+  await page.waitForFunction(() => !/bo@example\.com/.test(document.querySelector('#fnList').innerText), null, { timeout: 8000 });
+  assert.deepEqual((await w.call('getFans', [KEY])).result.map((f) => f.email), ['ana@example.com'], 'deleted on the server (it asks twice first)');
+  await page.evaluate(() => closeModal());
+});
+await step('New release form: clear boxes with option cards, the seal date only when sealing, and a release can start with no songs (Studio > New)', async () => {
+  await page.evaluate(() => renderStudio()); await page.waitForSelector('#stuNewRel'); await page.click('#stuNewRel'); await page.waitForSelector('.nrbox');
+  const m = await page.evaluate(() => ({ boxes: [...document.querySelectorAll('.nrbox > h3')].map((h) => h.textContent.trim()), opts: document.querySelectorAll('.nropt').length, seal: document.querySelector('#nrSealRow').hidden, btn: document.querySelector('[data-nr-go]').textContent, lead: !!document.querySelector('.nrlead'), links: [...document.querySelectorAll('.nrlinks [data-nr-yt], .nrlinks [data-nr-sc]')].length }));
+  assert.deepEqual(m.boxes, ['Songs', 'Whose song is it?', 'Who can see it?', 'Or start from a link'], 'sections: ' + JSON.stringify(m)); assert.equal(m.opts, 5, 'option cards for whose song and who can see it'); assert.equal(m.seal, true, 'no date box until you choose to seal'); assert.equal(m.btn, 'Create release'); assert.equal(m.links, 2);
+  await noSideways('new release form (clean)');
+  await page.check('[name="nrVis"][value="seal"]'); await page.waitForFunction(() => !document.querySelector('#nrSealRow').hidden, null, { timeout: 3000 }); await page.check('[name="nrVis"][value="hide"]'); await page.waitForFunction(() => document.querySelector('#nrSealRow').hidden, null, { timeout: 3000 });
+  await page.fill('#nrTitle', 'No Songs Yet'); await page.click('[data-nr-go]');
+  await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 20000 });
+  const nat = await store(); const rel = nat.releases.find((r) => r.title === 'No Songs Yet'); assert.ok(rel && rel.hidden === true, 'a hidden release with no songs yet was made');
 });
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;

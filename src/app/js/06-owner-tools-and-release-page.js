@@ -186,20 +186,60 @@ async function openBackups() {
 async function openFans() {
   const m = $('#modal'); m.className = 'modal';
   m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Soul Tribe fan list"><h2>Soul Tribe fan list</h2><p class="cs" id="fnSt">Loading…</p>
-    <div id="fnList" style="display:grid;gap:6px;max-height:50vh;overflow:auto"></div>
-    <div class="end"><button class="pill soft" data-close>Close</button><button class="pill main" id="fnCsv" disabled>Download CSV</button></div></div>`;
+    <div class="fnbar"><input class="field" id="fnQ" type="search" placeholder="Search fans" aria-label="Search the fan list by name, email or location" disabled><button class="pill soft" id="fnCsv" disabled>Download CSV</button></div>
+    <div id="fnList" class="fnlist"></div>
+    <div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
   m.hidden = false;
-  try {
-    const rows = await run('getFans', BOOT.key); $('#fnSt').textContent = rows.length + ' fans. New sign-ups are saved here (and still copied to the old Google list so the newsletter keeps working).';
-    $('#fnList').innerHTML = rows.slice(0, 200).map(r => `<div class="cs"><b>${esc(r.first_name + ' ' + r.last_name)}</b> · ${esc(r.email)} · ${esc(new Date(r.at).toLocaleDateString())}</div>`).join('');
-    const cols = ['at', 'first_name', 'last_name', 'email', 'consent', 'city', 'birth_year', 'social', 'how_heard', 'favorite', 'source'];
-    const cell = v => { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
-    $('#fnCsv').disabled = false;
-    $('#fnCsv').addEventListener('click', () => {
-      const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => cell(c === 'at' ? new Date(r.at).toISOString() : r[c])).join(','))).join('\n');
-      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'soul-tribe-fans.csv'; a.click();
-    });
-  } catch (e) { $('#fnSt').textContent = (e && e.message) || 'Could not load the list.'; }
+  let rows = [], shown = 60, q = '';
+  const FIELDS = [['first_name', 'First name'], ['last_name', 'Last name'], ['email', 'Email'], ['city', 'Location'], ['birth_year', 'Birth year'], ['social', 'Social'], ['how_heard', 'How they heard about you'], ['favorite', 'Favorite release']];
+  const when = r => new Date(r.at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const nameOf = r => [r.first_name, r.last_name].filter(Boolean).join(' ');
+  const facts = r => [['Email', r.email], ['Location', r.city], ['Birth year', r.birth_year], ['Social', r.social], ['Heard about you from', r.how_heard], ['Favorite release', r.favorite], ['Signed up', when(r) + (r.source ? ' · ' + r.source : '')], ['Agreed to e-mails', r.consent ? 'Yes' : 'No'], ['Newsletter', r.news ? 'On' : 'Off']].filter(x => x[1]);
+  const rowHtml = r => `<details class="fnrow" data-fan="${r.id}"><summary><span class="fnname"><b>${esc(nameOf(r))}</b><span class="cs">${esc(r.email)}</span></span><span class="fntags">${r.city ? `<span class="tag">${esc(r.city)}</span>` : ''}${r.news ? '' : '<span class="tag warn">No newsletter</span>'}</span></summary>
+    <div class="fnbody"><dl class="fnfacts">${facts(r).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><div class="end"><button class="pill soft" type="button" data-fn-edit="${r.id}">${I.edit}Edit</button></div></div></details>`;
+  const editHtml = r => `<form class="fnedit" data-fn-form="${r.id}" novalidate>
+    ${FIELDS.map(([k, l]) => `<label class="sf">${esc(l)}<input class="field" data-fn-k="${k}" value="${esc(r[k] || '')}" ${k === 'email' ? 'type="email" inputmode="email"' : k === 'birth_year' ? 'inputmode="numeric" maxlength="4"' : ''}></label>`).join('')}
+    <label class="chk"><input type="checkbox" data-fn-news ${r.news ? 'checked' : ''} ${r.consent ? '' : 'disabled'}> <span><b>Gets the newsletter</b><span class="cs">${r.consent ? 'Untick to stop e-mails to this person.' : 'They never agreed to e-mails, so this stays off.'}</span></span></label>
+    <p class="err" data-fn-err hidden></p>
+    <div class="end"><button class="pill soft danger" type="button" data-fn-del="${r.id}">${I.trash}Delete</button><button class="pill soft" type="button" data-fn-cancel="${r.id}">Cancel</button><button class="pill main" type="submit">Save</button></div></form>`;
+  const draw = () => {
+    const needle = q.trim().toLowerCase(), list = needle ? rows.filter(r => [nameOf(r), r.email, r.city, r.social].join(' ').toLowerCase().includes(needle)) : rows;
+    $('#fnSt').textContent = `${rows.length} ${rows.length === 1 ? 'fan' : 'fans'}${needle ? ', ' + list.length + ' match' : ''}. Tap a name to see everything they submitted. New sign-ups are saved here (and still copied to the old Google list so the newsletter keeps working).`;
+    $('#fnList').innerHTML = (list.slice(0, needle ? 500 : shown).map(rowHtml).join('') || '<p class="cs">No one matches.</p>') + (!needle && list.length > shown ? `<button class="pill soft" type="button" data-fn-more>Show more (${list.length - shown} left)</button>` : '');
+  };
+  try { rows = await run('getFans', BOOT.key); } catch (e) { $('#fnSt').textContent = (e && e.message) || 'Could not load the list.'; return; }
+  draw(); $('#fnQ').disabled = false; $('#fnCsv').disabled = false;
+  $('#fnQ').addEventListener('input', e => { q = e.target.value; draw(); });
+  const cols = ['at', 'first_name', 'last_name', 'email', 'consent', 'city', 'birth_year', 'social', 'how_heard', 'favorite', 'source', 'news'];
+  const cell = v => { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
+  $('#fnCsv').addEventListener('click', () => {
+    const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => cell(c === 'at' ? new Date(r.at).toISOString() : r[c])).join(','))).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'soul-tribe-fans.csv'; a.click();
+  });
+  const byId = id => rows.find(r => String(r.id) === String(id));
+  $('#fnList').addEventListener('click', async e => {
+    const more = e.target.closest('[data-fn-more]'); if (more) { shown += 60; draw(); return; }
+    const ed = e.target.closest('[data-fn-edit]');
+    if (ed) { const r = byId(ed.dataset.fnEdit), body = ed.closest('.fnbody'); if (r && body) body.innerHTML = editHtml(r); return; }
+    const cx = e.target.closest('[data-fn-cancel]');
+    if (cx) { const r = byId(cx.dataset.fnCancel), d = cx.closest('details'); if (r && d) { d.outerHTML = rowHtml(r); const n = [...document.querySelectorAll('.fnrow')].find(x => x.dataset.fan === String(r.id)); if (n) n.open = true; } return; }
+    const del = e.target.closest('[data-fn-del]');
+    if (del) {
+      if (!del.dataset.sure) { del.dataset.sure = '1'; del.textContent = 'Tap again to delete'; setTimeout(() => { if (del.isConnected) { delete del.dataset.sure; del.innerHTML = I.trash + 'Delete'; } }, 4000); return; }
+      del.disabled = true;
+      try { await run('deleteFan', BOOT.key, +del.dataset.fnDel); rows = rows.filter(r => String(r.id) !== del.dataset.fnDel); draw(); toast('Fan deleted'); }
+      catch (er) { del.disabled = false; const p = del.closest('form').querySelector('[data-fn-err]'); p.hidden = false; p.textContent = (er && er.message) || 'Could not delete.'; }
+    }
+  });
+  $('#fnList').addEventListener('submit', async e => {
+    const f = e.target.closest('[data-fn-form]'); if (!f) return; e.preventDefault();
+    const id = +f.dataset.fnForm, p = {}; f.querySelectorAll('[data-fn-k]').forEach(i => { p[i.dataset.fnK] = i.value; }); p.news = f.querySelector('[data-fn-news]').checked;
+    const err = f.querySelector('[data-fn-err]'), btn = f.querySelector('[type="submit"]'); btn.disabled = true; err.hidden = true;
+    try {
+      const out = await run('updateFan', BOOT.key, id, p); const i = rows.findIndex(r => r.id === id); if (i > -1) rows[i] = out;
+      const d = f.closest('details'); d.outerHTML = rowHtml(out); const n = [...document.querySelectorAll('.fnrow')].find(x => x.dataset.fan === String(id)); if (n) n.open = true; toast('Saved');
+    } catch (er) { btn.disabled = false; err.hidden = false; err.textContent = (er && er.message) || 'Could not save.'; }
+  });
 }
 function openOwnerPw() {
   const m = $('#modal'); m.className = 'modal';

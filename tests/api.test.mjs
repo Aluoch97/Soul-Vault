@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpers.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
-const OWNER_ONLY = ['addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
+const OWNER_ONLY = ['updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
@@ -969,4 +969,22 @@ test('downloads are for the owner link only: a share link can never be made with
   assert.equal(row.allow_download, false, 'asking for downloads is ignored');
   assert.equal((await w.call('getShare', [made.token])).result.share.allow_download, false, 'the link tells the app downloads are off');
   assert.equal((await w.call('getShare', ['FAN'])).result.share.allow_download, false, 'an older link saved with downloads on is shown as off');
+}));
+
+test('fan list: the owner sees everything a fan submitted, can edit it (with checks) and delete a fan; nobody else can', () => withWorld(async (w) => {
+  await w.call('joinSubmit', [{ firstName: 'Ana', lastName: 'Lee', email: 'ana@example.com', emailConsent: true, city: 'Nashville, TN', birthYear: '1995', social: '@ana', howHeard: 'Instagram', favoriteRelease: 'soulLESS' }], { ip: '5.5.5.5' });
+  await w.call('joinSubmit', [{ firstName: 'Bo', email: 'bo@example.com', emailConsent: true }], { ip: '6.6.6.6' });
+  assert.equal((await w.call('updateFan', ['wrong', 1, { first_name: 'X', email: 'x@y.co' }])).ok, false); assert.equal((await w.call('deleteFan', ['wrong', 1])).ok, false);
+  const fans = (await w.owner('getFans')).result, ana = fans.find((f) => f.email === 'ana@example.com');
+  assert.deepEqual([ana.first_name, ana.last_name, ana.city, ana.birth_year, ana.social, ana.how_heard, ana.favorite, ana.consent, ana.news, typeof ana.id], ['Ana', 'Lee', 'Nashville, TN', '1995', '@ana', 'Instagram', 'soulLESS', 1, 1, 'number'], 'every field they submitted comes back');
+  const bo = fans.find((f) => f.email === 'bo@example.com');
+  const ok = await w.owner('updateFan', ana.id, { first_name: 'Anna', last_name: 'Lee', email: 'ANNA@example.com ', city: 'Memphis, TN', birth_year: '1994', social: '@anna', how_heard: 'A friend', favorite: 'Trouble in Paradise', news: false });
+  assert.equal(ok.ok, true); assert.deepEqual([ok.result.first_name, ok.result.email, ok.result.city, ok.result.news, ok.result.consent, ok.result.source], ['Anna', 'anna@example.com', 'Memphis, TN', 0, 1, ana.source], 'edited, e-mail lower-cased, newsletter off, consent and source untouched');
+  assert.match((await w.owner('updateFan', ana.id, { first_name: '', email: 'a@b.co' })).error, /first name/);
+  assert.match((await w.owner('updateFan', ana.id, { first_name: 'A', email: 'nope' })).error, /email/);
+  assert.match((await w.owner('updateFan', ana.id, { first_name: 'A', email: 'bo@example.com' })).error, /already has that email/);
+  assert.match((await w.owner('updateFan', ana.id, { first_name: 'A', email: 'a@b.co', birth_year: '12' })).error, /Birth year/);
+  assert.match((await w.owner('updateFan', 99999, { first_name: 'A', email: 'a@b.co' })).error, /not found/);
+  assert.equal((await w.owner('deleteFan', bo.id)).ok, true); assert.deepEqual((await w.owner('getFans')).result.map((f) => f.email), ['anna@example.com']);
+  assert.match((await w.owner('deleteFan', bo.id)).error, /not found/);
 }));

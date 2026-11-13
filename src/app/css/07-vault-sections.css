@@ -101,3 +101,32 @@
   .studio .tag { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.5; background: rgba(255,255,255,.1); color: var(--text); } .studio .tag.warn { background: rgba(224,184,74,.2); color: #e0b84a; }
   .studio .stubox { border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.03); padding: 16px 0 0; margin: 0 0 12px; }
   .studio .stusticky { position: sticky; bottom: 78px; z-index: 5; margin: 8px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(12,12,13,.94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
+  /* Fan list */
+  .fnbar { display: flex; gap: 8px; align-items: center; margin: 4px 0 12px; } .fnbar .field { flex: 1; min-width: 0; font-size: 16px; } .fnbar .pill { flex: none; }
+  .fnlist { display: grid; gap: 8px; margin: 0 0 14px; }
+  .fnrow { border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.03); }
+  .fnrow > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 44px; } .fnrow > summary::-webkit-details-marker { display: none; }
+  .fnrow > summary::after { content: '▾'; color: var(--dim); flex: none; } .fnrow[open] > summary::after { content: '▴'; }
+  .fnname { display: grid; gap: 2px; min-width: 0; flex: 1; } .fnname b { overflow-wrap: anywhere; } .fnname .cs { margin: 0; overflow-wrap: anywhere; }
+  .fntags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 45%; }
+  .fnrow .tag { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,.1); } .fnrow .tag.warn { background: rgba(224,184,74,.2); color: #e0b84a; }
+  .fnbody { padding: 0 14px 14px; display: grid; gap: 10px; }
+  .fnfacts { margin: 0; display: grid; gap: 8px; } .fnfacts > div { display: grid; grid-template-columns: minmax(0, 120px) minmax(0, 1fr); gap: 10px; font-size: 14px; } .fnfacts dt { color: var(--dim); } .fnfacts dd { margin: 0; overflow-wrap: anywhere; }
+  .fnedit { display: grid; gap: 10px; } .fnedit label.sf { display: grid; gap: 5px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); } .fnedit .field { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 16px; color: var(--text); }
+  .fnedit .chk { display: flex; align-items: flex-start; gap: 10px; } .fnedit .chk span { display: grid; gap: 2px; } .fnedit .chk .cs { margin: 0; font-size: 13px; }
+
+  /* New release form: a few clear boxes, option cards instead of loose radio buttons */
+  .nr .nrlead { margin: -4px 0 4px; }
+  .nrbox { border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; background: rgba(255,255,255,.03); margin: 0; }
+  .nrbox > h3 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+  .nropts { display: grid; gap: 8px; } .nropts.two { grid-template-columns: 1fr 1fr; } @media (max-width: 480px) { .nropts.two { grid-template-columns: 1fr; } }
+  .nropt { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.02); cursor: pointer; }
+  .nropt:has(input:checked) { border-color: var(--green-hi, #3cc86e); background: rgba(8,122,59,.16); }
+  .nropt input[type=radio] { accent-color: var(--green); width: 20px; height: 20px; margin: 2px 0 0; flex: none; }
+  .nropt > span { display: grid; gap: 2px; min-width: 0; } .nropt b { font-size: 15px; } .nropt .cs { margin: 0; font-size: 13px; }
+  .nrsealrow label { display: grid; gap: 5px; font-size: 13px; font-weight: 700; color: var(--dim); } .nrsealrow .field { color-scheme: dark; font-size: 16px; color: var(--text); }
+  .nrlinks .nrlinkbtns { display: flex; gap: 8px; flex-wrap: wrap; } .nrlinks .nrlinkbtns .pill { flex: 1; min-width: 120px; justify-content: center; }
+  .nr #nrMain { font-size: 16px; width: 100%; }
+  .nr .nrdrop { padding: 12px; }
+  .nrend { position: sticky; bottom: 0; padding: 12px 0 4px; background: linear-gradient(180deg, rgba(10,10,11,0), rgba(10,10,11,.96) 40%); }

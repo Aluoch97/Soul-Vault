@@ -3,15 +3,13 @@
 function homeHeader(withButtons) {
   if (withButtons) {   // the Lore page: no greeting or name, only the owner's buttons (nothing at all for fans)
     return OWNER ? `<header class="home-h home-h-bar"><div class="hbtns">
-          <button class="round" data-newrel aria-label="New release">${I.plus}</button>
           <button class="round" data-nav="shares" aria-label="Share links">${I.link}</button>
           <button class="avatar" data-nav="vault" aria-label="Settings">NS</button></div></header>` : '';
   }
   return `<header class="home-h">
         <div><div class="hello">${OWNER ? 'Karibu tena' : 'Karibu, ' + esc((S.share && S.share.fan_name) || 'family')}</div><div class="brand">Soul <span>Vault</span></div></div>
         <div class="hbtns">
-          ${OWNER && withButtons ? `<button class="round" data-newrel aria-label="New release">${I.plus}</button>
-                     <button class="round" data-nav="shares" aria-label="Share links">${I.link}</button>
+          ${OWNER && withButtons ? `           <button class="round" data-nav="shares" aria-label="Share links">${I.link}</button>
                      <button class="avatar" data-nav="vault" aria-label="Settings">NS</button>`
                   : ''}
         </div>
