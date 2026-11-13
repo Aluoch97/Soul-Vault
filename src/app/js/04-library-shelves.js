@@ -284,7 +284,7 @@ function relDetailsForm(r) {
     ${panel('playlists', 'Playlists on this page', (n => n ? n + ' shown, kept in sync' : 'None yet')(plIdsOf(r).filter(id => plOf(id)).length), plAttachEditor(r))}
     ${panel('chapters', 'Chapters', nCh ? nCh + (nCh === 1 ? ' chapter' : ' chapters') : 'No chapters yet', chapHtml)}
     ${panel('settings', 'Release settings', setting, `
-    <label class="typesel">Release type <select class="field" id="relType">${EDIT_TYPES
+    <label class="typesel">Release type <select class="field" id="relType">${relTypeOptions(r.type)
       .map(x => `<option${x === typeOf(r) ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>
       <span class="cs">Album, Mixtape, EP and Single are the Home filters. For extras (drafts, audio notes, remixes, covers, b-sides), keep the type and set those songs to Extra in Edit.</span></label>
     <label class="row2 relhide"><input type="checkbox" id="relHidden" ${hidden(r) ? 'checked' : ''}> Hide this whole release from the fan club</label>

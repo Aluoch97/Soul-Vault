@@ -200,7 +200,7 @@ function openStudioNewRelease() {
     <h2>New release</h2>
     <label class="sf" style="display:grid;gap:5px;margin-bottom:10px">Title<input class="field" id="nrT" maxlength="120"></label>
     <div class="sf2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <label class="sf" style="display:grid;gap:5px">Type<select class="field" id="nrType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'].map(t => `<option ${t === 'Single' ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label class="sf" style="display:grid;gap:5px">Type<select class="field" id="nrType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'].map(t => `<option ${t === 'Single' ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
       <label class="sf" style="display:grid;gap:5px">Year<input class="field" id="nrY" inputmode="numeric" maxlength="4" value="${new Date().getFullYear()}"></label></div>
     <div class="sf2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <label class="sf" style="display:grid;gap:5px">Release date<input class="field" id="nrD" type="date"></label>
@@ -269,7 +269,7 @@ function drawStudio() {
       <datalist id="bkGenres">${knownGenres().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
       <div class="bkfields">
         <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="genre"> Genre</label><input class="field" data-bk-val="genre" list="bkGenres" placeholder="Hip Hop, R&B"></div>
-        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="type"> Type</label><select class="field" data-bk-val="type">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'].map(t => `<option>${t}</option>`).join('')}</select></div>
+        <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="type"> Type</label><select class="field" data-bk-val="type">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'].map(t => `<option>${t}</option>`).join('')}</select></div>
         <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="artist_name"> Artist name</label><input class="field" data-bk-val="artist_name" maxlength="80" placeholder="(blank = Nicólas Soul)"></div>
         <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="recorded_at"> Recorded at</label><input class="field" data-bk-val="recorded_at" maxlength="140" placeholder="Nashville, TN"></div>
         <div class="bkf"><label class="chk"><input type="checkbox" data-bk-on="series_name"> Series name</label><input class="field" data-bk-val="series_name" maxlength="80"></div>
@@ -280,7 +280,7 @@ function drawStudio() {
       </div>
       <div class="save"><button type="button" class="pill main" id="bkApply">Apply to the ticked releases</button><span class="st" id="bkSt" role="status"></span></div></div></details>
     <details class="stu" open><summary>Release info</summary><div class="stubody" id="stuInfo">
-      <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'].map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
+      <div class="sf2">${f('stTitle', 'Title', r.title)}<label class="sf">Type<select class="field" id="stType">${relTypeOptions(r.type).map(t => `<option ${t === r.type ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
       <div class="sf2">${f('stArtist', 'Artist name (if not Nicólas Soul)', r.artist_name)}${f('stRec', 'Recorded at', r.recorded_at)}</div>
       ${f('stGenre', 'Genre (comma separated, up to 6)', r.genre, 'list="stuGenres"')}<datalist id="stuGenres">${knownGenres().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
       ${f('stTag', 'Tagline', r.world_tagline, 'maxlength="140"')}

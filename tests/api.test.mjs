@@ -943,3 +943,10 @@ test('SoundCloud: a release from one song link (hidden, cover from SoundCloud\'s
   assert.deepEqual([release.title, release.type, !!release.hidden, tracks.length, tracks[0].sc_url, versions[0].format, versions[0].audio], ['New Single', 'Single', true, 1, 'https://soundcloud.com/nicolas-soul/new-single', 'SOUNDCLOUD', ''], JSON.stringify(r.result));
   assert.ok(release.cover_file_id, 'the cover came from SoundCloud\'s picture');
 }));
+
+test('release types: Unreleased is no longer a type you can pick (new releases refuse it); an older release that has it keeps it', () => withWorld(async (w) => {
+  assert.match((await w.owner('studioNewRelease', { title: 'Nope', type: 'Unreleased', year: '2026' })).error, /Pick a release type/);
+  const ok = await w.owner('studioNewRelease', { title: 'Fine', type: 'EP', year: '2026' }); assert.equal(ok.ok, true);
+  const old = await w.owner('studioSaveRelease', 'rel_pub', { basics: { type: 'Unreleased' } });   // an older release that already has this type can still be saved
+  assert.equal(old.ok, true);
+}));

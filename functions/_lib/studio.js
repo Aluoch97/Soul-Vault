@@ -1,13 +1,14 @@
 // Studio: what the owner may change, checked and cleaned on the server (the same limits Vault.gs uses), and applied to the copy in D1.
 const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
-export const RELEASE_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
+export const RELEASE_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'];   // what you can pick for a new release
+const LEGACY_TYPES = ['Unreleased'];   // older releases saved with this type keep it (it still counts as unreleased); it is not offered any more
 const ytOk = u => /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/))[A-Za-z0-9_-]{11}|^[A-Za-z0-9_-]{11}$/.test(String(u || '').trim());
 const httpUrl = u => /^https?:\/\/[^\s]+$/i.test(String(u || '').trim());
 
 export function cleanBasics(b) {
   const out = {};
   if (b.title != null) { out.title = cut(b.title, 120); if (!out.title) throw new Error('A release needs a title.'); }
-  if (b.type != null) { if (RELEASE_TYPES.indexOf(b.type) < 0) throw new Error('Pick a release type from the list.'); out.type = b.type; }
+  if (b.type != null) { if (RELEASE_TYPES.indexOf(b.type) < 0 && LEGACY_TYPES.indexOf(b.type) < 0) throw new Error('Pick a release type from the list.'); out.type = b.type; }
   if (b.hidden != null) out.hidden = !!b.hidden;
   return out;
 }
