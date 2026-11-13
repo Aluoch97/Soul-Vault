@@ -32,7 +32,7 @@ let failures = 0; const problems = [];
 const step = async (name, fn) => { try { await fn(); console.log('  ok   ' + name); } catch (e) { failures++; console.log('  FAIL ' + name + '\n       ' + String(e.message || e).split('\n')[0]); } };
 
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined, args: ['--no-sandbox'] });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+const ctx = await browser.newContext({ viewport: { width: Number(process.env.PHONE_W || 390), height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
 await ctx.route('**/*', r => r.abort());                                                     // nothing leaves the machine unless allowed below
 await ctx.route('https://media.soulnicolas.com/**', r => r.fulfill({ status: 404, body: '' }));
 await ctx.route('https://soulnicolas.com/**', async (route) => {
@@ -62,7 +62,16 @@ const seen = (text, ms = 8000) => page.waitForFunction(t => document.body.innerT
 
 console.log('Soul Vault owner screens, 390px wide, real backend code:');
 await step('opens as the owner and shows the library', async () => { await page.goto('https://soulnicolas.com/?k=' + KEY); await page.waitForSelector('.avatar[data-nav="vault"]', { timeout: 15000 }).catch(async e => { if (process.env.DEBUG) console.log('   [body]', (await page.evaluate(() => document.body.innerText)).slice(0, 400)); throw e; }); await noSideways('library'); });
-await step('Settings opens and lists the owner tools', async () => { await page.click('.avatar[data-nav="vault"]'); await seen('Check YouTube setup'); await seen('Upload a new release'); await noSideways('settings'); });
+await step('Settings opens and lists the owner tools', async () => { await page.click('.avatar[data-nav="vault"]'); await seen('Check YouTube setup'); await seen('Upload a new release'); await noSideways('settings'); if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true }); });
+await step('Settings rows are tidy: grouped, one-line titles, same height, same layout', async () => {
+  const m = await page.evaluate(() => { const rows = [...document.querySelectorAll('.acts-list button')].map((b) => ({ h: Math.round(b.getBoundingClientRect().height), t: Math.round(b.querySelector('b').getBoundingClientRect().height), x: Math.round(b.querySelector('.si').getBoundingClientRect().left), title: b.querySelector('b').textContent }));
+    return { narrow: window.innerWidth < 360, rows, groups: document.querySelectorAll('.sgroup').length, headings: [...document.querySelectorAll('.sgroup .vsub')].map((h) => h.textContent) }; });
+  assert.ok(m.groups >= 5 && new Set(m.headings).size === m.groups, 'five groups with their own headings: ' + m.headings.join(', '));
+  assert.ok(m.rows.length >= 10, 'rows: ' + m.rows.length);
+  for (const r of m.rows) { assert.ok(r.t <= (m.narrow ? 48 : 24), `"${r.title}" wraps onto several lines (${r.t}px tall)`); assert.ok(r.h >= 60 && r.h <= 110, `"${r.title}" row height ${r.h}px`); }
+  assert.equal(new Set(m.rows.map((r) => r.x)).size, 1, 'icons line up in one column');
+  assert.ok(new Set(m.rows.map((r) => r.h)).size <= (m.narrow ? 4 : 2), 'rows are all the same height (within one note line): ' + [...new Set(m.rows.map((r) => r.h))].join(', '));
+});
 await step('"Check YouTube setup" says YouTube is connected', async () => { await page.click('[data-check-yt]:visible'); await seen('YouTube is connected').catch(async e => { throw new Error('modal says: ' + (await page.evaluate(() => (document.querySelector('#modal') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await noSideways('youtube check'); await page.click('#modal [data-close]'); });
 let releaseId = null;
 await step('a new release from a YouTube playlist is created, hidden, with its songs', async () => {

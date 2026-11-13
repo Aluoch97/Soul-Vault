@@ -7,36 +7,44 @@ function renderVault() {
   const live = (S.lib.shares || []).filter(s => s.active);
   const recentN = ls.get(recentKey(), []).length;
   const tile = (cls, nav, icon, title, sub) => `<button class="tile ${cls}" ${nav}><span class="ic">${icon}</span><strong>${title}</strong><span>${sub}</span></button>`;
+  // One row = icon, a one-line title with its note underneath, a chevron. Every row is built the same way so they all line up.
+  const row = (attr, icon, title, sub, subId) => `<li><button ${attr}><span class="si">${icon}</span><span class="st"><b>${title}</b><span class="cs"${subId ? ` id="${subId}"` : ''}>${sub}</span></span><span class="sc">${I.chev}</span></button></li>`;
+  const group = (title, rows, cls) => `<section class="sgroup ${cls || ''}"><h2 class="vsub">${title}</h2><ul class="acts-list">${rows.filter(Boolean).join('')}</ul></section>`;
+  const edge = EDGE_UPLOADS();
   $('#main').innerHTML = `<div class="wrap">
     <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Settings</b></h1><button class="avatar" data-nav="library" aria-label="Home">NS</button></header>
-    <p class="vsub">Your catalog</p>
-    <div class="tiles">
+    <div class="tiles three">
       ${tile('r', 'data-nav="search"', I.note, 'Songs', tracks.length + ' songs')}
       ${tile('g', 'data-jump="all"', I.disc, 'Releases', rels.length + ' releases')}
       ${tile('g', 'data-nav="shares"', I.link, 'Share links', live.length + ' on')}
     </div>
-    <p class="vsub" style="margin-top:28px">Your activity</p>
-    <ul class="acts-list">
-      <li><button data-nav="lore">${I.layers}<span>Lore</span><span class="cs">producers, places, eras, bio</span></button></li>
-      <li><button data-check-yt>${I.film}<span>Check YouTube setup</span><span class="cs">needed to add a whole playlist or start a release from YouTube</span></button></li>
-      <li><button data-yt-titles>${I.up2}<span>YouTube titles</span><span class="cs" id="ytTitlesCount">checking…</span></button></li>
-      <li><button data-problems>${I.layers}<span>Problems reported</span><span class="cs" id="probCount">checking…</span></button></li>
-      <li><button data-nav="insights">${I.chart}<span>Listening insights</span><span class="cs">${I.chev}</span></button></li>
-      <li><button data-newrel>${I.plus}<span>Upload a new release</span><span class="cs">${I.chev}</span></button></li>
-      <li><button data-jump="recent">${I.clock}<span>Recently played</span><span class="cs">${recentN ? recentN + ' songs' : 'nothing yet'}</span></button></li>
-      <li><button data-nav="shares">${I.link}<span>Share links</span><span class="cs">${I.chev}</span></button></li>
-      <li><button data-jump="all">${I.disc}<span>Browse by year</span><span class="cs">${I.chev}</span></button></li>
-      <li><button data-check-playback>${I.play}<span>Check playback setup</span><span class="cs">tests your API key</span></button></li>
-      <li><button data-backup>${I.up2}<span>Back up my Sheet now</span><span class="cs">${esc(backupLine())}</span></button></li>
-      ${EDGE_UPLOADS() ? `<li><button data-areas>${I.layers}<span>Move off the Sheet</span><span class="cs">playlists, extras, letter and bio: switch to Cloudflare</span></button></li>` : ''}
-      <li><button data-nav="studio">${I.edit}<span>Studio</span><span class="cs">edit titles, songs, info, links</span></button></li>
-      ${EDGE_UPLOADS() ? `<li><button data-fans>${I.link}<span>Soul Tribe fan list</span><span class="cs">sign-ups from /join, download as a spreadsheet</span></button></li>` : ''}
-      ${EDGE_UPLOADS() ? `<li><button data-missing>${I.up2}<span>Missing files</span><span class="cs">songs and versions waiting for their audio</span></button></li>` : ''}
-      ${EDGE_UPLOADS() ? `<li><button data-backups>${I.up2}<span>Backups</span><span class="cs">a copy of everything on Cloudflare; download it</span></button></li>` : ''}
-      <li><button data-ownerpw>${I.lock}<span>Set owner password</span><span class="cs">sign in at soulnicolas.com/admin, no key needed</span></button></li>
-      <li><button data-signout>${I.x}<span>Sign out on this device</span><span class="cs">you can sign back in with your password</span></button></li>
-      <li><button data-ownerkey>${I.link}<span>Copy owner key</span><span class="cs">for setting up Cloudflare; keep it private</span></button></li>
-    </ul>
+    ${group('Create &amp; edit', [
+      row('data-nav="studio"', I.edit, 'Studio', 'Edit titles, songs, info and links'),
+      row('data-newrel', I.plus, 'Upload a new release', 'Songs, cover and details'),
+      edge ? row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio') : '',
+    ])}
+    ${group('Fans &amp; activity', [
+      row('data-nav="insights"', I.chart, 'Listening insights', 'Plays and listeners'),
+      edge ? row('data-fans', I.link, 'Soul Tribe fan list', 'Sign-ups from /join, to download') : '',
+      row('data-jump="recent"', I.clock, 'Recently played', recentN ? recentN + ' songs' : 'Nothing yet'),
+      row('data-nav="lore"', I.layers, 'Lore', 'Producers, places, eras, bio'),
+    ])}
+    ${group('Health checks', [
+      row('data-check-yt', I.film, 'Check YouTube setup', 'Needed for playlists from YouTube'),
+      row('data-yt-titles', I.up2, 'YouTube titles', 'checking…', 'ytTitlesCount'),
+      row('data-check-playback', I.play, 'Check playback setup', 'Tests your API key'),
+      row('data-problems', I.layers, 'Problems reported', 'checking…', 'probCount'),
+    ])}
+    ${group('Backups &amp; Cloudflare', [
+      edge ? row('data-backups', I.up2, 'Backups', 'A copy of everything on Cloudflare') : '',
+      row('data-backup', I.up2, 'Back up my Sheet now', esc(backupLine())),
+      edge ? row('data-areas', I.layers, 'Move off the Sheet', 'Move playlists, extras and bio over') : '',
+    ])}
+    ${group('Account', [
+      row('data-ownerpw', I.lock, 'Set owner password', 'Sign in at /admin, no key needed'),
+      row('data-signout', I.x, 'Sign out on this device', 'Sign back in with your password'),
+      row('data-ownerkey', I.link, 'Copy owner key', 'For Cloudflare setup. Keep private'),
+    ], 'account')}
   </div>`;
   $('[data-ownerpw]').addEventListener('click', openOwnerPw);
   if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
