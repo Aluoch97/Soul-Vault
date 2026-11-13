@@ -76,7 +76,7 @@ function featuredSongs() {
   return S.lib.tracks.filter(t => !hidden(t) && primaryOf(t) && (featuresOf(t).length || isGuestSpot(t)) && (OWNER || !(rel(t.release_id) || {}).locked))
     .sort((a, b) => relDateKey(rel(b.release_id) || {}).localeCompare(relDateKey(rel(a.release_id) || {})) || (Number(a.track_no) || 0) - (Number(b.track_no) || 0));
 }
-const secState = id => { S.sec = S.sec || {}; return (S.sec[id] = S.sec[id] || { view: ls.get('sv_secview_' + id, 'scroll'), chip: 'all' }); };
+const secState = id => { S.sec = S.sec || {}; return (S.sec[id] = S.sec[id] || { chip: 'all' }); };
 const songArt = t => t.track_cover || (rel(t.release_id) || {}).cover_file_id || '';
 function redrawSection(id) {
   const el = $('#' + id); if (!el) return;
@@ -88,25 +88,21 @@ function redrawSection(id) {
 const projectsOf = ts => { const m = new Map(); ts.forEach(t => { if (!m.has(t.release_id)) m.set(t.release_id, { r: rel(t.release_id) || {}, songs: [] }); m.get(t.release_id).songs.push(t); }); return [...m.values()]; };
 const nProjects = ts => new Set(ts.map(t => t.release_id)).size;
 function vaultSection(cfg) {
-  const st = secState(cfg.id), view = VIEWS.some(v => v[0] === st.view) ? st.view : 'scroll';
+  const st = secState(cfg.id);
   if (!cfg.chips.some(c => c[0] === st.chip)) st.chip = 'all';
   const list = st.chip === 'all' ? cfg.songs : cfg.songs.filter(t => cfg.inChip(t, st.chip)), groups = projectsOf(list);
   const card = g => `<button type="button" class="agc vsc" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}">
     <span class="vart"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="vtag">${esc(cfg.tagOfGroup(g))}</span></span>
-    <span class="agt">${esc(g.r.title)}</span><span class="cs vsub2">${esc(cfg.subOfGroup(g))}</span>${songLines(g, false)}</button>`;
-  const songLines = (g, full) => cfg.songLine ? `<span class="vsongs">${g.songs.slice(0, full ? 4 : 3).map(t => { const s = cfg.songLine(t); return `<span class="vsong"><b>${esc(s.t)}</b>${full && s.w ? ' <i>' + esc(s.w) + '</i>' : ''}</span>`; }).join('')}${g.songs.length > (full ? 4 : 3) ? `<span class="vsong more">+${g.songs.length - (full ? 4 : 3)} more</span>` : ''}</span>` : '';
-  const row = g => `<button type="button" class="alr" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="alt"><b>${esc(g.r.title)}</b><span class="cs">${esc([cfg.tagOfGroup(g), cfg.subOfGroup(g)].filter(Boolean).join(' · '))}</span>${songLines(g, true)}</span></button>`;
-  const body = !groups.length ? '<p class="cs">Nothing here yet.</p>'
-    : view === 'list' ? `<section class="alllist" aria-label="${esc(cfg.label)}">${groups.map(row).join('')}</section>`
-    : view === 'scroll' ? `<div class="hrow vrow" aria-label="${esc(cfg.label)}">${groups.map(card).join('')}</div>`
-    : `<div class="allgrid vgrid ${view === 'small' ? 'small' : 'large'}">${groups.map(card).join('')}</div>`;
-  const chips = cfg.chips.length > 2 && cfg.chipSelect ? `<label class="vs-who"><span>${esc(cfg.chipSelect)}</span><select class="field" data-secsel="${esc(cfg.id)}" aria-label="${esc(cfg.chipSelect)}">${cfg.chips.map(([k, l, n]) => `<option value="${esc(k)}"${k === st.chip ? ' selected' : ''}>${esc(l)} (${n})</option>`).join('')}</select></label>`
-    : cfg.chips.length > 2 ? `<div class="seg vs-chips" role="group" aria-label="Filter ${esc(cfg.label)}">${cfg.chips.map(([k, l, n]) => `<button type="button" data-secchip="${esc(cfg.id)}|${esc(k)}" aria-pressed="${k === st.chip}">${esc(l)} <span class="n">${n}</span></button>`).join('')}</div>` : '';
+    <span class="agt">${esc(g.r.title)}</span><span class="cs vsub2">${esc(cfg.subOfGroup(g))}</span>${songLines(g)}</button>`;
+  const songLines = g => cfg.songLine ? `<span class="vsongs">${g.songs.slice(0, 3).map(t => `<span class="vsong"><b>${esc(cfg.songLine(t).t)}</b></span>`).join('')}${g.songs.length > 3 ? `<span class="vsong more">+${g.songs.length - 3} more</span>` : ''}</span>` : '';
+  const body = !groups.length ? '<p class="cs">Nothing here yet.</p>' : `<div class="hrow vrow" aria-label="${esc(cfg.label)}">${groups.map(card).join('')}</div>`;
+  const pick = cfg.chips.length > 2 && cfg.chipSelect ? `<label class="vs-who"><span class="sr-only">${esc(cfg.chipSelect)}</span><select class="field" data-secsel="${esc(cfg.id)}" aria-label="${esc(cfg.chipSelect)}">${cfg.chips.map(([k, l, n]) => `<option value="${esc(k)}"${k === st.chip ? ' selected' : ''}>${k === 'all' ? 'Everyone' : esc(l)} (${n})</option>`).join('')}</select></label>` : '';
+  const chips = !pick && cfg.chips.length > 2 ? `<div class="seg vs-chips" role="group" aria-label="Filter ${esc(cfg.label)}">${cfg.chips.map(([k, l, n]) => `<button type="button" data-secchip="${esc(cfg.id)}|${esc(k)}" aria-pressed="${k === st.chip}">${esc(l)} <span class="n">${n}</span></button>`).join('')}</div>` : '';
   return `<section id="${cfg.id}" class="vsec ${cfg.cls}" aria-label="${esc(cfg.label)}">
     <div class="vs-ribbon">${cfg.ribbon}</div>
     <div class="vs-head"><h2 class="sh"><span>${cfg.title}</span></h2></div>
     <p class="cs vs-blurb">${cfg.blurb}</p>
-    ${cfg.tabsHtml || ''}${viewMenu(view, cfg.id)}${chips}${body}${cfg.hint || ''}</section>`;
+    ${cfg.tabsHtml || pick ? `<div class="vs-bar">${cfg.tabsHtml || ''}${pick}</div>` : ''}${chips}${body}${cfg.hint || ''}</section>`;
 }
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 function unreleasedSection() {
@@ -118,7 +114,7 @@ function unreleasedSection() {
   const unsorted = (byKind.Unsorted || []).length;
   return vaultSection({ id: 'unreleased', cls: 'secret', label: 'Unreleased projects', songs: ts, chips,
     ribbon: `<span class="vs-lock">${I.lock}</span><span class="vs-acc">Access granted</span><i class="vs-dot" aria-hidden="true"></i><span class="vs-sub">Unreleased vault</span>`,
-    title: '<b>Unreleased</b>', blurb: `Music that was never officially released. You are hearing it before anyone else. ${plural(ts.length, 'song')} in ${plural(nProjects(ts), 'project')}.`,
+    title: '<b>Unreleased</b>', blurb: `Never officially released. ${plural(ts.length, 'song')} in ${plural(nProjects(ts), 'project')}.`,
     inChip: (t, k) => (unrelKindOf(t) || 'Unsorted') === k, tagOfGroup: g => kindOf(g) || 'Unreleased',
     subOfGroup: g => [g.r.year, plural(g.songs.length, 'unreleased song')].filter(Boolean).join(' · '),
     hint: OWNER && unsorted ? `<p class="cs vs-hint">${plural(unsorted, 'song')} ${unsorted === 1 ? 'is' : 'are'} not sorted yet. In Studio, open the song and pick what it counts as (Single, Album, EP, Mixtape or Compilation).</p>` : '' });
@@ -135,13 +131,13 @@ function featuresSection() {
   const byPerson = {}; ts.forEach(t => who(t).forEach(n => { (byPerson[n] = byPerson[n] || []).push(t); }));
   const names = Object.keys(byPerson).sort((a, b) => nProjects(byPerson[b]) - nProjects(byPerson[a]) || a.localeCompare(b));
   const chips = [['all', 'All', nProjects(ts)]].concat(names.map(n => ['a:' + n, n, nProjects(byPerson[n])]));
-  const tabsHtml = TABS.length > 1 ? `<div class="vs-tabs" role="tablist" aria-label="Features">${TABS.map(([k, l, a]) => `<button type="button" role="tab" data-sectab="features|${k}" aria-selected="${k === st.tab}">${esc(l)} <span class="n">${nProjects(a)}</span></button>`).join('')}</div>` : '';
+  const tabsHtml = TABS.length > 1 ? `<div class="vs-tabs" role="tablist" aria-label="Features">${TABS.map(([k, l, a]) => `<button type="button" role="tab" data-sectab="features|${k}" aria-selected="${k === st.tab}" aria-label="${esc(l)}, ${plural(nProjects(a), 'project')}">${esc(l)}</button>`).join('')}</div>` : '';
   // The song's name, and who is on it (leaving out a name the title already shows).
   // The song's name without the "(feat. …)" tail (the guests are shown on their own line), and who is on it.
   const songLine = t => ({ t: String(t.title || '').replace(/\s*[(\[]\s*(?:feat\.?|ft\.?|featuring)\s+[^)\]]+[)\]]\s*/ig, ' ').replace(/\s+/g, ' ').trim() || String(t.title || ''), w: (isSpots ? 'by ' : 'feat. ') + who(t).join(', ') });
   return vaultSection({ id: 'features', cls: 'spot', label: isSpots ? 'Projects with my guest spots' : 'Projects with my features', songs: ts, chips, chipSelect: 'Featuring', tabsHtml, songLine,
     ribbon: `<span class="vs-lock">${I.mic || ''}</span><span class="vs-acc">Special guests</span><i class="vs-dot" aria-hidden="true"></i><span class="vs-sub">Features</span>`,
-    title: '<b>Features</b>', blurb: (isSpots ? 'My guest spots on other artists\' songs. ' : 'Guests on my songs. ') + `${plural(ts.length, 'song')} in ${plural(nProjects(ts), 'project')}.`,
+    title: '<b>Features</b>', blurb: `${plural(ts.length, 'song')} in ${plural(nProjects(ts), 'project')}.`,
     inChip: (t, k) => k.indexOf('a:') === 0 && who(t).indexOf(k.slice(2)) > -1,
     tagOfGroup: g => isSpots ? 'Guest spot' : plural(g.songs.length, 'feature'),
     subOfGroup: g => { const n = []; g.songs.forEach(t => who(t).forEach(x => { if (n.indexOf(x) < 0) n.push(x); })); return (n.slice(0, 3).join(', ') + (n.length > 3 ? ' +' + (n.length - 3) : '')); } });

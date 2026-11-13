@@ -93,9 +93,9 @@ const VSVG = {
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'
 };
 const VIEWS = [['scroll', 'Scrolling shelf'], ['large', 'Large covers'], ['small', 'Small covers'], ['list', 'List']];
-function viewMenu(cur, sec) {   // sec: the Unreleased / Features sections have their own View menu, kept separately
+function viewMenu(cur) {
   return `<div class="viewrow"><div class="viewwrap"><button type="button" class="pill soft viewbtn" data-libmenu aria-haspopup="menu" aria-expanded="false">${VSVG.list}<span>View</span><span aria-hidden="true">&#9662;</span></button>
-    <div class="viewmenu" role="menu" aria-label="View" hidden>${VIEWS.map(v => `<button type="button" role="menuitemradio" aria-checked="${v[0] === cur}" ${sec ? `data-secview="${sec}|${v[0]}"` : `data-libview="${v[0]}"`}><i class="vdot">${v[0] === cur ? '&bull;' : ''}</i>${VSVG[v[0]]}<span>${v[1]}</span></button>`).join('')}</div></div></div>`;
+    <div class="viewmenu" role="menu" aria-label="View" hidden>${VIEWS.map(v => `<button type="button" role="menuitemradio" aria-checked="${v[0] === cur}" data-libview="${v[0]}"><i class="vdot">${v[0] === cur ? '&bull;' : ''}</i>${VSVG[v[0]]}<span>${v[1]}</span></button>`).join('')}</div></div></div>`;
 }
 // Every release at once, in rows (newest first): large covers, small covers or a plain list.
 function allGrid(rs, view) {
@@ -107,8 +107,7 @@ function allGrid(rs, view) {
 document.addEventListener('click', e => {
   const m = e.target.closest && e.target.closest('[data-libmenu]');
   if (m) { const menu = m.nextElementSibling, open = menu.hidden; menu.hidden = !open; m.setAttribute('aria-expanded', String(open)); return; }
-  const sv = e.target.closest && e.target.closest('[data-secview]'), sc = e.target.closest && e.target.closest('[data-secchip]');
-  if (sv) { const [id, v] = sv.dataset.secview.split('|'); secState(id).view = v; ls.set('sv_secview_' + id, v); redrawSection(id); return; }
+  const sc = e.target.closest && e.target.closest('[data-secchip]');
   if (sc) { const [id, k] = sc.dataset.secchip.split('|'); secState(id).chip = k; redrawSection(id); return; }
   const stb = e.target.closest && e.target.closest('[data-sectab]');
   if (stb) { const [id, k] = stb.dataset.sectab.split('|'); const q = secState(id); q.tab = k; q.chip = 'all'; redrawSection(id); return; }
@@ -153,9 +152,6 @@ document.addEventListener('click', async e => {
 function shelf(rs) {
   if (!rs.length) return '';
   return `<section class="shelf" id="all-releases" aria-label="Releases, newest to oldest">
-    <div class="shelfbar"><span class="cs" id="shelfPos" aria-live="polite">1 of ${rs.length}</span>
-      <span class="arrows"><button class="round" data-shelf="-1" aria-label="Previous releases">${I.back}</button>
-      <button class="round" data-shelf="1" aria-label="Next releases"><span class="flip">${I.back}</span></button></span></div>
     <div class="ctrack" id="ctrack">${rs.map((r, i) => `
       <article class="slide" data-year="${esc(r.year)}">
         <img data-shelf-cover="${esc(r.cover_file_id)}" alt="">
@@ -180,8 +176,6 @@ function wireShelf() {
   } else imgs.slice(0, 3).forEach(img => setCover(img, img.dataset.shelfCover, true));
   const step = () => (tr.firstElementChild ? tr.firstElementChild.getBoundingClientRect().width + 14 : 1);
   const pos = () => {
-    const i = Math.min(imgs.length, Math.round(tr.scrollLeft / step()) + 1);
-    const el = $('#shelfPos'); if (el) el.textContent = `${i} of ${imgs.length}`;
     S.shelfLeft = tr.scrollLeft;
   };
   tr.addEventListener('scroll', () => { clearTimeout(tr._t); tr._t = setTimeout(pos, 80); }, { passive: true });
@@ -224,13 +218,13 @@ function renderLibBody() {
   const songList = songHits.length ? `
     <h2 class="sh"><span><b>Songs</b></span></h2>
     <ol class="tracks">${songHits.map(t => trackRow(t, true)).join('')}</ol>` : '';
-  const chips = `<div class="seg" role="group" aria-label="Filter by type">${types.map(t => `<button data-filter="${esc(t)}" aria-pressed="${t === S.filter}">${esc(t)}</button>`).join('')}</div>`;
+  const chips = `<label class="libsel"><span class="sr-only">Type</span><select data-filtersel aria-label="Filter by type">${types.map(t => `<option value="${esc(t)}"${t === S.filter ? ' selected' : ''}>${t === 'All' ? 'All types' : esc(t)}</option>`).join('')}</select></label>`;
   const empty = `<p class="status" style="padding-left:0">${q ? `Nothing matches "${esc(S.q)}". Try part of a song or release title.` : 'Nothing matches this filter yet.'}</p>`;
   const view = S.libView = S.libView || ls.get('sv_libview', 'scroll');
   const allMode = view !== 'scroll' && !q;
   const viewBtn = q ? '' : viewMenu(view);
   // Order on the Music tab: Recently played, Discography, Features, Unreleased, Series, Playlists (then coming attractions).
-  $('#libBody').innerHTML = (!q ? resumeCard() : '') + (!q && !allMode ? recentRow() : '') + (!q ? '<h2 class="sh" id="discography"><span><b>Discography</b></span></h2>' : '') + chips + viewBtn + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
+  $('#libBody').innerHTML = (!q ? resumeCard() : '') + (!q && !allMode ? recentRow() : '') + (!q ? '<h2 class="sh" id="discography"><span><b>Discography</b></span></h2>' : '') + `<div class="libbar">${chips}${viewBtn}</div>` + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
     (!q ? featuresSection() + unreleasedSection() : '') + (!q && !allMode ? seriesRow() + playlistsRow() + dropsRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
