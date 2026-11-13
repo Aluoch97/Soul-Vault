@@ -311,7 +311,7 @@ function visitWorld() {}
 
 
 /* ═════════ New release (owner only) ═════════ */
-const REL_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
+const REL_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'];
 const AUDIO_OK = /\.(wav|aiff?|flac|mp3|m4a|aac)$/i;
 function niceTitle(name) {
   return name.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/^\s*\d{1,3}\s*[-.)]?\s+/, '').replace(/\s+/g, ' ').trim() || name;

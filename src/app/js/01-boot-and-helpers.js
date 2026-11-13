@@ -123,7 +123,7 @@ function versionsOf(trackId, all) {
     .sort((a, b) => (b.is_primary - a.is_primary) || String(a.label).localeCompare(b.label));
 }
 const primaryOf = t => versionsOf(t.track_id)[0];
-const TYPE_FILTERS = ['All', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation', 'Unreleased'];
+const TYPE_FILTERS = ['All', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation'];   // (unreleased work has its own Unreleased area on the Music tab, not a filter)
 // Runtime: song lengths are "m:ss" (or "h:mm:ss"); a project shows as "54 min 12 sec".
 function durSecs(d) {
   const p = String(d || '').trim().split(':').map(Number);
@@ -161,7 +161,9 @@ function metaLine(r, ts) {
 // Release types describe the format. Old "Deluxe"/"B-Sides" labels read as Album until you pick a type in Edit.
 const typeOf = r => (['Deluxe', 'B-Sides'].indexOf(r.type) > -1 || !r.type ? 'Album' : r.type);
 const typeGroup = r => typeOf(r);
-const EDIT_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
+const EDIT_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Other'];
+// An older release saved with the type "Unreleased" keeps showing it (so saving it does not silently change it); nobody can pick it for a new one.
+const relTypeOptions = cur => EDIT_TYPES.concat(cur === 'Unreleased' ? ['Unreleased'] : []);
 // Songs inside a release: the full project (main tracklist), the extras (drafts, audio notes, remixes, covers, b-sides), and singles.
 const sectionOf = t => (['B-Side', 'Extra'].indexOf(t.category) > -1 ? 'bsides' : ['Deluxe', 'Bonus'].indexOf(t.category) > -1 ? 'deluxe' : 'full');
 const isSingle = t => t.is_single === true || t.is_single === 'TRUE';

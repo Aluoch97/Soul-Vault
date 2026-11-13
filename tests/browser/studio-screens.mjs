@@ -518,6 +518,15 @@ await step('Start from a SoundCloud link in the New release form; Songs on links
   assert.deepEqual(await page.evaluate((id) => S.lib.versions.filter((v) => v.track_id === id).map((v) => [v.format === 'SOUNDCLOUD', !!v.is_primary]).sort(), trk.track_id), [[false, true], [true, false]], 'in the open app too, the file plays first');
   await page.evaluate(() => closeModal());
 });
+await step('Unreleased is not in the type lists (filters, new release, Studio); unreleased work can still be marked and labelled Single, Album, ...', async () => {
+  await page.evaluate(() => renderLibrary()); await page.waitForSelector('#libBody [data-filter]');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#libBody [data-filter]')].map((b) => b.textContent.trim())), ['All', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation'], 'no Unreleased filter chip');
+  assert.deepEqual(await page.evaluate(() => [REL_TYPES, EDIT_TYPES, relTypeOptions('EP'), relTypeOptions('Unreleased')].map((l) => l.includes('Unreleased'))), [false, false, false, true], 'not offered, except to an older release that already has it');
+  await page.evaluate(() => openNewRelease()); await page.waitForSelector('#nrType');
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('#nrType option')].some((o) => o.textContent === 'Unreleased')), false, 'new release form');
+  await page.evaluate(() => closeModal());
+  assert.ok(await page.evaluate(() => UNREL_KINDS.join() === 'Single,Album,EP,Mixtape,Compilation'), 'unreleased songs can still be labelled Single, Album, EP, ...'); assert.ok(await page.evaluate(() => !!document.querySelector('#unreleased')), 'and the Unreleased section is still there');
+});
 await step('every row that scrolls sideways (Music shelves, Unreleased, Features, Lore eras and photos) has arrows, only where there is more to scroll', async () => {
   const check = async (label, min = 2) => {
     await page.waitForTimeout(700);
