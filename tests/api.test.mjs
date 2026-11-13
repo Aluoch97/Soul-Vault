@@ -605,3 +605,111 @@ test('backups over the API: owner only, include everything private, and are neve
   const status = (await w.owner('backupStatus')).result; assert.equal(status.files.length, 1);
   const dump = (await w.owner('backupGet')).result; assert.ok(dump.tables.kv.some(r => r.k === 'owner_pw'));   // it holds the password hash, so owner only
 }));
+
+// ---------------------------------------------------------------- listening insights (like Spotify for Artists) and "listening now"
+const DAY = 864e5, NOW = () => Date.now();
+// rows: [daysAgo, versionId, deviceId, outcome, token, device, hourOffset]
+async function seedListens(w, rows) {
+  await w.owner('adoptDomain', 'activity'); await w.owner('getInsights', 30, false);   // makes the tables
+  const ver = { ver_a1: ['trk_a1', 'rel_pub'], ver_sg: ['trk_sg', 'rel_single'] };
+  for (const [ago, v, dev, out = 'complete', tok = 'PUB', device = 'phone'] of rows) {
+    await w.db.prepare('INSERT INTO listens (at, track_id, version_id, release_id, share_token, device_id, seconds, pct, outcome, device) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .bind(NOW() - ago * DAY, ver[v][0], v, ver[v][1], tok, dev, out === 'skip' ? 5 : 120, out === 'skip' ? 4 : 100, out, device).run();
+  }
+}
+
+test('insights: unique listeners (not plays), streams per listener, and listeners for each song', () => withWorld(async (w) => {
+  await seedListens(w, [[1, 'ver_a1', 'devA'], [1.1, 'ver_a1', 'devA'], [2, 'ver_a1', 'devB', 'partial'], [2, 'ver_sg', 'devB'], [3, 'ver_sg', 'devC'], [3, 'ver_sg', 'devC', 'skip']]);
+  const d = (await w.owner('getInsights', 30, false)).result;
+  assert.equal(d.totals.plays, 5); assert.equal(d.totals.skips, 1);
+  assert.equal(d.totals.listeners, 3);                                                                       // three people, however many plays
+  assert.equal(d.totals.perListener, 1.7);                                                                   // 5 streams / 3 listeners
+  const a = d.songs.find(x => x.track_id === 'trk_a1'), s = d.songs.find(x => x.track_id === 'trk_sg');
+  assert.deepEqual([a.plays, a.listeners], [3, 2]); assert.deepEqual([s.plays, s.listeners], [2, 2]);        // devC only skipped once and played once: still one listener
+  assert.equal(d.perDay.reduce((n, x) => n + x.n, 0), 5);
+  assert.ok(d.perDay.every(x => x.l <= x.n), 'a day never has more listeners than streams');
+  assert.ok(d.perDay.some(x => x.n === 2 && x.l === 1), 'one person playing twice in a day is one listener that day');
+  assert.equal(d.hours.length, 24); assert.equal(d.hours.reduce((a, b) => a + b, 0), 5);                      // every stream lands in an hour...
+  assert.equal(d.weekdays.length, 7); assert.equal(d.weekdays.reduce((a, b) => a + b, 0), 5);                 // ...and a weekday
+  assert.deepEqual(d.devices, { phone: 5, desktop: 0 });
+}));
+
+test('insights: phone vs computer split', () => withWorld(async (w) => {
+  await seedListens(w, [[1, 'ver_a1', 'devA', 'complete', 'PUB', 'phone'], [1, 'ver_a1', 'devB', 'complete', 'PUB', 'desktop'], [1, 'ver_a1', 'devC', 'complete', 'PUB', 'desktop'], [1, 'ver_a1', 'devC', 'skip', 'PUB', 'desktop']]);
+  assert.deepEqual((await w.owner('getInsights', 7, false)).result.devices, { phone: 1, desktop: 2 });       // skips are not streams
+}));
+
+test('insights: the previous period for the up/down arrows (and none for "all time")', () => withWorld(async (w) => {
+  await seedListens(w, [[1, 'ver_a1', 'devA'], [2, 'ver_a1', 'devB'], [3, 'ver_a1', 'devB'], [4, 'ver_a1', 'devB'], [9, 'ver_a1', 'devA'], [10, 'ver_a1', 'devA', 'partial'], [40, 'ver_a1', 'devZ']]);
+  const d = (await w.owner('getInsights', 7, false)).result;
+  assert.deepEqual([d.totals.plays, d.totals.listeners], [4, 2]);
+  assert.deepEqual([d.prev.plays, d.prev.listeners], [2, 1]);                                                // the 7 days before: two plays, one person
+  assert.equal(d.prev.finishRate, 50);
+  assert.equal((await w.owner('getInsights', 0, false)).result.prev, null);
+  const d30 = (await w.owner('getInsights', 30, false)).result; assert.deepEqual([d30.prev.plays, d30.prev.listeners], [1, 1]);   // the 30 days before that: only devZ
+}));
+
+test('insights: new vs returning listeners', () => withWorld(async (w) => {
+  await seedListens(w, [[1, 'ver_a1', 'devNew'], [1, 'ver_a1', 'devOld'], [30, 'ver_a1', 'devOld'], [2, 'ver_a1', 'devNew2'], [20, 'ver_a1', 'devGone']]);
+  const d = (await w.owner('getInsights', 7, false)).result;
+  assert.deepEqual(d.audience, { newListeners: 2, returning: 1 });                                          // devOld was already here a month ago
+}));
+
+test('insights: your own plays are left out unless you ask, in every number', () => withWorld(async (w) => {
+  await seedListens(w, [[1, 'ver_a1', 'devA'], [1, 'ver_a1', 'me', 'complete', 'owner'], [1, 'ver_a1', 'me', 'complete', 'owner']]);
+  const fans = (await w.owner('getInsights', 30, false)).result, all = (await w.owner('getInsights', 30, true)).result;
+  assert.deepEqual([fans.totals.plays, fans.totals.listeners, fans.songs[0].listeners, fans.hours.reduce((a, b) => a + b, 0)], [1, 1, 1, 1]);
+  assert.deepEqual([all.totals.plays, all.totals.listeners, all.songs[0].listeners], [3, 2, 2]);
+}));
+
+test('insights: an empty range still gives the whole shape (no crash, zeros)', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'activity');
+  const d = (await w.owner('getInsights', 7, false)).result;
+  assert.equal(d.totals.plays, 0); assert.equal(d.perDay.length, 7); assert.ok(d.perDay.every(x => x.n === 0 && x.l === 0));
+  assert.equal(d.hours.length, 24); assert.equal(d.weekdays.length, 7); assert.deepEqual(d.audience, { newListeners: 0, returning: 0 });
+}));
+
+test('listening now: a fan\'s phone shows up for the owner, then goes away when they stop or go quiet', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'activity');
+  assert.equal((await w.call('listeningNow', ['', 'FAN', 'dev1', 'ver_a1', 'phone'])).result, true);
+  assert.equal((await w.call('listeningNow', ['', 'PUB', 'dev2', 'ver_sg', 'desktop'])).result, true);
+  const live = (await w.owner('getLive', false)).result;
+  assert.equal(live.count, 2);
+  const jo = live.now.find(x => x.who === 'Jo'); assert.deepEqual([jo.title, jo.release, jo.device], ['Song trk_a1', 'Open Album', 'phone']);   // the link's name, never a person's details
+  assert.ok(live.now.find(x => x.who === 'Fan club link'));
+  assert.equal((await w.call('listeningNow', ['', 'FAN', 'dev1', '', 'phone'])).result, true);              // paused / stopped
+  assert.equal((await w.owner('getLive', false)).result.count, 1);
+  await w.db.prepare('UPDATE live SET at = ? WHERE device_id = ?').bind(NOW() - 120000, 'dev2').run();     // went quiet 2 minutes ago
+  assert.equal((await w.owner('getLive', false)).result.count, 0);
+}));
+
+test('listening now: only the owner can see it, and fans cannot fake what they are not allowed to hear', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'activity');
+  for (const args of [[], [''], ['wrong'], [null]]) assert.equal((await w.call('getLive', args)).ok, false);
+  assert.equal((await w.call('listeningNow', ['', 'nope', 'dev1', 'ver_a1', 'phone'])).result, false);       // not a real link
+  assert.equal((await w.call('listeningNow', ['', 'OFF', 'dev1', 'ver_a1', 'phone'])).result, false);        // switched off
+  assert.equal((await w.call('listeningNow', ['', 'EXP', 'dev1', 'ver_a1', 'phone'])).result, false);        // expired
+  assert.equal((await w.call('listeningNow', ['', 'VER', 'dev1', 'ver_sg', 'phone'])).result, false);        // a song outside what this link covers
+  assert.equal((await w.call('listeningNow', ['', 'PUB', 'dev1', 'ver_h1', 'phone'])).result, false);        // hidden release
+  assert.equal((await w.call('listeningNow', ['', 'PUB', 'dev1', 'ver_zzz', 'phone'])).result, false);       // not a song
+  assert.equal((await w.call('listeningNow', ['', 'PUB', '', 'ver_a1', 'phone'])).result, false);            // no device id
+  assert.equal((await w.owner('getLive', false)).result.count, 0);
+}));
+
+test('listening now: your own phone is hidden unless you ask; one row per device; quick repeats are not rewritten; old rows are cleaned up', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'activity');
+  assert.equal((await w.call('listeningNow', [OWNER_KEY, '', 'meDev', 'ver_a1', 'phone'])).result, true);
+  assert.equal((await w.owner('getLive', false)).result.count, 0); assert.equal((await w.owner('getLive', true)).result.count, 1);
+  assert.equal((await w.owner('getLive', true)).result.now[0].who, 'You');
+  await w.call('listeningNow', ['', 'PUB', 'dev1', 'ver_a1', 'phone']);
+  const at1 = (await w.db.prepare('SELECT at FROM live WHERE device_id = ?').bind('dev1').first()).at;
+  await new Promise(r => setTimeout(r, 15)); await w.call('listeningNow', ['', 'PUB', 'dev1', 'ver_a1', 'phone']);
+  assert.equal((await w.db.prepare('SELECT at FROM live WHERE device_id = ?').bind('dev1').first()).at, at1);   // same song, a moment later: left alone
+  await w.call('listeningNow', ['', 'PUB', 'dev1', 'ver_sg', 'phone']);                                      // next song: updated
+  assert.equal((await w.db.prepare('SELECT COUNT(*) AS n FROM live WHERE device_id = ?').bind('dev1').first()).n, 1);
+  assert.equal((await w.db.prepare('SELECT version_id FROM live WHERE device_id = ?').bind('dev1').first()).version_id, 'ver_sg');
+  await w.db.prepare('UPDATE live SET at = ? WHERE device_id = ?').bind(NOW() - 10 * 60000, 'meDev').run();
+  await w.call('listeningNow', ['', 'PUB', 'dev9', 'ver_a1', 'phone']);
+  assert.equal((await w.db.prepare("SELECT COUNT(*) AS n FROM live WHERE device_id = 'meDev'").first()).n, 0);   // stale rows are deleted, never kept as history
+  assert.equal((await w.db.prepare('SELECT COUNT(*) AS n FROM listens').first()).n, 0);                        // and "now" never touches the listening history
+}));

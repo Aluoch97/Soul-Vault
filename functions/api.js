@@ -521,6 +521,8 @@ async function activityCall(ctx, fn, a) {
     case 'recordPlay': return AC.recordPlay(db, lib, a[0]);
     case 'logListens': return AC.logListens(db, lib, owner, a[1], a[2], a[3]);
     case 'getInsights': need(); return AC.getInsights(db, lib, a[1], a[2]);
+    case 'listeningNow': return AC.listeningNow(db, lib, owner, a[1], a[2], a[3], a[4]);    // fans send a small "still listening" note while a song plays
+    case 'getLive': need(); return AC.getLive(db, lib, a[1]);
     case 'getComments': return AC.getComments(db, lib, owner, a[1], a[2]);
     case 'addComment': return AC.addComment(db, lib, owner, ow.ownerName, a[1], a[2], a[3], a[4], a[5]);   // (no e-mail alert yet)
     case 'resolveComment': need(); return AC.resolveComment(db, a[1], a[2]);

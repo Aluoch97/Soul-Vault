@@ -23,8 +23,16 @@ const w = await harness();
 w.env.YOUTUBE_API_KEY = 'yt-test-key';
 w.youtube.playlists.PLbrowsertest0123456789abcdefghij = { title: 'Browser Test EP', videos: [{ id: 'vidAAAAAAA1', title: 'First Test Song' }, { id: 'vidAAAAAAA2', title: 'Second Test Song' }] };
 w.youtube.videos.vidAAAAAAA1 = 'First Test Song'; w.youtube.videos.vidAAAAAAA2 = 'Second Test Song';
-for (const area of ['catalog', 'extras']) assert.equal((await w.owner('adoptDomain', area)).ok, true, 'switch ' + area);   // like Settings > Move off the Sheet
+for (const area of ['catalog', 'extras', 'activity']) assert.equal((await w.owner('adoptDomain', area)).ok, true, 'switch ' + area);   // like Settings > Move off the Sheet
 
+// listening data for the Insights screen: this week (devices A, B, C), the week before (A), a month back (D); two phones "listening now"
+await w.owner('getInsights', 30, false);                     // makes the activity tables
+const DAYMS = 864e5, ver = { ver_a1: ['trk_a1', 'rel_pub'], ver_sg: ['trk_sg', 'rel_single'] };
+for (const [ago, v, dev, out, tok, device] of [[0.2, 'ver_a1', 'devA', 'complete', 'PUB', 'phone'], [1, 'ver_a1', 'devA', 'complete', 'PUB', 'phone'], [1, 'ver_sg', 'devB', 'complete', 'FAN', 'desktop'], [2, 'ver_a1', 'devB', 'partial', 'FAN', 'desktop'], [3, 'ver_sg', 'devC', 'complete', 'PUB', 'phone'],
+  [3, 'ver_sg', 'devC', 'skip', 'PUB', 'phone'], [8, 'ver_a1', 'devA', 'complete', 'PUB', 'phone'], [20, 'ver_a1', 'devD', 'complete', 'PUB', 'phone']])
+  await w.db.prepare('INSERT INTO listens (at, track_id, version_id, release_id, share_token, device_id, seconds, pct, outcome, device) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(Date.now() - ago * DAYMS, ver[v][0], v, ver[v][1], tok, dev, out === 'skip' ? 5 : 120, out === 'skip' ? 4 : 100, out, device).run();
+assert.equal((await w.call('listeningNow', ['', 'FAN', 'liveA', 'ver_a1', 'phone'])).result, true);
+assert.equal((await w.call('listeningNow', ['', 'PUB', 'liveB', 'ver_sg', 'desktop'])).result, true);
 const KEY = 'ownerkey0123456789';   // the app keeps only letters and digits from ?k= (the real key has no dashes)
 w.env.OWNER_KEY = KEY;
 const store = async () => { const o = await w.kv('owned'); return o && o.domains && o.domains.catalog ? o : await w.kv('native'); };   // the catalog is owned by Cloudflare, so new releases are stored there
@@ -72,6 +80,43 @@ await step('Settings rows are tidy: grouped, one-line titles, same height, same 
   assert.equal(new Set(m.rows.map((r) => r.x)).size, 1, 'icons line up in one column');
   assert.ok(new Set(m.rows.map((r) => r.h)).size <= (m.narrow ? 4 : 2), 'rows are all the same height (within one note line): ' + [...new Set(m.rows.map((r) => r.h))].join(', '));
 });
+await step('Listening insights: who is listening now, unique listeners, arrows, charts, no sideways scroll', async () => {
+  await page.click('[data-nav="insights"]:visible');
+  await page.waitForFunction(() => /2 listening now/.test(document.body.innerText), null, { timeout: 8000 });
+  const t = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
+  assert.ok(/Jo\b.*Phone/.test(t) && /Fan club link.*Computer/.test(t), 'the live list names who (by link) and the device: ' + t.slice(0, 300));
+  await page.waitForFunction(() => document.querySelector('#insBody .kpis'), null, { timeout: 8000 });
+  await page.click('[data-ins-days="7"]'); await page.waitForFunction(() => document.querySelector('[data-ins-days="7"]').getAttribute('aria-pressed') === 'true' && document.querySelector('#insBody .kpis'), null, { timeout: 8000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('#insBody .kpi')].some((e) => e.querySelector('span').textContent === 'Listeners' && e.querySelector('b').textContent === '3'), null, { timeout: 8000 });
+  const k = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#insBody .kpi')].map((e) => [e.querySelector('span').textContent, { v: e.querySelector('b').textContent, chip: ((e.querySelector('.dl') || {}).textContent || '').trim() }])));
+  assert.deepEqual([k['Listeners'].v, k['Streams'].v, k['Streams per listener'].v, k['Finish rate'].v, k['Hours listened'].v, k['New listeners'].v], ['3', '5', '1.7', '80%', '0.2', '2'], JSON.stringify(k));
+  assert.deepEqual([k['Listeners'].chip, k['Streams'].chip, k['Finish rate'].chip], ['▲ 200%', '▲ 400%', '▼ 20 pts'], 'arrows compare with the week before: ' + JSON.stringify(k));
+  const body = await page.evaluate(() => document.querySelector('#insBody').innerText.replace(/\s+/g, ' '));
+  assert.ok(/Listeners per day/i.test(body), 'the chart starts on listeners');
+  await page.click('[data-ins-metric="n"]'); await page.waitForFunction(() => /Streams per day/i.test(document.querySelector('#insBody').innerText), null, { timeout: 5000 });
+  assert.ok(/New\s*2\s*\(67%\)/.test(body) && /Returning\s*1\s*\(33%\)/.test(body), 'new vs returning: ' + body.slice(0, 600));
+  assert.ok(/Song trk_a1/.test(body) && /Busiest hour/.test(body) && /Phone\s*60%/.test(body) && /Computer\s*40%/.test(body), 'top songs, busiest hour and the phone/computer split show');
+  await noSideways('insights');
+  if (process.env.SHOT2) await page.screenshot({ path: process.env.SHOT2, fullPage: true });
+  // it keeps itself up to date: a third phone starts, then one stops
+  await w.call('listeningNow', ['', 'PUB', 'liveC', 'ver_a1', 'phone']); await page.evaluate(() => pollLive());
+  await page.waitForFunction(() => /3 listening now/.test(document.body.innerText), null, { timeout: 8000 });
+  await w.call('listeningNow', ['', 'FAN', 'liveA', '', 'phone']); await page.evaluate(() => pollLive());
+  await page.waitForFunction(() => /2 listening now/.test(document.body.innerText), null, { timeout: 8000 });
+  await page.click('.back');
+  await seen('Check YouTube setup');
+});
+await step('the player tells the site it is playing (about every 30 s) and says so when it pauses', async () => {
+  const live = () => w.db.prepare('SELECT share_token, version_id, device FROM live WHERE device_id NOT LIKE ?').bind('live%').all().then((r) => r.results);
+  await page.evaluate(() => { Object.defineProperty(audio, 'paused', { configurable: true, get: () => false }); const v = ver('ver_a1'), t = trk(v.track_id); S.now = { v, t, r: S.lib.releases.find((x) => x.release_id === t.release_id), dl: '' }; audio.dispatchEvent(new Event('playing')); });
+  await page.waitForFunction(() => true); for (let i = 0; i < 40 && !(await live()).length; i++) await new Promise((r) => setTimeout(r, 100));
+  assert.deepEqual(await live(), [{ share_token: 'owner', version_id: 'ver_a1', device: 'phone' }], 'a playing song is reported (as the owner, on a phone-sized screen)');
+  await page.evaluate(() => nowBeat(false));                                                                 // a moment later, same song: nothing new is sent
+  await page.evaluate(() => { Object.defineProperty(audio, 'paused', { configurable: true, get: () => true }); audio.dispatchEvent(new Event('pause')); });
+  for (let i = 0; i < 40 && (await live()).length; i++) await new Promise((r) => setTimeout(r, 100));
+  assert.deepEqual(await live(), [], 'pausing clears it');
+  await page.evaluate(() => { delete audio.paused; S.now = null; });
+});
 await step('"Check YouTube setup" says YouTube is connected', async () => { await page.click('[data-check-yt]:visible'); await seen('YouTube is connected').catch(async e => { throw new Error('modal says: ' + (await page.evaluate(() => (document.querySelector('#modal') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await noSideways('youtube check'); await page.click('#modal [data-close]'); });
 let releaseId = null;
 await step('a new release from a YouTube playlist is created, hidden, with its songs', async () => {
@@ -103,7 +148,7 @@ await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
 });
-await step('no console errors or page errors the whole time', async () => { assert.deepEqual(problems, []); });
+await step('no console errors or page errors the whole time', async () => { assert.deepEqual(problems, [], problems.join(' | ').slice(0, 500)); });
 
 await browser.close(); w.done();
 console.log(failures ? `\n${failures} step(s) failed.` : '\nAll steps passed.');
