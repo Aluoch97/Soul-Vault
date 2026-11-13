@@ -1,3 +1,5 @@
+// Downloads exist on the owner link only (never on a fan or public link).
+const canDownload = () => !!OWNER;
 async function play(vid) {
   listenEnd(false);   // the song being replaced: count it as a play or a skip
   const v = S.lib.versions.find(x => x.version_id === vid);
@@ -71,7 +73,7 @@ async function play(vid) {
     msg('');
     recordRecent(t);
     if (BOOT.token && !S.played[vid]) { S.played[vid] = 1; run('recordPlay', BOOT.token).catch(() => {}); }
-    if (OWNER || (S.share && S.share.allow_download)) {
+    if (canDownload()) {   // downloads exist on the owner link only (never on a fan or public link, whatever the link was set to before)
       const dl = v.audio ? (await sourceFor(v.audio, true)).download : (src && src.download);
       if (S.now.v === v) { S.now.dl = dl || ''; updateNowUI(); }
     }

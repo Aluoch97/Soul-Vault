@@ -961,3 +961,12 @@ test('song settings: marking a song as my guest spot (feature_role) is saved, sh
   await save({ feature_role: 'something else' }); t = await fan(); assert.equal(t.feature_role, '', 'only "mine" is accepted; anything else clears it');
   await save({ feature_role: 'mine' }); await save({ feature_role: '' }); t = await fan(); assert.equal(t.feature_role, '', 'taken off again');
 }));
+
+test('downloads are for the owner link only: a share link can never be made with downloads on, and old links that had them show as off', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'activity');
+  const made = (await w.owner('createShare', { targetType: 'all', targetId: 'all', label: 'Jo', allowDownload: true })).result;
+  const row = (await w.owner('getLibrary')).result.shares.find((x) => x.token === made.token);
+  assert.equal(row.allow_download, false, 'asking for downloads is ignored');
+  assert.equal((await w.call('getShare', [made.token])).result.share.allow_download, false, 'the link tells the app downloads are off');
+  assert.equal((await w.call('getShare', ['FAN'])).result.share.allow_download, false, 'an older link saved with downloads on is shown as off');
+}));

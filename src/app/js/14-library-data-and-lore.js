@@ -202,7 +202,7 @@ function openLorePhoto(i) {
   m.innerHTML = `<div class="lbview" role="dialog" aria-modal="true" aria-label="Photo viewer">
     <div class="lbtop"><span class="cs" id="lbCount"></span><span class="acts">
       <button class="ib" id="lbRot" aria-label="Rotate the photo">↻</button>
-      <a class="ib" id="lbDl" download aria-label="Download the photo">⬇</a>
+      ${OWNER ? '<a class="ib" id="lbDl" download aria-label="Download the photo">⬇</a>' : ''}
       <button class="ib" id="lbX" aria-label="Close">${I.x}</button></span></div>
     <div class="lbstage" id="lbStage"><img id="lbImg" alt="Nicólas Soul">
       <button class="ssnav prev" id="lbPrev" aria-label="Previous photo">${I.back}</button><button class="ssnav next" id="lbNext" aria-label="Next photo">${I.back}</button></div></div>`;
@@ -216,7 +216,7 @@ function openLorePhoto(i) {
   const show = n => {
     at = (n + list.length) % list.length; rot = 0; img.src = list[at]; fit();
     $('#lbCount').textContent = (at + 1) + ' of ' + list.length;
-    const dl = $('#lbDl'); dl.href = list[at]; dl.setAttribute('download', 'nicolas-soul-' + String(at + 1).padStart(2, '0') + '.jpg');
+    const dl = $('#lbDl'); if (dl) { dl.href = list[at]; dl.setAttribute('download', 'nicolas-soul-' + String(at + 1).padStart(2, '0') + '.jpg'); }
   };
   $('#lbRot').addEventListener('click', () => { rot = (rot + 90) % 360; fit(); });
   $('#lbX').addEventListener('click', closeModal);

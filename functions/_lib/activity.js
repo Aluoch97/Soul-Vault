@@ -16,7 +16,7 @@ const DDL = [
 export const ensureTables = db => db.batch(DDL.map(s => db.prepare(s)));
 
 // ── shares ──
-const shareOut = r => ({ token: r.token, target_type: r.target_type, target_id: r.target_id, label: r.label || '', allow_download: !!r.allow_download, expires: r.expires || '', active: !!r.active,
+const shareOut = r => ({ token: r.token, target_type: r.target_type, target_id: r.target_id, label: r.label || '', allow_download: false, expires: r.expires || '', active: !!r.active,
   plays: Number(r.plays) || 0, created: r.created || '', fan_name: r.fan_name || '', member_no: Number(r.member_no) || 0 });
 export async function loadShares(db) { try { return (await db.prepare('SELECT * FROM shares ORDER BY rowid').all()).results.map(shareOut); } catch (e) { return null; } }
 export async function importShares(db, shares) {
@@ -35,7 +35,7 @@ export async function createShare(db, o, siteUrl) {
   if (fanName) { const r = await db.prepare('SELECT MAX(member_no) AS m FROM shares').first(); memberNo = (Number(r && r.m) || 0) + 1; }
   const token = hex(6), created = new Date().toISOString();
   await db.prepare('INSERT INTO shares (token, target_type, target_id, label, allow_download, expires, active, plays, created, fan_name, member_no) VALUES (?,?,?,?,?,?,1,0,?,?,?)')
-    .bind(token, o.targetType, targetId, cut(o.label, 120), o.allowDownload ? 1 : 0, expires, created, fanName, memberNo).run();
+    .bind(token, o.targetType, targetId, cut(o.label, 120), 0, expires, created, fanName, memberNo).run();   // downloads are for the owner link only: never switched on for a share link
   return { token, url: siteUrl + '/?s=' + token, expires, fan_name: fanName, member_no: memberNo };
 }
 export async function setShareActive(db, token, active) {

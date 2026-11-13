@@ -194,10 +194,10 @@ S.qsCache = {};
 function quickShareBox(type, id) {
   const can = !!navigator.share, a = `data-qs-type="${type}" data-qs-id="${esc(id)}"`;
   return `<div class="qs"><h3>Public link</h3>
-    <p class="cs" style="margin:0">Anyone with this link can listen. It's the same link every time, and it can't download the WAV.</p>
+    <p class="cs" style="margin:0">Anyone with this link can listen. It's the same link every time. Fans can listen but not download.</p>
     <input class="field" id="qsUrl" readonly aria-label="Public link" placeholder="Tap Copy link">
     <div class="qsbtns"><button class="pill main" data-qs="copy" ${a}>${I.link || ''}Copy link</button>${can ? `<button class="pill soft" data-qs="share" ${a}>${I.share}Share…</button>` : ''}</div></div>
-    <p class="qsor">Or make a link just for one person, with a note, an expiry, or downloads:</p>`;
+    <p class="qsor">Or make a link just for one person, with a note or an expiry:</p>`;
 }
 async function copyText(text, box) {
   try { await navigator.clipboard.writeText(text); toast('Link copied'); return; } catch (e) {}
