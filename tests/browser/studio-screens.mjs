@@ -682,6 +682,14 @@ await step('New release form: clear boxes with option cards, the seal date only 
   await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 20000 });
   const nat = await store(); const rel = nat.releases.find((r) => r.title === 'No Songs Yet'); assert.ok(rel && rel.hidden === true, 'a hidden release with no songs yet was made');
 });
+await step('Backups page: the file list for an offsite copy; offline notice; the saved-copy service worker stays off in automated browsers', async () => {
+  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-backups]'); await page.evaluate(() => document.querySelector('[data-backups]').click()); await page.waitForSelector('#bkFiles');
+  const dl = page.waitForEvent('download', { timeout: 10000 }); await page.click('#bkFiles'); const file = await dl; assert.equal(file.suggestedFilename(), 'soul-vault-files.json');
+  await page.waitForFunction(() => /\d+ files, [\d.]+ MB/.test(document.querySelector('#bkFilesSt').textContent), null, { timeout: 8000 });
+  assert.match(await page.textContent('.bkfiles'), /tools\/download-media\.py/, 'it says how to make the copy'); await noSideways('backups page'); await page.evaluate(() => closeModal());
+  assert.equal(await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length), 0, 'no service worker in an automated browser');
+  await page.evaluate(() => window.dispatchEvent(new Event('offline'))); await seen("You're offline");
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

@@ -130,3 +130,5 @@
   .nr #nrMain { font-size: 16px; width: 100%; }
   .nr .nrdrop { padding: 12px; }
   .nrend { position: sticky; bottom: 0; padding: 12px 0 4px; background: linear-gradient(180deg, rgba(10,10,11,0), rgba(10,10,11,.96) 40%); }
+
+  .bkfiles { display: grid; gap: 8px; margin: 14px 0 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.03); } .bkfiles h3 { margin: 0; font-size: 15px; } .bkfiles .pill { justify-self: start; }
