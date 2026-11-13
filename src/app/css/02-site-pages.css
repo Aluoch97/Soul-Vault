@@ -182,4 +182,8 @@
   .vidtabs button { min-height: 44px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--dim); background: rgba(255,255,255,.07); white-space: nowrap; }
   .vidtabs button[aria-selected="true"] { color: #fff; background: var(--red); }
   .vidsort { justify-content: center; }
+  .vidsub { display: flex; justify-content: center; gap: 6px; margin: 2px 0 10px; }
+  .vidsub button { min-height: 44px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--dim); white-space: nowrap; }
+  .vidsub button span { opacity: .7; font-weight: 600; }
+  .vidsub button[aria-selected="true"] { color: var(--text); border-color: var(--red); background: rgba(210,16,52,.18); }
   .videopg .vidmore { justify-content: center; }

@@ -894,6 +894,14 @@ test('Video tab: anyone can read the Originals and Remixes playlists; a missing 
   assert.equal(full[0].videos[0].views, undefined, 'no statistics from YouTube: the list still works, just without them');
 }));
 
+test('Video tab: an older kept answer (made before a playlist was added) is not served, so the new playlist shows at once', () => withWorld(async (w) => {
+  w.env.YOUTUBE_API_KEY = 'test-yt-key';
+  w.youtube.playlists = Object.fromEntries(['PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK', 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV', 'PLYYNnxWFsj1_wIe3c0Lyj4EL9tMs9GQYU'].map((id, i) => [id, { title: 'L' + i, videos: [{ id: 'aaaaaaaaaa' + i, title: 'V' + i }] }]));
+  await caches.default.put(new Request('https://edge.soulnicolas.invalid/videolists/1'), new Response(JSON.stringify({ lists: [{ key: 'originals', videos: [] }, { key: 'remixes', videos: [] }] }), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=900' } }));
+  const lists = (await w.call('getVideoLists', [])).result.lists;
+  assert.deepEqual(lists.map((l) => [l.key, l.videos.length]), [['originals', 1], ['remixes', 1], ['music', 1]]);
+}));
+
 test('Video tab: each video carries its upload date, views and likes (likes can be hidden), read 50 at a time', () => withWorld(async (w) => {
   const O = 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK', R = 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV';
   w.env.YOUTUBE_API_KEY = 'test-yt-key';
