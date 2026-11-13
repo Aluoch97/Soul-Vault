@@ -93,8 +93,9 @@ function vaultSection(cfg) {
   const list = st.chip === 'all' ? cfg.songs : cfg.songs.filter(t => cfg.inChip(t, st.chip)), groups = projectsOf(list);
   const card = g => `<button type="button" class="agc vsc" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}">
     <span class="vart"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="vtag">${esc(cfg.tagOfGroup(g))}</span></span>
-    <span class="agt">${esc(g.r.title)}</span><span class="cs">${esc(cfg.subOfGroup(g))}</span></button>`;
-  const row = g => `<button type="button" class="alr" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="alt"><b>${esc(g.r.title)}</b><span class="cs">${esc([cfg.tagOfGroup(g), cfg.subOfGroup(g)].filter(Boolean).join(' · '))}</span></span></button>`;
+    <span class="agt">${esc(g.r.title)}</span><span class="cs">${esc(cfg.subOfGroup(g))}</span>${songLines(g)}</button>`;
+  const songLines = g => cfg.songLine ? `<span class="vsongs">${g.songs.slice(0, 4).map(t => `<span class="vsong">${esc(cfg.songLine(t))}</span>`).join('')}${g.songs.length > 4 ? `<span class="vsong more">+${g.songs.length - 4} more</span>` : ''}</span>` : '';
+  const row = g => `<button type="button" class="alr" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="alt"><b>${esc(g.r.title)}</b><span class="cs">${esc([cfg.tagOfGroup(g), cfg.subOfGroup(g)].filter(Boolean).join(' · '))}</span>${songLines(g)}</span></button>`;
   const body = !groups.length ? '<p class="cs">Nothing here yet.</p>'
     : view === 'list' ? `<section class="alllist" aria-label="${esc(cfg.label)}">${groups.map(row).join('')}</section>`
     : view === 'scroll' ? `<div class="hrow vrow" aria-label="${esc(cfg.label)}">${groups.map(card).join('')}</div>`
@@ -104,7 +105,7 @@ function vaultSection(cfg) {
     <div class="vs-ribbon">${cfg.ribbon}</div>
     <div class="vs-head"><h2 class="sh"><span>${cfg.title}</span></h2></div>
     <p class="cs vs-blurb">${cfg.blurb}</p>
-    ${viewMenu(view, cfg.id)}${chips}${body}${cfg.hint || ''}</section>`;
+    ${cfg.tabsHtml || ''}${viewMenu(view, cfg.id)}${chips}${body}${cfg.hint || ''}</section>`;
 }
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 function unreleasedSection() {
@@ -122,19 +123,25 @@ function unreleasedSection() {
     hint: OWNER && unsorted ? `<p class="cs vs-hint">${plural(unsorted, 'song')} ${unsorted === 1 ? 'is' : 'are'} not sorted yet. In Studio, open the song and pick what it counts as (Single, Album, EP, Mixtape or Compilation).</p>` : '' });
 }
 function featuresSection() {
-  const ts = featuredSongs();
-  if (!ts.length) return '';
-  const mine = ts.filter(isGuestSpot), guests = ts.filter(t => !isGuestSpot(t) && featuresOf(t).length);
+  const all = featuredSongs();
+  if (!all.length) return '';
   const mainArtist = t => String(t.artist || (rel(t.release_id) || {}).artist_name || '').trim();
   const who = t => isGuestSpot(t) ? [sameArtist(mainArtist(t))].filter(Boolean) : featuresOf(t);
+  // Two tabs: my features (guests on my songs) and my guest spots on other people's songs.
+  const TABS = [['mine', 'My features', all.filter(t => !isGuestSpot(t) && featuresOf(t).length)], ['spots', 'Guest spots', all.filter(isGuestSpot)]].filter(x => x[2].length);
+  const st = secState('features'); if (!TABS.some(x => x[0] === st.tab)) st.tab = TABS[0][0];
+  const ts = TABS.find(x => x[0] === st.tab)[2], isSpots = st.tab === 'spots';
   const byPerson = {}; ts.forEach(t => who(t).forEach(n => { (byPerson[n] = byPerson[n] || []).push(t); }));
   const names = Object.keys(byPerson).sort((a, b) => nProjects(byPerson[b]) - nProjects(byPerson[a]) || a.localeCompare(b)).slice(0, 10);
-  const chips = [['all', 'All', nProjects(ts)]].concat(guests.length && mine.length ? [['k:guests', 'Guests on my songs', nProjects(guests)], ['k:mine', 'My guest spots', nProjects(mine)]] : []).concat(names.map(n => ['a:' + n, n, nProjects(byPerson[n])]));
-  return vaultSection({ id: 'features', cls: 'spot', label: 'Projects with features', songs: ts, chips,
+  const chips = [['all', 'All', nProjects(ts)]].concat(names.map(n => ['a:' + n, n, nProjects(byPerson[n])]));
+  const tabsHtml = TABS.length > 1 ? `<div class="vs-tabs" role="tablist" aria-label="Features">${TABS.map(([k, l, a]) => `<button type="button" role="tab" data-sectab="features|${k}" aria-selected="${k === st.tab}">${esc(l)} <span class="n">${nProjects(a)}</span></button>`).join('')}</div>` : '';
+  // The song's name, and who is on it (leaving out a name the title already shows).
+  const songLine = t => { const title = String(t.title || ''), extra = who(t).filter(n => title.toLowerCase().indexOf(n.toLowerCase()) < 0).join(', '); return title + (extra ? (isSpots ? ' · by ' : ' · feat. ') + extra : ''); };
+  return vaultSection({ id: 'features', cls: 'spot', label: isSpots ? 'Projects with my guest spots' : 'Projects with my features', songs: ts, chips, tabsHtml, songLine,
     ribbon: `<span class="vs-lock">${I.mic || ''}</span><span class="vs-acc">Special guests</span><i class="vs-dot" aria-hidden="true"></i><span class="vs-sub">Features</span>`,
-    title: '<b>Features</b>', blurb: `Guests on my songs, and my guest spots on other artists' songs. ${plural(ts.length, 'song')} in ${plural(nProjects(ts), 'project')}.`,
-    inChip: (t, k) => k === 'k:guests' ? !isGuestSpot(t) : k === 'k:mine' ? isGuestSpot(t) : k.indexOf('a:') === 0 && who(t).indexOf(k.slice(2)) > -1,
-    tagOfGroup: g => g.songs.every(isGuestSpot) ? 'Guest spot' : plural(g.songs.length, 'feature'),
+    title: '<b>Features</b>', blurb: (isSpots ? 'My guest spots on other artists\' songs. ' : 'Guests on my songs. ') + `${plural(ts.length, 'song')} in ${plural(nProjects(ts), 'project')}.`,
+    inChip: (t, k) => k.indexOf('a:') === 0 && who(t).indexOf(k.slice(2)) > -1,
+    tagOfGroup: g => isSpots ? 'Guest spot' : plural(g.songs.length, 'feature'),
     subOfGroup: g => { const n = []; g.songs.forEach(t => who(t).forEach(x => { if (n.indexOf(x) < 0) n.push(x); })); return (n.slice(0, 3).join(', ') + (n.length > 3 ? ' +' + (n.length - 3) : '')); } });
 }
 function dropsRow() {

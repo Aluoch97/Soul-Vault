@@ -130,6 +130,7 @@
     .tabs .homebtn svg { width: 26px; height: 26px; }
     .tabs .homebtn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
     .home-h { padding-top: 18px; }
+    .home-h.home-h-bar { justify-content: flex-end; padding-bottom: 8px; }
     .slide { flex-basis: 88%; aspect-ratio: 4 / 5; }
     .hero .flagband { margin-left: auto !important; margin-right: auto !important; }
     .tiles { grid-template-columns: 1fr 1fr; gap: 12px; }

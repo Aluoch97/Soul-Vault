@@ -1,6 +1,12 @@
 /* ── library ── */
 // The top of the Music and Lore pages: the greeting and Soul Vault name, and for the owner the new-release, share-links and Settings buttons.
 function homeHeader(withButtons) {
+  if (withButtons) {   // the Lore page: no greeting or name, only the owner's buttons (nothing at all for fans)
+    return OWNER ? `<header class="home-h home-h-bar"><div class="hbtns">
+          <button class="round" data-newrel aria-label="New release">${I.plus}</button>
+          <button class="round" data-nav="shares" aria-label="Share links">${I.link}</button>
+          <button class="avatar" data-nav="vault" aria-label="Settings">NS</button></div></header>` : '';
+  }
   return `<header class="home-h">
         <div><div class="hello">${OWNER ? 'Karibu tena' : 'Karibu, ' + esc((S.share && S.share.fan_name) || 'family')}</div><div class="brand">Soul <span>Vault</span></div></div>
         <div class="hbtns">
@@ -104,6 +110,8 @@ document.addEventListener('click', e => {
   const sv = e.target.closest && e.target.closest('[data-secview]'), sc = e.target.closest && e.target.closest('[data-secchip]');
   if (sv) { const [id, v] = sv.dataset.secview.split('|'); secState(id).view = v; ls.set('sv_secview_' + id, v); redrawSection(id); return; }
   if (sc) { const [id, k] = sc.dataset.secchip.split('|'); secState(id).chip = k; redrawSection(id); return; }
+  const stb = e.target.closest && e.target.closest('[data-sectab]');
+  if (stb) { const [id, k] = stb.dataset.sectab.split('|'); const q = secState(id); q.tab = k; q.chip = 'all'; redrawSection(id); return; }
   const o = e.target.closest && e.target.closest('[data-libview]');
   if (o) { S.libView = o.dataset.libview; ls.set('sv_libview', S.libView); renderLibBody(); return; }
   $$('.viewmenu').forEach(x => { x.hidden = true; if (x.previousElementSibling) x.previousElementSibling.setAttribute('aria-expanded', 'false'); });   // a tap anywhere else closes it
