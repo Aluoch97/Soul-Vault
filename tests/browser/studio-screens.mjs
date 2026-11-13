@@ -116,28 +116,18 @@ await step('Music tab: the Unreleased area is its own secret-access area with it
   await page.evaluate(() => renderLibrary());
   await page.waitForSelector('#unreleased .vsc', { timeout: 10000 }).catch(async (e) => { throw new Error('no Unreleased area: ' + JSON.stringify(await page.evaluate(() => ({ n: unreleasedSongs().length, view: S.view, a1: (({ track_id, unreleased, hidden, title }) => ({ track_id, unreleased, hidden, title }))(S.lib.tracks.find((t) => t.track_id === 'trk_a1') || {}), body: document.querySelector('#main').innerText.slice(0, 200).replace(/\s+/g, ' ') })))); });
   const info = await page.evaluate(() => { const el = document.querySelector('#unreleased'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), chips: [...el.querySelectorAll('.vs-chips button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), cards: el.querySelectorAll('.vsc').length,
-    glow: getComputedStyle(el, '::before').content, sheen: getComputedStyle(el.querySelector('.vart'), '::after').animationName, menu: !!el.querySelector('[data-secview]'), libView: S.libView, hint: !!el.querySelector('.vs-hint') }; });
+    glow: getComputedStyle(el, '::before').content, sheen: getComputedStyle(el.querySelector('.vart'), '::after').animationName, menu: !!el.querySelector('[data-libmenu], [data-secview]'), libView: S.libView, hint: !!el.querySelector('.vs-hint') }; });
   assert.ok(/secret/.test(info.cls) && /access granted/.test(info.ribbon) && /unreleased vault/.test(info.ribbon), 'it has the secret-access ribbon: ' + info.ribbon);
-  assert.notEqual(info.glow, 'none', 'it has the glowing border'); assert.ok(info.menu, 'it has its own View menu');
+  assert.notEqual(info.glow, 'none', 'it has the glowing border'); assert.equal(info.menu, false, 'no View menu of its own: it is a scrolling row');
   assert.deepEqual(info.chips, ['All 3', 'Singles 1', 'Albums 1', 'EPs 1'], 'projects, sorted by what they count as: ' + info.chips.join(' | '));
   assert.equal(info.cards, 3, 'one card per PROJECT (5 songs, 3 projects), not one per song'); assert.equal(info.hint, false, 'nothing is unsorted');
   const cards = await page.evaluate(() => [...document.querySelectorAll('#unreleased .vsc')].map((c) => c.querySelector('.agt').textContent + ' = ' + c.querySelector('.vtag').textContent + ' / ' + c.querySelector('.cs').textContent).sort());
   assert.ok(cards.some((c) => /^Group EP = Album \/ .*3 unreleased songs$/.test(c)) && cards.some((c) => /^Open Album = EP/.test(c)) && cards.some((c) => /^A Single = Single/.test(c)), 'each project says what it is and how many unreleased songs it has: ' + cards.join(' | '));
   await noSideways('music tab with the unreleased area');
-  for (const v of ['large', 'small', 'list']) {
-    await page.click('#unreleased [data-libmenu]', { timeout: 6000 }).catch(async (e) => { throw new Error('menu button: ' + JSON.stringify(await page.evaluate(() => { const b = document.querySelector('#unreleased [data-libmenu]'); if (!b) return 'none'; const r = b.getBoundingClientRect(), at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return { rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)], vis: getComputedStyle(b).visibility, at: at ? at.tagName + '.' + at.className : null, scrollY: scrollY }; }))); });
-    if (process.env.DEBUG) console.log('   menu:', JSON.stringify(await page.evaluate(() => { const m = document.querySelector('#unreleased .viewmenu'), r = m.getBoundingClientRect(); const cs = getComputedStyle(m); return { hidden: m.hidden, display: cs.display, vis: cs.visibility, pos: cs.position, rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)], parent: m.parentElement.className, expanded: document.querySelector('#unreleased [data-libmenu]').getAttribute('aria-expanded') }; })));
-    await tapAt(`#unreleased [data-secview="unreleased|${v}"]`);
-    await page.waitForFunction((x) => document.querySelector('#unreleased').innerHTML.length > 0 && (x === 'list' ? document.querySelector('#unreleased .alllist .alr') : document.querySelector('#unreleased .allgrid.' + x)), v, { timeout: 5000 });
-    await noSideways('unreleased area in ' + v);
-  }
-  const rows = await page.evaluate(() => [...document.querySelectorAll('#unreleased .alllist .alr')].map((e) => e.querySelector('b').textContent + ' | ' + e.querySelector('.cs').textContent).sort());
-  assert.equal(rows.length, 3, 'in the list: one row per project'); assert.ok(rows.some((r) => /^Group EP \| Album/.test(r)) && rows.some((r) => /^Open Album \| EP/.test(r)), 'each row says what it is: ' + rows.join(' ; '));
-  assert.equal(await page.evaluate(() => [S.libView, ls.get('sv_secview_unreleased', ''), ls.get('sv_libview', 'scroll')].join('|')), 'scroll|list|scroll', "the area's View is its own: the releases' View is unchanged");
+  await page.waitForSelector('#unreleased .hrow.vrow .vsc'); await noSideways('unreleased area');
   await page.click('#unreleased [data-secchip="unreleased|EP"]');
-  await page.waitForFunction(() => document.querySelectorAll('#unreleased .alllist .alr').length === 1, null, { timeout: 5000 });
+  await page.waitForFunction(() => document.querySelectorAll('#unreleased .vsc').length === 1, null, { timeout: 5000 });
   await page.click('#unreleased [data-secchip="unreleased|all"]');
-  await page.click('#unreleased [data-libmenu]'); await tapAt('#unreleased [data-secview="unreleased|scroll"]');
   await page.waitForSelector('#unreleased .hrow .vsc');
   await tapAt('#unreleased .vsc'); await page.waitForFunction(() => S.view === 'release', null, { timeout: 8000 });   // tapping a project opens it
   await page.evaluate(() => renderLibrary()); await page.waitForSelector('#unreleased .vsc');
@@ -148,8 +138,8 @@ await step('Music tab: Features has one tab for my features and one for my guest
   const read = () => page.evaluate(() => { const el = document.querySelector('#features'); return { cls: el.className, ribbon: el.querySelector('.vs-ribbon').textContent.toLowerCase(), tabs: [...el.querySelectorAll('.vs-tabs button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim() + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), chips: [...el.querySelectorAll('[data-secsel] option')].map((o) => o.textContent.trim()), cards: el.querySelectorAll('.vsc').length, tags: [...el.querySelectorAll('.vtag')].map((b) => b.textContent.trim()).sort(), songs: [...el.querySelectorAll('.vsc')].map((c) => [c.querySelector('.agt').textContent, [...c.querySelectorAll('.vsong')].map((x) => x.textContent).sort().join(' / ')].join(' => ')).sort(), view: (el.querySelector('[data-libmenu]') || {}).textContent }; });
   let info = await read();
   assert.ok(/spot/.test(info.cls) && /features/.test(info.ribbon), 'its own look: ' + info.ribbon);
-  assert.deepEqual(info.tabs, ['My features 2*', 'Guest spots 1'], 'two tabs, my features first: ' + info.tabs.join(' | '));
-  assert.deepEqual(info.chips, ['All (2)', 'Aziza (2)', 'Charlie, The Healer (1)', 'Khairro (1)'], 'one dropdown with only the people on my features: ' + info.chips.join(' | '));
+  assert.deepEqual(info.tabs, ['My features*', 'Guest spots'], 'two tabs, my features first: ' + info.tabs.join(' | '));
+  assert.deepEqual(info.chips, ['Everyone (2)', 'Aziza (2)', 'Charlie, The Healer (1)', 'Khairro (1)'], 'one dropdown with only the people on my features: ' + info.chips.join(' | '));
   assert.deepEqual(info.tags, ['1 feature', '3 features']); assert.equal(info.cards, 2, 'one card per project');
   assert.ok(info.songs.some((s) => s === 'Group EP => G1 / G2 / G3'), 'each project lists its songs by name, without the "(feat. …)" tail: ' + info.songs.join(' | '));
   assert.deepEqual(await page.evaluate(() => [featuresOf({ features: 'Charlie, The Healer' }), featuresOf({ features: 'Charlie & Aziza' }), featuresOf({ title: 'X (feat. The Healer)' }), featuresOf({ features: 'Charlie, The Healer, Charlie' })]), [['Charlie, The Healer'], ['Charlie, The Healer', 'Aziza'], ['Charlie, The Healer'], ['Charlie, The Healer']], 'Charlie and The Healer are one artist: Charlie, The Healer');
@@ -157,17 +147,14 @@ await step('Music tab: Features has one tab for my features and one for my guest
   await page.click('#features [data-sectab="features|spots"]');
   await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 1 && /Berhani/.test(document.querySelector('#features .vsc').innerText), null, { timeout: 5000 });
   info = await read();
-  assert.deepEqual(info.tabs, ['My features 2', 'Guest spots 1*']); assert.deepEqual(info.chips, []);   // (one person: no dropdown) assert.deepEqual(info.tags, ['Guest spot']);
+  assert.deepEqual(info.tabs, ['My features', 'Guest spots*']); assert.deepEqual(info.chips, []);   // (one person: no dropdown) assert.deepEqual(info.tags, ['Guest spot']);
   assert.match(info.songs[0], /Song trk_sg$/, 'a guest spot card names the song: ' + info.songs[0]);
   await page.click('#features [data-sectab="features|mine"]'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 2, null, { timeout: 5000 });   // the person filter starts over
   await page.selectOption('#features [data-secsel]', 'a:Aziza'); await page.waitForFunction(() => document.querySelectorAll('#features .vsc').length === 2, null, { timeout: 5000 });
   const uni = await page.evaluate(() => { const c = [...document.querySelectorAll('#features .vsc')]; return { heights: [...new Set(c.map((e) => Math.round(e.getBoundingClientRect().height)))], overflow: c.some((e) => e.scrollWidth > e.clientWidth + 1) }; });
   assert.equal(uni.heights.length, 1, 'every project card is the same height: ' + uni.heights.join(', ')); assert.equal(uni.overflow, false, 'no text spills out of a card');
-  await page.click('#features [data-libmenu]'); await tapAt('#features [data-secview="features|large"]');
-  await page.waitForSelector('#features .allgrid.large .vsc'); await noSideways('features area');
-  await page.click('#features [data-libmenu]'); await tapAt('#features [data-secview="features|list"]');
-  await page.waitForSelector('#features .alllist .alr .vsong'); assert.ok(await page.evaluate(() => /G1\s+feat\. Aziza/.test(document.querySelector('#features .alllist').innerText)), 'the list view names the songs and who is on each'); await noSideways('features list');
-  await page.click('#features [data-libmenu]'); await tapAt('#features [data-secview="features|scroll"]');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('#features [data-libmenu], #features .allgrid, #features .alllist').length), 0, 'Features has no View menu: one scrolling row');
+  await noSideways('features area');
 });
 await step('Studio: tell an unreleased song what it counts as, and the Unreleased area re-sorts it', async () => {
   await page.evaluate(() => { S.stuRel = 'rel_single'; renderStudio(); });
@@ -534,13 +521,35 @@ await step('a song\'s Options (release page > Edit) has a guest-spot checkbox: i
   await page.evaluate((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); x.feature_role = ''; }, tid);
 });
 await step('Unreleased is not in the type lists (filters, new release, Studio); unreleased work can still be marked and labelled Single, Album, ...', async () => {
-  await page.evaluate(() => renderLibrary()); await page.waitForSelector('#libBody [data-filter]');
-  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#libBody [data-filter]')].map((b) => b.textContent.trim())), ['All', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation'], 'no Unreleased filter chip');
+  await page.evaluate(() => renderLibrary()); await page.waitForSelector('#libBody [data-filtersel]');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#libBody [data-filtersel] option')].map((o) => o.textContent.trim())), ['All types', 'Album', 'Mixtape', 'EP', 'Single', 'Compilation'], 'one type dropdown, no Unreleased type');
   assert.deepEqual(await page.evaluate(() => [REL_TYPES, EDIT_TYPES, relTypeOptions('EP'), relTypeOptions('Unreleased')].map((l) => l.includes('Unreleased'))), [false, false, false, true], 'not offered, except to an older release that already has it');
   await page.evaluate(() => openNewRelease()); await page.waitForSelector('#nrType');
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('#nrType option')].some((o) => o.textContent === 'Unreleased')), false, 'new release form');
   await page.evaluate(() => closeModal());
   assert.ok(await page.evaluate(() => UNREL_KINDS.join() === 'Single,Album,EP,Mixtape,Compilation'), 'unreleased songs can still be labelled Single, Album, EP, ...'); assert.ok(await page.evaluate(() => !!document.querySelector('#unreleased')), 'and the Unreleased section is still there');
+});
+await step('on a 320 px phone all six tabs fit on the screen, and the Music tab still has no sideways scroll', async () => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  try {
+    await page.evaluate(() => { S.sec = {}; renderLibrary(); }); await page.waitForSelector('#libBody .libbar'); await page.waitForTimeout(400);
+    const tabs = await page.evaluate(() => [...document.querySelectorAll('#tabs button')].map((b) => { const r = b.getBoundingClientRect(); return [r.left >= -0.5 && r.right <= innerWidth + 0.5, r.width >= 40, b.textContent.trim()]; }));
+    assert.ok(tabs.length === 6 && tabs.every((t) => t[0] && t[1]), 'every tab fits at 320 px: ' + JSON.stringify(tabs));
+    await noSideways('music at 320');
+  } finally { await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300); }
+});
+await step('Music tab is calm: one line for the type filter + View, no "1 of N" counter, no View menus on Unreleased and Features, tabs + guest filter on one line', async () => {
+  await page.evaluate(() => { S.filter = 'All'; S.sec = {}; renderLibrary(); }); await page.waitForSelector('#libBody .libbar');
+  const m = await page.evaluate(() => { const q = (x) => document.querySelector(x), c = (e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; };
+    const visible = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+    return { sameLine: Math.abs(c(q('.libbar [data-filtersel]')) - c(q('.libbar [data-libmenu]'))) < 12, counter: !!q('#shelfPos'), pills: document.querySelectorAll('#libBody [data-filter]').length, viewMenus: document.querySelectorAll('#libBody [data-libmenu]').length,
+      featLine: !!q('#features .vs-bar') && Math.abs(c(q('#features .vs-tabs')) - c(q('#features [data-secsel]'))) < 12, controls: [...document.querySelectorAll('#main button, #main select')].filter(visible).length }; });
+  assert.deepEqual([m.sameLine, m.counter, m.pills, m.viewMenus], [true, false, 0, 1], 'one line, no counter, no type pills, a single View menu on the whole Music tab: ' + JSON.stringify(m));
+  assert.ok(m.featLine, 'Features: tabs and the guest dropdown share one line');
+  assert.equal(await page.evaluate(() => { const t = document.querySelector('#features .vs-tabs').getBoundingClientRect(), s = document.querySelector('#features [data-secsel]').getBoundingClientRect(); return t.right <= s.left + 1 && s.right <= innerWidth; }), true, 'the tabs and the dropdown do not overlap or run off the screen'); console.log('   (Music tab controls on screen: ' + m.controls + ')');
+  await page.selectOption('[data-filtersel]', 'EP'); await page.waitForFunction(() => S.filter === 'EP' && document.querySelectorAll('#all-releases .slide').length >= 0 && document.querySelector('[data-filtersel]').value === 'EP', null, { timeout: 5000 });
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('#all-releases .slide')].every((x) => /EP/.test(x.querySelector('.tag, .as, .cap') ? x.textContent : 'EP'))), true, 'the dropdown filters the shelf');
+  await page.selectOption('[data-filtersel]', 'All');
 });
 await step('every row that scrolls sideways (Music shelves, Unreleased, Features, Lore eras and photos) has arrows, only where there is more to scroll', async () => {
   const check = async (label, min = 2) => {
@@ -571,7 +580,7 @@ await step('on a computer the scrolling shelves (discography, Unreleased, Featur
   });
   assert.ok(m.shelf && m.shelfDisplay === 'flex' && m.shelfOverflow === 'auto', 'the discography shelf scrolls sideways on a computer: ' + JSON.stringify(m));
   assert.deepEqual(await d.evaluate(() => { const row = document.querySelector('#main .shelf .ctrack'), w = row.closest('.scrollwrap'); return [!!w, !w.querySelector('.sarrow.r').hidden === (row.scrollWidth - row.clientWidth > 4)]; }), [true, true], 'the shelf has arrows on a computer (shown only when it can scroll)');
-  assert.ok(m.slideW >= 240 && m.slideW <= 300, 'phone-style cards, not big covers: ' + m.slideW + 'px'); assert.ok(m.arrows, 'with arrows on the shelf');
+  assert.ok(m.slideW >= 240 && m.slideW <= 300, 'phone-style cards, not big covers: ' + m.slideW + 'px'); 
   assert.deepEqual([m.vrowDisplay, m.vrowOverflow, m.cardW], ['flex', 'auto', 180], 'the Unreleased row is a scrolling row of small cards');
   const bars = await d.evaluate(() => [...document.querySelectorAll('#main .shelf .ctrack, #main .hrow.vrow')].map((r) => { const cs = getComputedStyle(r), pb = getComputedStyle(r, '::-webkit-scrollbar'); return { sb: cs.scrollbarWidth, wk: pb.display }; }));
   assert.ok(bars.length >= 2 && bars.every((b) => b.sb === 'none' || b.wk === 'none'), 'no grey scroll bars under the rows: ' + JSON.stringify(bars));

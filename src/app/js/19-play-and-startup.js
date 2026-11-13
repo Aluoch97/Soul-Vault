@@ -391,6 +391,7 @@ document.addEventListener('input', e => {
 
 document.addEventListener('change', e => {
   const ds = e.target.dataset || {};
+  if ('filtersel' in ds) { S.filter = e.target.value; renderLibBody(); const a = $('#all-releases'); if (a && S.filter !== 'All') a.scrollIntoView({ block: 'start' }); return; }
   if (ds.secsel) { secState(ds.secsel).chip = e.target.value; redrawSection(ds.secsel); return; }
   if (ds.nrKind != null && S.nr) { S.nr.kind = ds.nrKind; const m = $('#nrMain'); if (m) { m.hidden = ds.nrKind !== 'feature'; if (!m.hidden) m.focus(); } nrRender(); return; }
   if (ds.nrSpot != null && S.nr) { S.nr.files[+ds.nrSpot].spot = e.target.checked; nrRender(); const a = $('[data-nr-art="' + ds.nrSpot + '"]'); if (a && e.target.checked) a.focus(); return; }
