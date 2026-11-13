@@ -72,9 +72,9 @@ test('a single-song link or single-release link shows just that, and no bio', ()
   assert.equal(all.artist_bio, 'The bio');                                       // only the "all" link carries the bio
 }));
 
-test('the share block tells the app about the link (download allowed, fan name) and nothing secret', () => withWorld(async (w) => {
+test('the share block tells the app about the link (never "download allowed", fan name) and nothing secret', () => withWorld(async (w) => {
   const r = (await w.call('getShare', ['FAN'])).result;
-  assert.deepEqual(r.share, { target_type: 'all', allow_download: true, fan_name: 'Jo', member_no: 1, created: '' });
+  assert.deepEqual(r.share, { target_type: 'all', allow_download: false, fan_name: 'Jo', member_no: 1, created: '' });   // downloads are for the owner link only, even for a link saved with them on
   assert.equal((await w.call('getShare', ['PUB'])).result.share.allow_download, false);
 }));
 

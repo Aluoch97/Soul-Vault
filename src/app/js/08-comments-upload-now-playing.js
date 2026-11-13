@@ -372,7 +372,6 @@ function openShare(type, id) {
       <label>Who is it for?<input class="field" id="mLabel" type="text" maxlength="120" placeholder="${type === 'all' ? 'Everyone, or one fan\'s name' : 'Shake, mix notes'}"></label>
       ${type === 'all' ? `<label>Greeting name (optional)<input class="field" id="mFan" maxlength="40" placeholder="Aisha"></label>
         <p class="cs cnote">Adds "Karibu, Aisha" to their Home and gives this link the next member number. Leave empty for a shared link.</p>` : ''}
-      <label class="row2"><input type="checkbox" id="mDl"> Let them download the WAV</label>
       <label>Link works for
         <select class="field" id="mExp"><option value="0">Until I turn it off</option><option value="7">7 days</option><option value="30">30 days</option></select>
       </label>
@@ -383,7 +382,7 @@ function openShare(type, id) {
   $('#mLabel').focus();
   $('#mGo').addEventListener('click', async () => {
     const go = $('#mGo'); go.disabled = true; go.textContent = 'Creating…';
-    const label = $('#mLabel').value.trim(), allow = $('#mDl').checked;
+    const label = $('#mLabel').value.trim(), allow = false;   // downloads are for the owner link only
     try {
       const fanName = $('#mFan') ? $('#mFan').value.trim() : '';
       const r = await run('createShare', BOOT.key, { targetType: type, targetId: id, label, allowDownload: allow, expiresDays: +$('#mExp').value, fanName });

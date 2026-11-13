@@ -109,8 +109,9 @@ export function bodyTtl(body, now, base) {
   return ttl;
 }
 
+// Downloads are for the owner link only: a share block never says downloads are allowed, whatever an older link was saved with.
 export function shareBlock(s) {
-  return { target_type: s.target_type, allow_download: s.allow_download === true, fan_name: s.fan_name || '', member_no: Number(s.member_no) || 0, created: s.created || '' };
+  return { target_type: s.target_type, allow_download: false, fan_name: s.fan_name || '', member_no: Number(s.member_no) || 0, created: s.created || '' };
 }
 
 // The Studio-only extras (listen links, slowed + reverb videos, unreleased flags) for the releases and songs a link can see.
