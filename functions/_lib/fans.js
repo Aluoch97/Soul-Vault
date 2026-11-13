@@ -1,9 +1,22 @@
 // Soul Tribe fan list in D1 (replaces the Google "The Soul Tribe" sheet for sign-ups). Rules match the old form.
 export const FAN_FNS = ['joinSubmit', 'getFans'];
 const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
-const DDL = ['CREATE TABLE IF NOT EXISTS fans (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, first_name TEXT, last_name TEXT, email TEXT UNIQUE, consent INTEGER, city TEXT, birth_year TEXT, social TEXT, how_heard TEXT, favorite TEXT, source TEXT, ip_hash TEXT)',
+const DDL = ['CREATE TABLE IF NOT EXISTS fans (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, first_name TEXT, last_name TEXT, email TEXT UNIQUE, consent INTEGER, city TEXT, birth_year TEXT, social TEXT, how_heard TEXT, favorite TEXT, source TEXT, ip_hash TEXT, news INTEGER DEFAULT 0)',
   'CREATE INDEX IF NOT EXISTS ix_fans_ip ON fans (ip_hash, at)'];
-export const ensureFans = db => db.batch(DDL.map(s => db.prepare(s)));
+const checked = new WeakSet();
+// `news` = gets the newsletter. It is its own column because the old Google list only e-mailed people who had ticked the box on the form
+// (the 5 contacts imported by hand never got it), and unsubscribing must not erase what they agreed to. A table made before this column
+// existed gets it once: everyone who signed up through the form (not the imported contacts) starts as subscribed, like the old list.
+export async function ensureFans(db) {
+  await db.batch(DDL.map(s => db.prepare(s)));
+  if (checked.has(db)) return;
+  const cols = (await db.prepare('PRAGMA table_info(fans)').all()).results.map(c => c.name);
+  if (cols.indexOf('news') < 0) {
+    await db.prepare('ALTER TABLE fans ADD COLUMN news INTEGER DEFAULT 0').run();
+    await db.prepare("UPDATE fans SET news = 1 WHERE consent = 1 AND COALESCE(source, '') NOT LIKE 'Imported contact%'").run();
+  }
+  checked.add(db);
+}
 const sha = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 24);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -20,7 +33,7 @@ export async function joinSubmit(db, p, ip) {
   const recent = Number((await db.prepare('SELECT COUNT(*) AS n FROM fans WHERE ip_hash = ? AND at > ?').bind(h, now - 3600e3).first()).n) || 0;
   if (recent >= 10) throw new Error('Too many sign-ups from here. Try again later.');
   if (await db.prepare('SELECT 1 AS x FROM fans WHERE email = ?').bind(email).first()) return { duplicate: true };
-  await db.prepare('INSERT INTO fans (at, first_name, last_name, email, consent, city, birth_year, social, how_heard, favorite, source, ip_hash) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+  await db.prepare('INSERT INTO fans (at, first_name, last_name, email, consent, city, birth_year, social, how_heard, favorite, source, ip_hash, news) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1)')
     .bind(now, first, cut(p.lastName, 80), email, 1, cut(p.city, 120), by, cut(p.social, 120), cut(p.howHeard, 80), cut(p.favoriteRelease, 120), cut(p.source, 200), h).run();
   return { ok: true, added: true };
 }

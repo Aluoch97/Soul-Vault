@@ -1,0 +1,35 @@
+name: Newsletter
+
+# "Inside the Tribe" goes out on the 1st and 3rd Friday of the month, from 9 AM Central.
+# GitHub's timer has no time zones and can run late, so this asks three times on Fridays (14:11, 15:11, 16:11 UTC).
+# The site itself decides whether today is a send day, whether it is 9 AM yet, and whether today's e-mail already went out,
+# so asking more than once never sends twice.
+# Does nothing until the GitHub secret NEWSLETTER_CRON_TOKEN is set (same value as the Cloudflare secret of the same name).
+# Run it by hand any time from the Actions tab ("Run workflow"); tick "preview" to send yourself a sample instead.
+on:
+  schedule:
+    - cron: '11 14,15,16 * * 5'
+  workflow_dispatch:
+    inputs:
+      preview:
+        description: 'Send a sample newsletter to Nick only (nobody else gets anything)'
+        type: boolean
+        default: false
+
+jobs:
+  newsletter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask the site to send (or preview) the newsletter
+        env:
+          NEWSLETTER_CRON_TOKEN: ${{ secrets.NEWSLETTER_CRON_TOKEN }}
+          PREVIEW: ${{ inputs.preview }}
+        run: |
+          if [ -z "$NEWSLETTER_CRON_TOKEN" ]; then echo "NEWSLETTER_CRON_TOKEN is not set yet, so the old Google script is still sending the newsletter. Nothing to do."; exit 0; fi
+          action=send; if [ "$PREVIEW" = "true" ]; then action=preview; fi
+          code=$(curl -sS -o response.json -w '%{http_code}' -X POST -H 'content-type: application/json' \
+            -d "{\"action\":\"$action\",\"token\":\"$NEWSLETTER_CRON_TOKEN\"}" https://soulnicolas.com/news)
+          cat response.json; echo
+          if [ "$code" = "401" ]; then echo "The site refused the token: it does not match the Cloudflare secret NEWSLETTER_CRON_TOKEN."; fi
+          test "$code" = "200"
