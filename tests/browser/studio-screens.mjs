@@ -516,6 +516,24 @@ await step('Start from a SoundCloud link in the New release form; Songs on links
   assert.deepEqual(await page.evaluate((id) => S.lib.versions.filter((v) => v.track_id === id).map((v) => [v.format === 'SOUNDCLOUD', !!v.is_primary]).sort(), trk.track_id), [[false, true], [true, false]], 'in the open app too, the file plays first');
   await page.evaluate(() => closeModal());
 });
+await step('every row that scrolls sideways (Music shelves, Unreleased, Features, Lore eras and photos) has arrows, only where there is more to scroll', async () => {
+  const check = async (label, min = 2) => {
+    await page.waitForTimeout(700);
+    const rows = await page.evaluate(() => [...document.querySelectorAll('#main .hrow, #main .ctrack:not(.homeone), #main .loreeras')].map((r) => { const w = r.closest('.scrollwrap'), over = r.scrollWidth - r.clientWidth > 4; const vis = (q) => !!w && !!w.querySelector(q) && !w.querySelector(q).hidden; return { cls: r.className.split(' ')[0], wrapped: !!w, over, r: vis('.sarrow.r'), l: vis('.sarrow.l') }; }));
+    assert.ok(rows.length >= min, label + ': found the rows: ' + JSON.stringify(rows));
+    for (const x of rows) { assert.ok(x.wrapped, label + ': ' + x.cls + ' has arrows'); assert.equal(x.r, x.over, label + ': ' + x.cls + ' shows the right arrow exactly when it can scroll: ' + JSON.stringify(x)); assert.equal(x.l, false, label + ': nothing to the left at the start (' + x.cls + ')'); }
+    return rows;
+  };
+  await page.evaluate(() => { recordRecent(S.lib.tracks.find((t) => primaryOf(t))); renderLibrary(); }); await page.waitForSelector('#unreleased .vsc');
+  const order = await page.evaluate(() => { const at = (q) => { const e = document.querySelector('#libBody ' + q); return e ? e.compareDocumentPosition(document.body) : null; }; const ids = ['#recent', '#discography', '#features', '#unreleased', '#playlists']; const els = ids.map((q) => document.querySelector('#libBody ' + q)); return { found: ids.filter((q, i) => els[i]), inOrder: els.filter(Boolean).every((e, i, a) => i === 0 || (a[i - 1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING) > 0), disc: (document.querySelector('#discography') || {}).textContent, series: [...document.querySelectorAll('#libBody h2.sh')].map((h) => h.textContent.trim()) }; });
+  assert.deepEqual(order.found.slice(0, 4), ['#recent', '#discography', '#features', '#unreleased'], 'Music tab sections: ' + JSON.stringify(order)); assert.ok(order.inOrder, 'sections in the order Recently played, Discography, Features, Unreleased, Series, Playlists');
+  assert.equal(order.disc.trim(), 'Discography'); assert.ok(!order.series.some((t) => /sagas/i.test(t)), 'Series is just called Series: ' + order.series.join(' | '));
+  const rows = await check('Music'); assert.ok(rows.some((x) => x.over), 'at least one row scrolls on a phone');
+  const r = await page.evaluate(() => { const row = [...document.querySelectorAll('#main .vrow, #main .ctrack')].find((x) => x.scrollWidth - x.clientWidth > 4), w = row.closest('.scrollwrap'); w.querySelector('.sarrow.r').click(); return new Promise((res) => setTimeout(() => res({ x: Math.round(row.scrollLeft), l: !w.querySelector('.sarrow.l').hidden, bar: document.documentElement.scrollWidth <= innerWidth + 1 }), 900)); });
+  assert.ok(r.x > 50 && r.l && r.bar, 'tapping the arrow scrolls the row, the left arrow appears and the page does not move sideways: ' + JSON.stringify(r));
+  await noSideways('music with arrows');
+  await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore .loreeras'); await check('Lore', 1); await noSideways('lore with arrows');
+});
 await step('on a computer the scrolling shelves (discography, Unreleased, Features) look like the phone: a row of cards that scrolls sideways', async () => {
   const dctx = await phoneContext(undefined, { viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false }), d = await dctx.newPage(); d.on('pageerror', (e) => problems.push('desktop page error: ' + e.message));
   await d.goto('https://soulnicolas.com/?s=PUB'); await d.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });
@@ -526,6 +544,7 @@ await step('on a computer the scrolling shelves (discography, Unreleased, Featur
     return { vrowDisplay: row && getComputedStyle(row).display, vrowOverflow: row && getComputedStyle(row).overflowX, cardW: card && Math.round(card.getBoundingClientRect().width), shelf: !!shelf, shelfDisplay: shelf && getComputedStyle(shelf).display, shelfOverflow: shelf && getComputedStyle(shelf).overflowX, slideW: slide && Math.round(slide.getBoundingClientRect().width), arrows: !!bar && getComputedStyle(bar).display !== 'none', sw: document.documentElement.scrollWidth, iw: window.innerWidth };
   });
   assert.ok(m.shelf && m.shelfDisplay === 'flex' && m.shelfOverflow === 'auto', 'the discography shelf scrolls sideways on a computer: ' + JSON.stringify(m));
+  assert.deepEqual(await d.evaluate(() => { const row = document.querySelector('#main .shelf .ctrack'), w = row.closest('.scrollwrap'); return [!!w, !w.querySelector('.sarrow.r').hidden === (row.scrollWidth - row.clientWidth > 4)]; }), [true, true], 'the shelf has arrows on a computer (shown only when it can scroll)');
   assert.ok(m.slideW >= 240 && m.slideW <= 300, 'phone-style cards, not big covers: ' + m.slideW + 'px'); assert.ok(m.arrows, 'with arrows on the shelf');
   assert.deepEqual([m.vrowDisplay, m.vrowOverflow, m.cardW], ['flex', 'auto', 180], 'the Unreleased row is a scrolling row of small cards');
   assert.ok(m.sw <= m.iw + 1, 'the page itself does not scroll sideways: ' + m.sw + ' vs ' + m.iw);

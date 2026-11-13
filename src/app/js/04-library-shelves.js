@@ -229,8 +229,9 @@ function renderLibBody() {
   const view = S.libView = S.libView || ls.get('sv_libview', 'scroll');
   const allMode = view !== 'scroll' && !q;
   const viewBtn = q ? '' : viewMenu(view);
-  $('#libBody').innerHTML = (!q ? resumeCard() : '') + chips + viewBtn + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
-    (!q && !allMode ? seriesRow() + playlistsRow() + dropsRow() : '') + (!q ? unreleasedSection() + featuresSection() : '') + (!q && !allMode ? recentRow() : '') +
+  // Order on the Music tab: Recently played, Discography, Features, Unreleased, Series, Playlists (then coming attractions).
+  $('#libBody').innerHTML = (!q ? resumeCard() : '') + (!q && !allMode ? recentRow() : '') + (!q ? '<h2 class="sh" id="discography"><span><b>Discography</b></span></h2>' : '') + chips + viewBtn + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
+    (!q ? featuresSection() + unreleasedSection() : '') + (!q && !allMode ? seriesRow() + playlistsRow() + dropsRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
   wireShelf();

@@ -111,7 +111,7 @@
   /* ═════════ Home shelf ═════════ */
   .shelf { margin: 10px 0 6px; scroll-margin-top: 12px; }
   .shelfbar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 10px; }
-  .shelfbar .arrows { display: flex; gap: 8px; }
+  .shelfbar .arrows { display: none; }   /* the arrows now sit on the row itself (js/18-scroll-arrows.js) */
   .shelfbar .flip { display: grid; transform: scaleX(-1); }
   .shelf .ctrack { scroll-padding-left: 0; }
   .shelf .slide { flex: 0 0 min(500px, 44%); aspect-ratio: 16 / 10.5; }
