@@ -45,14 +45,16 @@ let failures = 0; const problems = [];
 const step = async (name, fn) => { try { await fn(); console.log('  ok   ' + name); } catch (e) { failures++; console.log('  FAIL ' + name + '\n       ' + String(e.message || e).split('\n').slice(0, process.env.DEBUG ? 6 : 1).join(' / ')); } };
 
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || undefined, args: ['--no-sandbox'] });
-async function phoneContext() {
-  const ctx = await browser.newContext({ viewport: { width: Number(process.env.PHONE_W || 390), height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+async function phoneContext(cf = { city: 'Nashville', region: 'Tennessee', country: 'US' }, extra = {}) {
+  const ctx = await browser.newContext({ viewport: { width: Number(process.env.PHONE_W || 390), height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, userAgent: IPHONE, ...extra });
 await ctx.route('**/*', r => r.abort());                                                     // nothing leaves the machine unless allowed below
 await ctx.route('https://media.soulnicolas.com/**', r => r.fulfill({ status: 404, body: '' }));
 await ctx.route('https://soulnicolas.com/**', async (route) => {
   const req = route.request(), url = new URL(req.url());
   if (url.pathname === '/api') {
-    const request = new Request(req.url(), { method: 'POST', body: req.postData() || '', headers: { 'CF-Connecting-IP': '198.51.100.9' } });
+    const request = new Request(req.url(), { method: 'POST', body: req.postData() || '', headers: { 'CF-Connecting-IP': '198.51.100.9', 'User-Agent': req.headers()['user-agent'] || '' } });
+    Object.defineProperty(request, 'cf', { value: cf });
     const res = await w.t.onRequestPost(w.ctx(request)); await w.settle();
     return route.fulfill({ status: res.status, headers: { 'content-type': 'application/json' }, body: await res.text() });
   }
@@ -149,6 +151,33 @@ await step('fans see the Unreleased and Features areas too (without the owner hi
   assert.deepEqual(t.chips, ['All 2', 'Albums 1', 'EPs 1']); assert.ok(t.feat && !t.hint && t.sw <= t.iw + 1);
   await fctx.close();
 });
+await step('the page reports each page view with the time on it, from a phone, with the city; robots and Do-Not-Track are left out', async () => {
+  await w.call('getSiteLive', [KEY, false]);                                                                // (makes the table, so a slow machine does not query it too early)
+  const rowsOf = (dev) => w.db.prepare('SELECT * FROM site_views WHERE device_id = ? ORDER BY at').bind(dev).all().then((r) => r.results);
+  const fctx = await phoneContext({ city: 'Franklin', region: 'Tennessee', country: 'US' }), fan = await fctx.newPage();
+  await fan.goto('https://soulnicolas.com/?s=PUB', { referer: 'https://l.instagram.com/' });
+  await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });
+  const dev = await fan.evaluate(() => deviceId());
+  for (let i = 0; i < 50 && !(await rowsOf(dev)).length; i++) await new Promise((r) => setTimeout(r, 100));
+  let r = await rowsOf(dev); assert.equal(r.length, 1, 'the first page is reported right away');
+  assert.deepEqual([r[0].path, r[0].device, r[0].city, r[0].ref, r[0].share_token], ['/', 'phone', 'Franklin', 'l.instagram.com', 'PUB'], JSON.stringify(r[0]));
+  await fan.evaluate(() => renderLibrary());
+  for (let i = 0; i < 50 && (await rowsOf(dev)).length < 2; i++) await new Promise((r) => setTimeout(r, 100));
+  await fan.evaluate(() => { siteT.secs = 20; siteSend(false); });                                         // 20 seconds on the Music page
+  for (let i = 0; i < 50 && !(await rowsOf(dev)).some((x) => x.seconds === 20); i++) await new Promise((r) => setTimeout(r, 100));
+  r = await rowsOf(dev); assert.deepEqual(r.map((x) => x.path), ['/', '/vault']); assert.equal(r[1].seconds, 20, 'time on the page is saved');
+  assert.equal(new Set(r.map((x) => x.visit_id)).size, 1, 'one visit'); assert.equal(new Set(r.map((x) => x.view_id)).size, 2, 'two page views');
+  assert.equal(r[1].ref, '', 'the source is only noted on the first page of a visit');
+  await fan.evaluate(() => { siteT.secs = 29; });                                                           // the page's own timer: at 30 seconds (a multiple of 15) it sends the time by itself
+  for (let i = 0; i < 60 && !(await rowsOf(dev)).some((x) => x.seconds === 30); i++) await new Promise((r) => setTimeout(r, 100));
+  assert.ok((await rowsOf(dev)).some((x) => x.seconds === 30), 'the time is refreshed on its own every 15 seconds');
+  await fctx.close();
+  const dnt = await phoneContext(undefined, {}), p2 = await dnt.newPage(); await p2.addInitScript(() => Object.defineProperty(navigator, 'doNotTrack', { value: '1' }));
+  await p2.goto('https://soulnicolas.com/?s=PUB'); await p2.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); const dev2 = await p2.evaluate(() => deviceId()); await new Promise((r) => setTimeout(r, 2500));
+  assert.equal((await rowsOf(dev2)).length, 0, 'a browser that says Do Not Track is not counted'); await dnt.close();
+  const bot = await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' }); await bot.route('**/*', (r) => r.abort());
+  await bot.close();
+});
 await step('Lore: the Karibu tena / Soul Vault header with the new-release, share-links and Settings buttons is at the top', async () => {
   await page.evaluate(() => renderLore());
   await page.waitForSelector('.wrap.lore .home-h');
@@ -161,6 +190,33 @@ await step('Lore: the Karibu tena / Soul Vault header with the new-release, shar
   const f = await fan.evaluate(() => { const h = document.querySelector('.wrap.lore .home-h'); return { hello: h.querySelector('.hello').textContent, buttons: h.querySelectorAll('button').length }; });
   assert.ok(/^Karibu, /.test(f.hello) && f.buttons === 0, 'fans get the greeting and name, without the owner buttons: ' + JSON.stringify(f));
   await fctx.close();
+});
+await step('Website insights: visitors, pages with time on each, devices, cities, sources, and who is on the site now', async () => {
+  await page.evaluate(() => renderVault());
+  await w.db.prepare('DELETE FROM site_views').run();                                                    // (earlier steps' phones were counted too: start from an empty table)
+  const rows = [[1, 'a', 'v1', '/', 10, 'phone', 'l.instagram.com', 'Nashville'], [1, 'a', 'v1', '/vault', 50, 'phone', '', 'Nashville'], [1, 'a', 'v1', '/lore', 40, 'phone', '', 'Nashville'], [2, 'b', 'v2', '/', 30, 'desktop', '', 'Memphis'], [2, 'b', 'v2', '/vault', 20, 'desktop', '', 'Memphis'], [3, 'c', 'v3', '/', 60, 'tablet', 'www.google.com', 'Nashville']];
+  for (const [ago, dev, visit, path, sec, device, ref, city] of rows)
+    await w.db.prepare('INSERT INTO site_views (view_id, at, last, visit_id, device_id, share_token, path, device, city, region, country, ref, seconds) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').bind('seedui' + Math.random(), Date.now() - ago * 864e5, Date.now() - ago * 864e5, visit, dev, 'public', path, device, city, 'Tennessee', 'US', ref, sec).run();
+  await w.call('siteView', ['', '', 'liveP', 'lv1', 'lvw1', '/lore', 5, 'phone', ''], { cf: { city: 'Franklin', region: 'Tennessee', country: 'US' }, ua: IPHONE });
+  await w.call('siteView', ['', '', 'liveC', 'lv2', 'lvw2', '/vault', 5, 'desktop', ''], { cf: { city: 'Nashville', region: 'Tennessee', country: 'US' }, ua: IPHONE });
+  await page.click('[data-nav="siteinsights"]:visible');
+  await page.waitForFunction(() => /2 on the site now/.test(document.body.innerText), null, { timeout: 8000 });
+  const live = await page.evaluate(() => document.querySelector('#siList').innerText.replace(/\s+/g, ' '));
+  assert.ok(/Lore.*Franklin, Tennessee · Phone/.test(live) && /Music.*Nashville, Tennessee · Computer/.test(live), 'the live list: ' + live);
+  await page.click('[data-si-days="7"]');
+  await page.waitForFunction(() => [...document.querySelectorAll('#siBody .kpi')].some((e) => e.querySelector('span').textContent === 'Visitors' && e.querySelector('b').textContent === '5'), null, { timeout: 8000 });
+  const k = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#siBody .kpi')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent])));
+  assert.deepEqual([k['Visitors'], k['Visits'], k['Page views']], ['5', '5', '8'], JSON.stringify(k));     // the 3 seeded visitors plus the two on the site right now
+  const body = await page.evaluate(() => document.querySelector('#siBody').innerText.replace(/\s+/g, ' '));
+  assert.ok(/Top pages/i.test(body) && /Home\s*3\s*3\s*33s/.test(body) && /Music\s*3\s*3/.test(body) && /Lore\s*2\s*2/.test(body), 'top pages with time on each: ' + body.slice(0, 700));
+  assert.ok(/Phone\s*\d+%/.test(body) && /Tablet\s*\d+%/.test(body) && /Computer\s*\d+%/.test(body), 'devices');
+  assert.ok(/Nashville, Tennessee/.test(body) && /Memphis, Tennessee/.test(body) && /Franklin, Tennessee/.test(body), 'cities');
+  assert.ok(/Instagram/.test(body) && /Google/.test(body) && /Direct/.test(body), 'sources');
+  assert.ok(/New\s*5\s*\(100%\)/.test(body), 'new vs returning');
+  await page.click('[data-si-metric="n"]'); await page.waitForFunction(() => /Page views per day/i.test(document.querySelector('#siBody').innerText), null, { timeout: 5000 });
+  await noSideways('website insights');
+  if (process.env.SHOT7) await page.screenshot({ path: process.env.SHOT7, fullPage: true });
+  await page.click('.back'); await seen('Check YouTube setup');
 });
 await step('Listening insights: who is listening now, unique listeners, arrows, charts, no sideways scroll', async () => {
   await page.evaluate(() => renderVault());

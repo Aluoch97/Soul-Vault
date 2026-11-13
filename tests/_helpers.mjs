@@ -153,8 +153,9 @@ export async function harness({ lib = fixtureLib(), seed = true, bucket = true, 
     ctx(request) { return { request, env, waitUntil: p => { pending.push(Promise.resolve(p).catch(() => {})); } }; },
     async settle() { await Promise.all(pending.splice(0)); },
     /** POST /api { fn, args } -> the parsed JSON answer */
-    async call(fn, args = [], { ip = '203.0.113.7' } = {}) {
-      const request = new Request('https://soulnicolas.com/api', { method: 'POST', body: JSON.stringify({ fn, args }), headers: { 'CF-Connecting-IP': ip } });
+    async call(fn, args = [], { ip = '203.0.113.7', ua = '', cf = null } = {}) {
+      const request = new Request('https://soulnicolas.com/api', { method: 'POST', body: JSON.stringify({ fn, args }), headers: { 'CF-Connecting-IP': ip, ...(ua ? { 'User-Agent': ua } : {}) } });
+      if (cf) Object.defineProperty(request, 'cf', { value: cf });
       const res = await t.onRequestPost(h.ctx(request));
       await h.settle();
       return res.json();
