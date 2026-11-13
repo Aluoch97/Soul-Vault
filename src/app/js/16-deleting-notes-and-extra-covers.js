@@ -24,7 +24,8 @@ function videoLabel(t) {
 function stopPlayback() {
   audio.pause(); S.lt = null; S.now = null; S.queue = []; S.qi = 0; S.ytSong = false;
   const m = $('#mini'); if (m) m.hidden = true;
-  if ($('#np') && !$('#np').hidden) closeNp();
+  if (S.scSong) clearSc(); const bx = $('#npVid'); if (bx && !bx.hidden) { bx.innerHTML = ''; bx.hidden = true; }
+  hideNpFully();
 }
 function dropSongLocal(tid) {
   const relId = (trk(tid) || {}).release_id, vids = new Set(S.lib.versions.filter(v => v.track_id === tid).map(v => v.version_id));

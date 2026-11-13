@@ -72,3 +72,6 @@
 
   .lorecatsel { display: block; margin: 0 0 12px; } .lorecatsel select { min-height: 44px; max-width: 100%; padding: 0 30px 0 16px; border-radius: 999px; font: 700 16px/1 var(--sans); }
   #loreBio { width: 100%; min-height: 220px; line-height: 1.6; font-size: 16px; }
+
+  /* Now Playing "parked": a YouTube or SoundCloud song keeps playing after you close Now Playing (the player stays on the page, just not drawn) */
+  #np.parked { visibility: hidden; pointer-events: none; }

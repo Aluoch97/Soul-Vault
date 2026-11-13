@@ -11,13 +11,15 @@ async function play(vid) {
   updateNowUI();
   audio.pause();
   clearWatchdog(); releaseMem();
+  const wasParked = $('#np').classList.contains('parked');
   clearSc();
   if (isScSong(v) && t.sc_url) {   // plays in SoundCloud's own player
-    S.ytSong = false; S.scSong = true; S.videoMode = false; msg(''); recordRecent(t); setToggle(true); openNp(); showSc(t); return;
+    S.ytSong = false; S.scSong = true; S.videoMode = false; msg(''); recordRecent(t); setToggle(true); if (!wasParked) openNp(); showSc(t); return;
   }
+  if (wasParked && !isYtSong(v)) { const bx = $('#npVid'); if (bx && !S.scSong) { bx.innerHTML = ''; bx.hidden = true; $('#npArt').hidden = false; } hideNpFully(); }
   const wasYt = S.ytSong; S.ytSong = isYtSong(v);
   if (S.ytSong) {   // no audio file: the YouTube video is the song
-    msg(''); recordRecent(t); openNp(); setMode('video'); ytHello(); $('#npMode').hidden = true; return;
+    msg(''); recordRecent(t); if (!wasParked) openNp(); setMode('video'); ytHello(); $('#npMode').hidden = true; return;
   }
   if (wasYt && S.videoMode) setMode('song');
   msg('Loading…');
@@ -309,7 +311,7 @@ document.addEventListener('click', e => {
   else if (d.play) { const pc = el.closest('[data-plctx]'); playFromTap(d.play, pc ? pc.dataset.plctx : ''); }
   else if (d.share) openShare(d.share, d.id);
   else if (d.nav) {
-    if ($('#np').hidden === false) closeNp();
+    if (npOpen()) closeNp();
     if (d.nav === 'shares') renderShares();
     else if (d.nav === 'vault') renderVault();
     else if (d.nav === 'insights' && OWNER) renderInsights();
@@ -343,8 +345,8 @@ document.addEventListener('click', e => {
     if (S.view !== 'library' || S.filter !== 'All' || S.q) { S.filter = 'All'; S.q = ''; renderLibrary(); }
     shelfYear(d.year);
   }
-  else if (d.ctl === 'toggle' && S.scSong) { if ($('#np').hidden) openNp(); }   // SoundCloud's player has its own play and pause button
-  else if (d.ctl === 'toggle' && S.ytSong) { if (S.ytPlaying) ytCommand('pauseVideo'); else { if ($('#np').hidden) openNp(); ytCommand('playVideo'); } }
+  else if (d.ctl === 'toggle' && S.scSong) { if (!npOpen()) openNp(); }   // SoundCloud's player has its own play and pause button
+  else if (d.ctl === 'toggle' && S.ytSong) { if (S.ytPlaying) ytCommand('pauseVideo'); else { if ($('#np').hidden) openNp(); ytCommand('playVideo'); } }   // (works while parked: the player is still on the page)
   else if (d.ctl === 'toggle') {
     if (!audio.src || audio.src === SILENT) { if (S.now) play(S.now.v.version_id); }
     else if (audio.paused) audio.play().then(() => msg('')).catch(e => { if (e && e.name === 'NotAllowedError') msg('Tap play to start.'); else showAudioProblem(audio.src, S.now && S.now.v); });
@@ -441,7 +443,7 @@ document.addEventListener('change', async e => {
 document.addEventListener('keydown', e => {
   trapFocus(e);
   if (S.sync && e.key === ' ' && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); e.stopImmediatePropagation(); syncTap(); return; }
-  if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (!$('#np').hidden) closeNp(); }
+  if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (npOpen()) closeNp(); }
   if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && $('.slideshow')) { e.preventDefault(); showSlide(S.ssAt + (e.key === 'ArrowRight' ? 1 : -1)); }
   if (e.key === ' ' && !/INPUT|SELECT|BUTTON|TEXTAREA/.test(e.target.tagName) && audio.src) {
     e.preventDefault(); audio.paused ? audio.play() : audio.pause();

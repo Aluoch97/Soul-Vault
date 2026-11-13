@@ -188,7 +188,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('[data-sx-play],[data-sx-close],[data-sx-open]'); if (!b) return;
   e.stopPropagation();
   if (b.dataset.sxPlay) continueSeries(rel(b.dataset.sxPlay));
-  else if (b.dataset.sxOpen) { closeSeriesTransition(); if (!$('#np').hidden) closeNp(); renderRelease(b.dataset.sxOpen); }
+  else if (b.dataset.sxOpen) { closeSeriesTransition(); if (npOpen()) closeNp(); renderRelease(b.dataset.sxOpen); }
   else closeSeriesTransition();
 }, true);
 

@@ -601,6 +601,26 @@ await step('on a computer the scrolling shelves (discography, Unreleased, Featur
   assert.ok(m.sw <= m.iw + 1, 'the page itself does not scroll sideways: ' + m.sw + ' vs ' + m.iw);
   await dctx.close();
 });
+await step('songs added by link: they stay out of the Discography (until they have their own file), keep playing after Now Playing is closed, and the Music tab icon is a music note', async () => {
+  await page.evaluate(() => { S.q = ''; S.filter = 'All'; renderLibrary(); }); await page.waitForSelector('#all-releases .slide');
+  const d = await page.evaluate(() => { const ids = new Set(linkOnlySongs().map((t) => t.track_id)), only = S.lib.releases.filter((r) => { const ts = S.lib.tracks.filter((t) => t.release_id === r.release_id && !hidden(t)); return ts.length > 0 && ts.every((t) => ids.has(t.track_id)); }).map((r) => r.title); const shelf = [...document.querySelectorAll('#all-releases .slide')].map((x) => x.querySelector('.ttl').textContent.trim()); return { only, shelf }; });
+  assert.ok(d.only.length >= 1, 'there are releases made only of link songs: ' + JSON.stringify(d)); assert.deepEqual(d.only.filter((t) => d.shelf.includes(t)), [], 'none of them is in the Discography: ' + JSON.stringify(d));
+  assert.ok(d.shelf.includes('New Single'), 'a release shows in the Discography as soon as its songs have their own file (New Single got one above): ' + d.shelf.join(' | '));
+  await page.evaluate((t) => { S.q = t; renderLibBody(); }, d.only[0]);
+  assert.ok(await page.evaluate((t) => [...document.querySelectorAll('#libBody .slide, #libBody .agc')].some((x) => x.textContent.includes(t)), d.only[0]), 'search still finds a link-only release'); await page.evaluate(() => { S.q = ''; renderLibBody(); });
+  // closing Now Playing parks the player instead of removing it
+  const v = await page.evaluate(() => S.lib.versions.find((x) => x.format === 'YOUTUBE' && !x.audio && S.lib.tracks.some((t) => t.track_id === x.track_id && t.video_url)).version_id);
+  await page.evaluate((id) => play(id), v); await page.waitForSelector('#npVid iframe[src*="youtube-nocookie.com"]', { timeout: 8000 });
+  await page.evaluate(() => closeNp());
+  const k = await page.evaluate(() => { const np = document.querySelector('#np'), cs = getComputedStyle(np), f = document.querySelector('#npVid iframe'); return { parked: np.classList.contains('parked'), display: cs.display, vis: cs.visibility, frame: !!f, ytSong: S.ytSong, open: npOpen(), body: document.body.style.overflow }; });
+  assert.deepEqual([k.parked, k.display !== 'none', k.vis, k.frame, k.ytSong, k.open], [true, true, 'hidden', true, true, false], 'a YouTube song stays on the page (invisible) when Now Playing closes: ' + JSON.stringify(k));
+  await page.evaluate(() => openNp()); assert.equal(await page.evaluate(() => [npOpen(), !!document.querySelector('#npVid iframe')].join()), 'true,true', 'opening it again shows the same player');
+  await page.evaluate(() => closeNp());
+  await page.evaluate((id) => { const f = S.lib.versions.find((x) => x.audio && x.version_id !== id); play(f.version_id); }, v);   // a song with a file: the parked player goes away
+  await page.waitForFunction(() => !document.querySelector('#npVid iframe') && document.querySelector('#np').hidden && !document.querySelector('#np').classList.contains('parked'), null, { timeout: 8000 });
+  await page.evaluate(() => { try { stopPlayback(); } catch (e) {} });
+  assert.equal(await page.evaluate(() => { const t = document.createElement('div'); t.innerHTML = I.note; return document.querySelector('#tabs [data-nav="library"] svg').innerHTML === t.firstElementChild.innerHTML; }), true, 'the Music tab icon is a music note');
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
