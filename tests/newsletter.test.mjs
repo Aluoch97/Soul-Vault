@@ -106,24 +106,30 @@ test('show count: rows marked Completed on the public tracker; nothing when it c
 const FRIDAY_9AM = new Date('2026-11-06T15:00:00Z');       // 1st Friday of November 2026, 9:00 Central (standard time)
 const join = (w, n, extra = {}) => w.call('joinSubmit', [{ firstName: 'Fan' + n, email: `fan${n}@example.com`, emailConsent: true, city: 'Nashville, TN', ...extra }], { ip: '9.9.9.' + n });
 
-test('who is on the list: people who signed up through the form; not the contacts imported by hand; never someone who unsubscribed', () => withWorld(async (w) => {
+test('who is on the list: form sign-ups AND the contacts Nick imported by hand; never someone who unsubscribed or withdrew consent', () => withWorld(async (w) => {
+  await w.t.fans.ensureFans(w.db);
+  await w.t.fans.importFans(w.db, [[1, 'Imp', 'Orted', 'imported@example.com', 1, '', '', '', '', '', 'Imported contact'], [2, 'No', 'Consent', 'noconsent@example.com', 0, '', '', '', '', '', 'Imported contact']]);
   await join(w, 1); await join(w, 2);
-  await w.t.fans.importFans(w.db, [[1, 'Imp', 'Orted', 'imported@example.com', 1, '', '', '', '', '', 'Imported contact']]);
-  assert.deepEqual((await w.t.newsletter.subscribers(w.db)).map(s => s.email), ['fan1@example.com', 'fan2@example.com']);
+  const emails = async () => (await w.t.newsletter.subscribers(w.db)).map(s => s.email).sort();
+  assert.deepEqual(await emails(), ['fan1@example.com', 'fan2@example.com']);                                // imported after the one-time step: not on it yet
+  await w.db.prepare("UPDATE fans SET news = 1 WHERE email = 'imported@example.com'").run();
+  assert.deepEqual(await emails(), ['fan1@example.com', 'fan2@example.com', 'imported@example.com']);
   await w.db.prepare('UPDATE fans SET news = 0 WHERE email = ?').bind('fan2@example.com').run();
-  assert.deepEqual((await w.t.newsletter.subscribers(w.db)).map(s => s.email), ['fan1@example.com']);
-  await w.db.prepare('UPDATE fans SET news = 1, consent = 0 WHERE email = ?').bind('fan2@example.com').run();                  // withdrawn consent wins, even if the flag says subscribed
-  assert.deepEqual((await w.t.newsletter.subscribers(w.db)).map(s => s.email), ['fan1@example.com']);
+  assert.deepEqual(await emails(), ['fan1@example.com', 'imported@example.com']);
+  await w.db.prepare('UPDATE fans SET news = 1, consent = 0 WHERE email = ?').bind('fan1@example.com').run();       // withdrawn consent wins, even if the flag says subscribed
+  assert.deepEqual(await emails(), ['imported@example.com']);
 }));
 
-test('a fan table made before the newsletter existed is upgraded once, and keeps the old list\'s rule (form sign-ups yes, imported contacts no)', () => withWorld(async (w) => {
+test('a fan table made before the newsletter existed is upgraded once, and keeps the old list\'s rule (form sign-ups and imported contacts yes, anyone without consent no)', () => withWorld(async (w) => {
   w.db._raw.exec("CREATE TABLE fans (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, first_name TEXT, last_name TEXT, email TEXT UNIQUE, consent INTEGER, city TEXT, birth_year TEXT, social TEXT, how_heard TEXT, favorite TEXT, source TEXT, ip_hash TEXT)");
-  w.db._raw.exec("INSERT INTO fans (at, first_name, email, consent, source) VALUES (1,'A','form@example.com',1,'https://www.soulnicolas.com/'),(2,'B','imp@example.com',1,'Imported contact'),(3,'C','no@example.com',0,'https://www.soulnicolas.com/')");
+  w.db._raw.exec("INSERT INTO fans (at, first_name, email, consent, source) VALUES (1,'A','form@example.com',1,'https://www.soulnicolas.com/'),(2,'B','imp@example.com',1,'Imported contact'),(3,'C','no@example.com',0,'https://www.soulnicolas.com/'),(4,'D','impno@example.com',0,'Imported contact')");
   await w.t.fans.ensureFans(w.db);
-  assert.deepEqual((await w.t.newsletter.subscribers(w.db)).map(s => s.email), ['form@example.com']);
-  await w.db.prepare("UPDATE fans SET news = 0 WHERE email = 'form@example.com'").run();
-  await w.t.fans.ensureFans(w.db);                                                                          // a second time changes nothing
-  assert.deepEqual(await w.t.newsletter.subscribers(w.db), []);
+  const emails = async () => (await w.t.newsletter.subscribers(w.db)).map(s => s.email).sort();
+  assert.deepEqual(await emails(), ['form@example.com', 'imp@example.com']);                                // Nick's decision: imported contacts are on it; no consent = never
+  await w.db.prepare("UPDATE fans SET news = 0 WHERE email = 'imp@example.com'").run();                    // they unsubscribe...
+  await w.t.fans.ensureFans(w.db);
+  assert.deepEqual(await emails(), ['form@example.com']);                                                    // ...and the one-time step does not bring them back
+  assert.ok(await w.kv('news_imported_optin'));
 }));
 
 // ---------------------------------------------------------------- the scheduled send

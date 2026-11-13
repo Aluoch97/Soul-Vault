@@ -15,6 +15,12 @@ export async function ensureFans(db) {
     await db.prepare('ALTER TABLE fans ADD COLUMN news INTEGER DEFAULT 0').run();
     await db.prepare("UPDATE fans SET news = 1 WHERE consent = 1 AND COALESCE(source, '') NOT LIKE 'Imported contact%'").run();
   }
+  // Nick's decision (Nov 13, 2026): the contacts he imported by hand get the newsletter too. Done once, so a later unsubscribe sticks.
+  await db.prepare('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)').run();
+  if (!(await db.prepare("SELECT 1 AS x FROM kv WHERE k = 'news_imported_optin'").first())) {
+    await db.prepare("UPDATE fans SET news = 1 WHERE consent = 1 AND COALESCE(source, '') LIKE 'Imported contact%'").run();
+    await db.prepare("INSERT OR REPLACE INTO kv (k, v) VALUES ('news_imported_optin', ?)").bind(JSON.stringify({ at: Date.now() })).run();
+  }
   checked.add(db);
 }
 const sha = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 24);
