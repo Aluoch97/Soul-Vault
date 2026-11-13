@@ -56,7 +56,7 @@ function seriesRow() {
   S.lib.releases.forEach(r => { const n = seriesOf(r); if (n && !names.some(x => sameName(x, n))) names.push(n); });
   const cards = names.map(n => ({ n, parts: seriesParts(n) })).filter(x => x.parts.length >= 2);
   if (!cards.length) return '';
-  return `<h2 class="sh"><span><b>Series</b> and sagas</span></h2>
+  return `<h2 class="sh"><span><b>Series</b></span></h2>
     <div class="hrow">${cards.map(({ n, parts }) => {
       const years = parts.map(p => Number(p.year)).filter(Boolean), span = years.length ? (Math.min(...years) === Math.max(...years) ? Math.min(...years) : Math.min(...years) + '–' + Math.max(...years)) : '';
       return `<button class="scard" data-series="${esc(n)}" aria-label="${esc(n)}, ${parts.length} parts. Tap to play the whole series or choose a project">
