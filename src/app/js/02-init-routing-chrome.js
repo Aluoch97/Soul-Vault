@@ -65,8 +65,9 @@ function parseRoute() {
   const p = decodeURIComponent(location.pathname).replace(/\/+$/, '').toLowerCase().split('/').filter(Boolean);
   if (p[0] === 'vault') return p[1] ? { v: 'release', slug: p.slice(1).join('/') } : { v: 'library' };
   if (p[0] === 'tour') return { v: 'tour', tab: p[1] === 'road-to-100' ? 'road' : 'shows' };
-  if (p[0] === 'press') return { v: 'press', tab: p[1] === 'video' ? 'video' : 'articles' };
-  if (p[0] === 'video') return { v: 'video', tab: p[1] === 'remixes' ? 'remixes' : 'originals' };
+  if (p[0] === 'press' && p[1] === 'video') return { v: 'video', tab: 'press' };   // the press videos moved to the Video tab
+  if (p[0] === 'press') return { v: 'press', tab: 'articles' };
+  if (p[0] === 'video') return { v: 'video', tab: p[1] === 'music-videos' ? 'music' : p[1] === 'press' ? 'press' : 'freestyles' };   // (/video/originals and /video/remixes are the one Freestyles list now)
   if (p[0] === 'lore') return { v: 'lore' };
   return { v: 'home', unknown: p.length > 0 };   // an address nobody made: show Home, but tell search engines not to index it
 }
@@ -76,8 +77,8 @@ function pathFor() {
   if (v === 'library') return '/vault';
   if (v === 'release' && S.releaseId) return '/vault/' + relSlug(S.releaseId);
   if (v === 'tour') return S.tourTab === 'road' ? '/tour/road-to-100' : '/tour';
-  if (v === 'press') return S.pressTab === 'video' ? '/press/video' : '/press';
-  if (v === 'video') return S.videoTab === 'remixes' ? '/video/remixes' : '/video';
+  if (v === 'press') return '/press';
+  if (v === 'video') return S.videoTab === 'music' ? '/video/music-videos' : S.videoTab === 'press' ? '/video/press' : '/video';
   if (v === 'lore') return '/lore';
   return null;   // owner screens (settings, share links, insights) have no address
 }

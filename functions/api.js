@@ -83,7 +83,7 @@ async function edgeShare(ctx, args) {
 }
 
 // The Video tab's playlists (public; YouTube is the book of record). Each list answers alone: { key, name, id, videos } plus error when it could not be read.
-const VIDEO_LISTS = [['originals', 'Originals', 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK'], ['remixes', 'Remixes', 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV']];
+const VIDEO_LISTS = [['originals', 'Originals', 'PLYYNnxWFsj19t22I4Qy6lke0ytPaFz3LK'], ['remixes', 'Remixes', 'PLYYNnxWFsj18iVfs3mLzki3VA2OesBnDV'], ['music', 'Music videos', 'PLYYNnxWFsj1_wIe3c0Lyj4EL9tMs9GQYU']];
 async function videoLists(ctx) {
   const { env } = ctx, ck = new Request('https://edge.soulnicolas.invalid/videolists/1');
   try { const hit = await caches.default.match(ck); if (hit) return await hit.json(); } catch (e) { /* no cache here */ }
