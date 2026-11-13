@@ -41,7 +41,8 @@ async function changeCover(file) {
 }
 $('#coverFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) changeCover(f); });
 
-function trackRow(t, withRelease) {
+function trackRow(t, withRelease, xkind) {
+  xkind = xkind || (isExtra(t) ? extraKindOf(t) : '');   // extras say what they are: Draft, Audio note, Remix, Cover or B-Side
   const vs = versionsOf(t.track_id), p = vs[0];
   const subH = [artistOf(t) ? linkName(artistOf(t)) : '', withRelease ? esc((rel(t.release_id) || {}).title || '') : ''].filter(Boolean).join(', ');
   return `<li class="row" data-track="${esc(t.track_id)}">
@@ -49,7 +50,7 @@ function trackRow(t, withRelease) {
       <span class="n">${esc(numLabel(t))}</span>${I.play}<span class="eq"><i></i><i></i><i></i></span>
     </button>
     <div style="min-width:0">
-      <div class="thead">${t.track_cover ? `<img class="tthumb" data-cover="${esc(t.track_cover)}" alt="">` : ''}<div class="tname"><button class="tt" data-play="${esc(p.version_id)}" aria-label="Play ${esc(t.title)}">${esc(t.title)}</button>${isUnrel(t) ? '<span class="unrel">Unreleased</span>' : ''}${videoOf(t) ? videoLabel(t) : ''}</div></div>
+      <div class="thead">${t.track_cover ? `<img class="tthumb" data-cover="${esc(t.track_cover)}" alt="">` : ''}<div class="tname"><button class="tt" data-play="${esc(p.version_id)}" aria-label="Play ${esc(t.title)}">${esc(t.title)}</button>${xkind ? `<span class="xkind" data-k="${esc(xkind.toLowerCase().replace(/[^a-z]+/g, '-'))}">${esc(xkind)}</span>` : ''}${isUnrel(t) ? '<span class="unrel">Unreleased</span>' : ''}${videoOf(t) ? videoLabel(t) : ''}</div></div>
       ${subH ? `<div class="ta">${subH}</div>` : ''}
       ${vs.length > 1 ? `<div class="chips">${vs.map(v => `<button class="chip${isExclusive(v) ? ' excl' : ''}" data-play="${esc(v.version_id)}"${isExclusive(v) ? ' title="Vault exclusive"' : ''}>${isExclusive(v) ? I.star : ''}${esc(v.label)}</button>`).join('')}</div>` : ''}
     </div>

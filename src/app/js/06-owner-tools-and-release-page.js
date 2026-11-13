@@ -317,7 +317,7 @@ function editList(ts) {
     const vs = versionsOf(t.track_id, true);
     return { track_id: t.track_id, title: String(t.title == null ? '' : t.title), hidden: hidden(t), chapter: String(t.chapter || ''),
              number: String(t.number_label || '').trim(), artist: String(t.artist || '').trim(), genre: String(t.genre || '').trim(), unreleased: isUnrel(t),
-             category: { bsides: 'B-Side', deluxe: 'Deluxe', full: 'Main' }[sectionOf(t)], single: isSingle(t),
+             category: { bsides: 'B-Side', deluxe: 'Deluxe', full: 'Main' }[sectionOf(t)], extraKind: isExtra(t) ? extraKindOf(t) : '', single: isSingle(t),
              primary: (vs.find(v => v.is_primary) || vs[0] || {}).version_id,
              hiddenVersions: vs.filter(hidden).map(v => v.version_id) };
   });
@@ -343,8 +343,7 @@ function editRows(moved) {
           <input class="field" data-tgenre="${i}" list="genreList" value="${esc(d.genre)}" maxlength="160" placeholder="${esc(rel(S.releaseId).genre || 'Genre')}"></label>
         <div class="secrow"><label class="secsel">Section <select class="field" data-cat="${i}">
             <option value="Main"${d.category === 'Main' ? ' selected' : ''}>Full project</option>
-            <option value="Deluxe"${d.category === 'Deluxe' ? ' selected' : ''}>Drafts</option>
-            <option value="B-Side"${d.category === 'B-Side' ? ' selected' : ''}>B-Side</option></select></label>
+            ${EXTRA_KINDS.map(k => `<option value="${esc(k)}"${d.category !== 'Main' && d.extraKind === k ? ' selected' : ''}>Extra: ${esc(k)}</option>`).join('')}</select></label>
           <label><input type="checkbox" data-single="${i}" ${d.single ? 'checked' : ''}> Released as a single</label></div>
         <label><input type="checkbox" data-hide-track="${i}" ${d.hidden ? 'checked' : ''}> Hide this song</label>
         <label><input type="checkbox" data-unrel-track="${i}" ${d.unreleased ? 'checked' : ''}> Unreleased (shows an "Unreleased" tag)</label>
@@ -376,7 +375,7 @@ async function saveEdits() {
     toast(chapErr); return;
   }
   try {
-    items = S.draft.map(d => ({ track_id: d.track_id, title: String(d.title == null ? '' : d.title).trim(), hidden: d.hidden, primary: d.primary, hiddenVersions: d.hiddenVersions, chapter: d.chapter, category: d.category, single: d.single,
+    items = S.draft.map(d => ({ track_id: d.track_id, title: String(d.title == null ? '' : d.title).trim(), hidden: d.hidden, primary: d.primary, hiddenVersions: d.hiddenVersions, chapter: d.chapter, category: d.category, extra_kind: d.category === 'Main' ? '' : d.extraKind, single: d.single,
                                 number: d.number, artist: d.artist, genre: d.genre, unreleased: !!d.unreleased }));
     const al = artistLinksDraft();
     if (al) S.lib.artist_links = await run('saveArtistLinks', BOOT.key, al);
@@ -405,7 +404,7 @@ async function saveEdits() {
     const r = rel(S.releaseId); if (title) r.title = title; if (relHidden != null) r.hidden = relHidden;
     items.forEach((it, i) => {
       const t = trk(it.track_id); if (!t) return;
-      if (it.title) t.title = it.title; t.track_no = i + 1; t.hidden = !!it.hidden; t.chapter = String(it.chapter || '').trim(); t.category = it.category; t.is_single = !!it.single;
+      if (it.title) t.title = it.title; t.track_no = i + 1; t.hidden = !!it.hidden; t.chapter = String(it.chapter || '').trim(); t.category = it.category; t.extra_kind = it.category === 'Main' ? '' : (it.extra_kind || ''); t.is_single = !!it.single;
       t.number_label = String(it.number || '').trim().replace(/[^A-Za-z0-9.\-]/g, '').slice(0, 6); t.artist = String(it.artist || '').trim();
       if (it.genre != null) t.genre = String(it.genre || '').split(',').map(x => x.trim()).filter(Boolean).join(', ');
       t.unreleased = !!it.unreleased;

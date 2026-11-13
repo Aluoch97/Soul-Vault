@@ -574,6 +574,20 @@ test('missing files: linking works before the catalog moves over too (native son
   assert.match((await w.owner('missingLink', 'ver_sg', 'ver_h1')).error, /not on the list|Switch the catalog/);
 }));
 
+test('extras: each extra song keeps its label (draft, audio note, remix, cover, b-side) and fans can see it', () => withWorld(async (w) => {
+  await w.owner('adoptDomain', 'catalog');
+  const save = (cat, kind) => w.owner('saveTracklist', 'rel_pub', 'Open Album', [{ track_id: 'trk_a1', category: cat, extra_kind: kind }], false, 'Album');
+  const fan = async () => (await w.call('getShare', ['PUB'])).result.tracks.find(t => t.track_id === 'trk_a1');
+  for (const kind of ['Draft', 'Audio note', 'Remix', 'Cover', 'B-Side']) {
+    assert.equal((await save(kind === 'B-Side' ? 'B-Side' : 'Deluxe', kind)).ok, true);
+    const t = await fan(); assert.equal(t.extra_kind, kind); assert.notEqual(t.category, 'Main');
+  }
+  await save('Deluxe', 'Not a real kind'); assert.equal((await fan()).extra_kind, '');                    // only the five labels are accepted
+  await save('Deluxe', 'Remix'); await save('Main', 'Remix');                                              // back on the main tracklist: the label is dropped
+  const t = await fan(); assert.deepEqual([t.category, t.extra_kind], ['Main', '']);
+  assert.equal((await w.call('saveTracklist', ['wrong', 'rel_pub', 'x', [], false, 'Album'])).ok, false);   // owner only
+}));
+
 // ---------------------------------------------------------------- moving areas off the Sheet
 test('adopting an area: owner only, known areas only, and the app then answers those calls itself', () => withWorld(async (w) => {
   assert.equal((await w.call('adoptDomain', ['wrong', 'playlists'])).ok, false);

@@ -145,11 +145,11 @@ function dateLabel(r) {
 }
 function metaLine(r, ts) {
   const L = songLists(ts.filter(t => !hidden(t)));
-  const full = runtimeOf(L.full), both = runtimeOf(L.full.concat(L.deluxe));
+  const full = runtimeOf(L.full), both = runtimeOf(L.full.concat(L.extras));
   const parts = [esc(dateLabel(r)), songs(L.full.length)];
   if (full.secs) parts.push(`<span${full.missing ? ' title="Some song lengths are measured the first time they play"' : ''}>${fmtRuntime(full)}</span>`);
   let html = `<div class="relmeta">${parts.join(' · ')}</div>`;
-  if (L.deluxe.length) html += `<div class="relmeta sub">With drafts: ${songs(L.full.length + L.deluxe.length)}${both.secs ? ', ' + fmtRuntime(both) : ''}</div>`;
+  if (L.extras.length) html += `<div class="relmeta sub">With extras: ${songs(L.full.length + L.extras.length)}${both.secs ? ', ' + fmtRuntime(both) : ''}</div>`;
   if (String(r.recorded_at || '').trim()) html += `<div class="recorded">${I.pin}<span>Recorded in ${esc(r.recorded_at)}</span></div>`;
   html += `<div id="firstRow">${firstRow(r)}</div>`;
   html += agesLine(r) + unrelTag(r) + genreTags(r.genre);
@@ -160,12 +160,17 @@ function metaLine(r, ts) {
 const typeOf = r => (['Deluxe', 'B-Sides'].indexOf(r.type) > -1 || !r.type ? 'Album' : r.type);
 const typeGroup = r => typeOf(r);
 const EDIT_TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
-// Songs inside a release: the full project (main tracklist), the drafts songs, singles, and b-sides.
+// Songs inside a release: the full project (main tracklist), the extras (drafts, audio notes, remixes, covers, b-sides), and singles.
 const sectionOf = t => (['B-Side', 'Extra'].indexOf(t.category) > -1 ? 'bsides' : ['Deluxe', 'Bonus'].indexOf(t.category) > -1 ? 'deluxe' : 'full');
 const isSingle = t => t.is_single === true || t.is_single === 'TRUE';
+// Extras are everything that is not on the main tracklist. Each one carries a label so the release page can say what it is. Old songs need no change:
+// "Drafts" songs read as Draft and old "B-Side" songs read as B-Side until you pick another label in Edit.
+const EXTRA_KINDS = ['Draft', 'Audio note', 'Remix', 'Cover', 'B-Side'];
+const isExtra = t => sectionOf(t) !== 'full';
+const extraKindOf = t => EXTRA_KINDS.indexOf(t.extra_kind) > -1 ? t.extra_kind : (sectionOf(t) === 'bsides' ? 'B-Side' : 'Draft');
 function songLists(ts) {
   return { full: ts.filter(t => sectionOf(t) === 'full'), deluxe: ts.filter(t => sectionOf(t) === 'deluxe'),
-           singles: ts.filter(isSingle), bsides: ts.filter(t => sectionOf(t) === 'bsides') };
+           singles: ts.filter(isSingle), bsides: ts.filter(t => sectionOf(t) === 'bsides'), extras: ts.filter(isExtra) };
 }
 const CLUB = () => !!(S.share && S.share.target_type === 'all');
 // Pulls the 11-character video ID out of any common YouTube link.

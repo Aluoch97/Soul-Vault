@@ -229,7 +229,7 @@ function slideItems(r) {
   const L = { cover: 'Album cover art', shoot: 'Photoshoot', bts: 'Behind the scenes', social: 'Social media graphic' };
   if (r.cover_file_id) out.push({ id: r.cover_file_id, label: 'Album cover', kind: 'cover' });
   if (r.clean_cover_file_id) out.push({ id: r.clean_cover_file_id, label: 'Clean version cover', kind: 'clean' });
-  coversOf(r).forEach(c => out.push({ id: c.id, label: c.for === 'clean' ? 'Clean version cover (another)' : c.for === 'deluxe' ? 'Drafts cover' : c.for === 'bsides' ? 'B-Sides cover' : String(c.for).slice(3) + ' cover', kind: 'xcover' }));
+  coversOf(r).forEach(c => out.push({ id: c.id, label: c.for === 'clean' ? 'Clean version cover (another)' : c.for === 'deluxe' ? 'Extras cover' : c.for === 'bsides' ? 'B-Sides cover' : String(c.for).slice(3) + ' cover', kind: 'xcover' }));
   const push = p => out.push({ id: p.file_id, label: L[p.cat], group: p.group || '', title: p.title || '', kind: 'photo', xid: p.extra_id });
   ps.filter(p => p.cat === 'cover').forEach(push);
   ['shoot', 'bts'].forEach(cat => {

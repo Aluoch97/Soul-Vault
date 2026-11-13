@@ -270,7 +270,7 @@ function relDetailsForm(r) {
     ${panel('settings', 'Release settings', setting, `
     <label class="typesel">Release type <select class="field" id="relType">${EDIT_TYPES
       .map(x => `<option${x === typeOf(r) ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>
-      <span class="cs">Album, Mixtape, EP and Single are the Home filters. For a drafts section, keep the type and put those songs in the Drafts section.</span></label>
+      <span class="cs">Album, Mixtape, EP and Single are the Home filters. For extras (drafts, audio notes, remixes, covers, b-sides), keep the type and set those songs to Extra in Edit.</span></label>
     <label class="row2 relhide"><input type="checkbox" id="relHidden" ${hidden(r) ? 'checked' : ''}> Hide this whole release from the fan club</label>
     <label class="row2 relhide"><input type="checkbox" id="relUnreleased" ${isUnrel(r) ? 'checked' : ''}> Mark as unreleased (shows an "Unreleased" tag)</label>
     <div class="unlockrow"><label>Seal it until (fan club sees a countdown, songs open at this time)

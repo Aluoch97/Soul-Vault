@@ -354,7 +354,7 @@ if (!$('#covFile')) document.body.appendChild(Object.assign(document.createEleme
 S.coverIdx = {}; S.xcov = {};
 const coversOf = r => { const v = r && r.extra_covers; if (Array.isArray(v)) return v; try { const a = JSON.parse(v || '[]'); return Array.isArray(a) ? a.filter(c => c && c.id && c.for) : []; } catch (e) { return []; } };
 const coverList = (r, target) => { const more = coversOf(r).filter(c => c.for === target).map(c => c.id); return (target === 'clean' ? [r && r.clean_cover_file_id].concat(more) : more).filter(Boolean); };
-const coverTargetLabel = t => t === 'clean' ? 'Clean version (another cover)' : t === 'deluxe' ? 'Drafts' : t === 'bsides' ? 'B-Sides' : String(t).startsWith('ch:') ? 'Chapter: ' + String(t).slice(3) : String(t);
+const coverTargetLabel = t => t === 'clean' ? 'Clean version (another cover)' : t === 'deluxe' ? 'Extras' : t === 'bsides' ? 'B-Sides' : String(t).startsWith('ch:') ? 'Chapter: ' + String(t).slice(3) : String(t);
 function registerXCovers() { S.xcov = {}; (S.lib.releases || []).forEach(r => coversOf(r).forEach(c => { S.xcov[c.id] = r.release_id; })); }
 // Which cover fits what's playing: the song's own, then the clean version's, then its chapter's, then Drafts / B-Sides, then the release cover
 function artTarget(t, v) {
@@ -384,9 +384,9 @@ function cycleCover() {
 const chapCover = name => { const id = coverList(rel(S.releaseId), 'ch:' + name)[0]; return id ? `<img class="chapcover" data-cover="${esc(id)}" alt="">` : ''; };
 function moreCoversEditor(r) {
   const list = coversOf(r), chapters = [...new Set(tracksOf(r.release_id, true).map(t => String(t.chapter || '').trim()).filter(Boolean))];
-  const targets = [['clean', 'Clean version (another cover)'], ['deluxe', 'Drafts'], ['bsides', 'B-Sides']].concat(chapters.map(c => ['ch:' + c, 'Chapter: ' + c]));
+  const targets = [['clean', 'Clean version (another cover)'], ['deluxe', 'Extras'], ['bsides', 'B-Sides']].concat(chapters.map(c => ['ch:' + c, 'Chapter: ' + c]));
   const first = c => coversOf(r).find(x => x.for === c.for) === c;
-  return `<div class="morecov" id="moreCov"><span class="lbl">More covers: a second one for the clean version, Drafts, B-Sides, or a chapter. The first one for each is the main one.</span>
+  return `<div class="morecov" id="moreCov"><span class="lbl">More covers: a second one for the clean version, Extras, B-Sides, or a chapter. The first one for each is the main one.</span>
     ${list.length ? `<ul class="covlist">${list.map(c => `<li><img class="art" data-cover="${esc(c.id)}" alt=""><span class="cs">${esc(coverTargetLabel(c.for))}</span>
       ${c.for === 'clean' || !first(c) ? `<button class="pill soft" type="button" data-cov-main="${esc(c.id)}">Make main</button>` : '<span></span>'}
       <button class="ib" type="button" data-cov-del="${esc(c.id)}" aria-label="Remove this ${esc(coverTargetLabel(c.for))} cover">${I.trash}</button></li>`).join('')}</ul>` : ''}

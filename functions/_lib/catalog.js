@@ -65,6 +65,7 @@ export function agesFor(r, birth) {
 }
 
 // ── editors ──
+export const EXTRA_KINDS = ['Draft', 'Audio note', 'Remix', 'Cover', 'B-Side'];   // what an extra song is (a song that is not on the main tracklist)
 const TYPES = ['Album', 'Mixtape', 'EP', 'Single', 'Live', 'Compilation', 'Unreleased', 'Other'];
 // items = the release's songs in their new order; each song's number becomes its place in the list. (Studio never calls this with a partial list.)
 export function saveTracklist(ow, releaseId, releaseTitle, items, releaseHidden, releaseType, chapterMode, chapterColors, chapterMeta) {
@@ -76,6 +77,7 @@ export function saveTracklist(ow, releaseId, releaseTitle, items, releaseHidden,
     if (it.hidden != null) t.hidden = !!it.hidden;
     if (it.chapter != null) t.chapter = cut(it.chapter, 80);
     if (['Main', 'Deluxe', 'B-Side'].indexOf(it.category) > -1) t.category = it.category;
+    if (it.extra_kind != null || it.category === 'Main') t.extra_kind = t.category === 'Main' ? '' : (EXTRA_KINDS.indexOf(it.extra_kind) > -1 ? it.extra_kind : '');
     if (it.single != null) t.is_single = !!it.single;
     if (it.number != null) t.number_label = cleanNumber(it.number);
     if (it.artist != null) t.artist = cut(it.artist, 120);

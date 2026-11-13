@@ -36,16 +36,20 @@ window.addEventListener('resize', () => { if (S.view === 'release') fitTitle(); 
 
 function songsSection(ts) {
   const L = songListsFor(S.releaseId), comps = companionsOf(S.releaseId);
-  const tabs = [['full', 'Full project', L.full], ['deluxe', 'Drafts', L.deluxe], ['singles', 'Singles', L.singles], ['bsides', 'B-Sides', L.bsides]].filter(x => x[2].length);
+  const tabs = [['full', 'Full project', L.full], ['extras', 'Extras', L.extras], ['singles', 'Singles', L.singles]].filter(x => x[2].length);
+  if (S.songTab === 'deluxe' || S.songTab === 'bsides') S.songTab = 'extras';   // the old Drafts and B-Sides tabs are one Extras tab now
   if (!L[S.songTab] || !L[S.songTab].length) S.songTab = tabs.length ? tabs[0][0] : 'full';
-  const cur = L[S.songTab] || [];
-  let html = S.songTab === 'bsides' && comps.length ? `<div class="compnote">Includes the songs from ${comps.map(c => `<button class="pill soft" data-rel="${esc(c.release_id)}">${esc(c.title)} →</button>`).join('')}</div>` : '';
-  const tabCov = (S.songTab === 'deluxe' || S.songTab === 'bsides') ? coverList(rel(S.releaseId), S.songTab)[0] : '';
-  if (tabCov) html += `<div class="tabcover"><img class="art" data-cover="${esc(tabCov)}" alt=""><span class="cs">${S.songTab === 'deluxe' ? 'Drafts' : 'B-Sides'} cover</span></div>`;
-  const useChapters = S.songTab === 'full' || S.songTab === 'deluxe';
+  const kindOfRow = t => t.release_id !== S.releaseId ? 'B-Side' : extraKindOf(t);   // a companion release's songs are b-sides
+  const kinds = EXTRA_KINDS.filter(k => L.extras.some(t => kindOfRow(t) === k));
+  if (S.songTab !== 'extras' || kinds.indexOf(S.xkind) < 0) S.xkind = 'all';
+  const cur = S.songTab === 'extras' && S.xkind !== 'all' ? L.extras.filter(t => kindOfRow(t) === S.xkind) : (L[S.songTab] || []);
+  let html = S.songTab === 'extras' && comps.length ? `<div class="compnote">Includes the songs from ${comps.map(c => `<button class="pill soft" data-rel="${esc(c.release_id)}">${esc(c.title)} →</button>`).join('')}</div>` : '';
+  const tabCov = S.songTab === 'extras' ? (coverList(rel(S.releaseId), 'deluxe')[0] || coverList(rel(S.releaseId), 'bsides')[0]) : '';
+  if (tabCov) html += `<div class="tabcover"><img class="art" data-cover="${esc(tabCov)}" alt=""><span class="cs">Extras cover</span></div>`;
+  const useChapters = S.songTab === 'full' || S.songTab === 'extras';
   let chapN = 0;
   (useChapters ? chapterGroups(cur) : [{ name: '', items: cur }]).forEach(g => {
-    const rows = `<ol class="tracks">${g.items.map(t => trackRow(t, t.release_id !== S.releaseId)).join('')}</ol>`;
+    const rows = `<ol class="tracks">${g.items.map(t => trackRow(t, t.release_id !== S.releaseId, S.songTab === 'extras' ? kindOfRow(t) : '')).join('')}</ol>`;
     if (!g.name) { html += rows; return; }
     const rt = fmtRuntime(runtimeOf(g.items));
     const cc = chapColors(rel(S.releaseId))[g.name] || CHAP_PALETTE[chapN % CHAP_PALETTE.length]; chapN++;   // same default as the editor
@@ -56,7 +60,8 @@ function songsSection(ts) {
   });
   const bar = tabs.length > 1 ? `<div class="songtabs" role="group" aria-label="Show songs from">${tabs.map(([k, l, a]) =>
     `<button data-songtab="${k}" aria-pressed="${k === S.songTab}">${l} <span class="n">${a.length}</span></button>`).join('')}</div>` : '';
-  return `<section id="era-songs" class="erasec">${bar}${html.replace('<ol class="tracks"></ol>', '')}</section>`;
+  const kbar = S.songTab === 'extras' && kinds.length > 1 ? `<div class="xfilter" role="group" aria-label="Kind of extra"><button data-xkind="all" aria-pressed="${S.xkind === 'all'}">All <span class="n">${L.extras.length}</span></button>${kinds.map(k => `<button data-xkind="${esc(k)}" aria-pressed="${S.xkind === k}">${esc(k)} <span class="n">${L.extras.filter(t => kindOfRow(t) === k).length}</span></button>`).join('')}</div>` : '';
+  return `<section id="era-songs" class="erasec">${bar}${kbar}${html.replace('<ol class="tracks"></ol>', '')}</section>`;
 }
 function aboutSection(r) {
   const story = String(r.world_story || '').trim(), moods = String(r.world_mood || '').split(',').map(x => x.trim()).filter(Boolean), cr = creditLines(r.album_credits);
