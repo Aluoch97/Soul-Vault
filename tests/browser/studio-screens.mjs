@@ -746,6 +746,24 @@ await step("Soul's Picks: a playlist marked as a pick gets its own section on th
   await page.evaluate(() => { const p = S.lib.playlists.find(x => x.pick); renderPlaylist(p.playlist_id); }); await page.waitForSelector('.plhead.ispick .pickkick');
   assert.match(await page.evaluate(() => document.querySelector('.pickkick').textContent), /Curated by Nicólas Soul/);
 });
+await step('Song <-> Video keeps your place: the video clock comes from YouTube messages (and only from YouTube); back to Song continues from there; "Watch" on the song that is playing does not restart it', async () => {
+  const r = await page.evaluate(() => {
+    const t = { track_id: 'trk_vid', title: 'Vid song', release_id: 'rel_pub', video_url: 'https://youtu.be/dQw4w9WgXcQ' }, v = { version_id: 'ver_vid', track_id: 'trk_vid', label: 'Original' };
+    S.now = { t, v, r: { release_id: 'rel_pub', title: 'X' } }; S.ytSong = false; S.scSong = false; S.videoMode = true; S.vidClock = { tid: 'trk_vid', t: 0, playing: false };
+    const msg = (origin, data) => window.dispatchEvent(new MessageEvent('message', { origin, data: JSON.stringify(data) }));
+    msg('https://evil.example', { event: 'infoDelivery', info: { currentTime: 999, playerState: 1 } });
+    const ignored = S.vidClock.t;
+    msg('https://www.youtube-nocookie.com', { event: 'infoDelivery', info: { currentTime: 42.5, playerState: 1 } });
+    const got = [S.vidClock.t, S.vidClock.playing];
+    let played = 0; const realPlay = audio.play; audio.play = () => { played++; return Promise.resolve(); };
+    setMode('song', true);
+    const out = { ignored, got, at: Math.round(audio.currentTime * 10) / 10, played, mode: S.videoMode };
+    // a different song's clock is never applied
+    S.videoMode = true; S.vidClock = { tid: 'other', t: 77, playing: true }; audio.currentTime = 5; setMode('song', true); out.other = audio.currentTime;
+    audio.play = realPlay; S.now = null; S.videoMode = false; return out;
+  });
+  assert.deepEqual([r.ignored, r.got, r.at, r.played, r.mode, r.other], [0, [42.5, true], 42.5, 1, false, 5]);
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

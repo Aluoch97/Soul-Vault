@@ -270,7 +270,7 @@ document.addEventListener('click', e => {
   else if ('lyrics' in d) { const l = $('#lyr'); l.hidden = !l.hidden; el.textContent = l.hidden ? 'Show lyrics' : 'Hide lyrics'; el.setAttribute('aria-expanded', String(!l.hidden)); if (!l.hidden) award('lyrics'); }
   else if (d.voiceGo) uploadVoice(el);
   else if ('unlockClear' in d) { $('#relUnlock').value = ''; toast('No seal: saves when you press Save changes'); }
-  else if (d.mode) setMode(d.mode);
+  else if (d.mode) setMode(d.mode, true);
   else if (d.watch) watchVideo(d.watch);
   else if ('worldEdit' in d) { closeModal(); editDetails(); }
   else if ('colorClear' in d) { $('#wColor').dataset.cleared = '1'; toast('Theme color will follow the cover'); }
