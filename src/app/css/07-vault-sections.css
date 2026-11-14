@@ -179,3 +179,26 @@
   .roadtxt { display: grid; gap: 3px; min-width: 0; } .roadhead { font-weight: 800; font-size: 17px; } .roadsub { font-size: 14px; color: var(--dim); }
   .roadline { font-size: 14px; overflow-wrap: anywhere; } .roadline b { color: #f5c542; font-weight: 800; margin-right: 4px; }
   .roadtix { flex: none; }
+
+  /* Tour tab: Overview */
+  .tourover { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 16px 28px; }
+  .tourwrap { max-width: 720px; margin: 0 auto; display: grid; gap: 16px; }
+  .tournext, .tourprog, .tourbook { border: 1px solid var(--line); border-radius: 18px; padding: 16px; background: rgba(255,255,255,.03); }
+  .tournext { background: linear-gradient(135deg, rgba(210,16,52,.2), rgba(255,255,255,.03)); }
+  .tournext.none { background: rgba(255,255,255,.03); }
+  .tnk, .tpk, .tbk { font: 800 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: #f5c542; margin-bottom: 8px; }
+  .tnv { font: 800 26px/1.15 var(--serif, var(--sans)); } .tnw { font-size: 17px; font-weight: 700; margin-top: 4px; overflow-wrap: anywhere; }
+  .tnb { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; } .tournext .pill { min-height: 44px; }
+  .tpn { font-size: 15px; color: var(--dim); } .tpn b { font: 800 40px/1 var(--serif, var(--sans)); color: #fff; }
+  .tpbar { height: 10px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; margin: 10px 0 6px; } .tpbar i { display: block; height: 100%; background: linear-gradient(90deg, var(--red), var(--red-hi, #ff4d6d)); border-radius: 999px; }
+  .tpst { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .tpst span { padding: 5px 10px; border-radius: 999px; font: 800 12px/1 var(--sans); background: rgba(255,255,255,.08); }
+  .tourshows .sh { margin: 4px 0 6px; } .tmon { margin: 14px 0 6px; font: 800 12px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+  .tlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .tshow { border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.025); }
+  .tsrow, .tshow summary { display: flex; gap: 12px; align-items: center; padding: 12px 14px; min-height: 44px; cursor: default; list-style: none; } .tshow summary { cursor: pointer; } .tshow summary::-webkit-details-marker { display: none; }
+  .tsd { flex: none; width: 56px; white-space: nowrap; font: 800 13px/1.2 var(--sans); color: #f5c542; } .tsm { display: grid; gap: 2px; min-width: 0; flex: 1; } .tsm b { overflow-wrap: anywhere; } .tsm .cs { font-size: 13px; overflow-wrap: anywhere; }
+  .tsc { flex: none; display: grid; place-items: center; color: var(--dim); transition: transform .15s; } .tsc svg { width: 16px; height: 16px; } .tshow details[open] .tsc { transform: rotate(90deg); }
+  .tstory { margin: 0; padding: 0 14px 12px; color: var(--dim); font-size: 15px; line-height: 1.5; white-space: pre-line; }
+  .tclip { padding: 0 14px 14px; } .tclip .latvid { width: 100%; }
+  .tourshows > .pill { margin-top: 12px; }
+  .tourbook { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; } .tourbook .cs { margin: 0; }
