@@ -15,6 +15,7 @@ import * as FN from './_lib/fans.js';
 import * as MS from './_lib/missing.js';
 import * as BK from './_lib/backup.js';
 import * as SH from './_lib/shop.js';
+import * as TOUR from './_lib/tour.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanWorldPart, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
@@ -709,6 +710,8 @@ export async function onRequestPost(ctx) {
       if (out) return json({ ok: true, result: out });
     } else if (fn === 'getVideoLists') {   // the Video tab: two YouTube playlists, read with our key, kept 15 minutes at the edge
       return json({ ok: true, result: await videoLists(ctx) });
+    } else if (fn === 'getTourFeed') {   // Road to 100 numbers, shows so far and the next show: public to read
+      return json({ ok: true, result: await TOUR.getTour(env) });
     } else if (fn === 'getShop' && env.DB) {   // the Shop items: public to read
       return json({ ok: true, result: await SH.getShop(env.DB) });
     } else if (fn === 'saveShop' && env.DB) {
