@@ -10,6 +10,7 @@ async function play(vid) {
   // iPhones only allow sound that starts inside the tap itself, so start a silent clip now
   // and swap in the real file when Drive is ready.
   if (!unlocked) { audio.src = SILENT; audio.play().then(() => (unlocked = true)).catch(() => {}); }
+  unlockOut();   // the second player (song transitions) needs its own unlock; this does nothing once it has it
   updateNowUI();
   audio.pause();
   clearWatchdog(); releaseMem();
