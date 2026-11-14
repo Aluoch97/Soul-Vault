@@ -929,6 +929,32 @@ await step('Now Playing: very long unbroken titles fit on a phone (390 and 320 w
   assert.equal(await page.evaluate(() => deviceCannotSetVolume('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605 Version/17.0 Safari/605.1.15', 'MacIntel', 5)), true, 'an iPad that says it is a Mac is recognised by its touch screen');
   await page.evaluate(() => { trk('trk_a1').title = 'Song trk_a1 (feat. Aziza)'; audio.pause(); closeNp(); });
 });
+await step('Video tab: search, Up next, Play the song for a video that is a song, and autoplay-next when YouTube says the clip ended (only from the featured clip)', async () => {
+  await page.evaluate(() => { trk('trk_a1').video_url = 'https://youtu.be/dQw4w9WgXcQ'; S.videoQ = ''; S.videoAuto = true; ls.set('sv_vidauto', true); S.videoSort = 'az'; S.videoTab = 'freestyles'; S.videoSub = 'all';
+    S.videoLists = [{ key: 'originals', videos: [{ id: 'dQw4w9WgXcQ', title: 'Alpha one' }, { id: 'bbbbbbbbbbb', title: 'Bravo <b>two</b>' }, { id: 'ccccccccccc', title: 'Charlie three' }] }, { key: 'remixes', videos: [] }]; renderVideo(); });
+  await page.waitForSelector('.vidhero .vidtitle', { timeout: 8000 });
+  const r = await page.evaluate(() => ({ hero: document.querySelector('.vidtitle').textContent, song: !!document.querySelector('[data-vid-song]'), next: (document.querySelector('.vidnext') || {}).textContent, nextOn: (document.querySelector('.vidnext') || { closest: () => null }).closest('.vidcard') && document.querySelector('.vidnext').closest('.vidcard').getAttribute('aria-label'), auto: document.querySelector('#vauto').checked, cards: document.querySelectorAll('.vidcard').length, html: document.querySelector('#videoBody').innerHTML }));
+  assert.deepEqual([r.hero, r.song, r.next, r.auto, r.cards], ['Alpha one', true, 'Up next', true, 2]); assert.match(r.nextOn, /Bravo/); assert.ok(!r.html.includes('<b>two'), 'titles are escaped');
+  // search
+  await page.fill('#vq', 'char'); await page.waitForFunction(() => document.querySelector('.vidtitle') && document.querySelector('.vidtitle').textContent === 'Charlie three', null, { timeout: 4000 });
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.vidcard').length), 0);
+  await page.fill('#vq', 'zzzz'); await page.waitForFunction(() => /No videos match/.test(document.querySelector('#videoBody').innerText), null, { timeout: 4000 });
+  await page.fill('#vq', ''); await page.waitForFunction(() => document.querySelector('.vidtitle') && document.querySelector('.vidtitle').textContent === 'Alpha one', null, { timeout: 4000 });
+  // autoplay next
+  await page.click('.vidstage'); await page.waitForSelector('.vidhero iframe', { timeout: 4000 });
+  const msg = (origin, own, state) => page.evaluate(([o, own, st]) => { const fr = document.querySelector('.vidhero iframe'); window.dispatchEvent(new MessageEvent('message', { origin: o, source: own ? fr.contentWindow : window, data: JSON.stringify({ event: 'onStateChange', info: st }) })); return document.querySelector('.vidtitle').textContent; }, [origin, own, state]);
+  assert.equal(await msg('https://evil.example', true, 0), 'Alpha one', 'a wrong origin is ignored');
+  assert.equal(await msg('https://www.youtube-nocookie.com', false, 0), 'Alpha one', 'a message from anything but the featured clip is ignored');
+  assert.equal(await msg('https://www.youtube-nocookie.com', true, 1), 'Alpha one', 'playing (state 1) does not skip');
+  assert.equal(await msg('https://www.youtube-nocookie.com', true, 0), 'Bravo <b>two</b>', 'ended: the next clip is featured (and starts)');
+  await page.waitForSelector('.vidhero iframe', { timeout: 4000 });   // it started playing
+  await page.uncheck('#vauto'); assert.equal(await page.evaluate(() => S.videoNext), null, 'switched off: nothing plays next');
+  // Play the song: back to the poster, and the song plays
+  await page.check('#vauto'); await page.evaluate(() => { S.videoAuto = true; renderVideo(); }); await page.waitForSelector('.vidhero .vidtitle');
+  await page.click('[data-vid-song]'); await page.waitForFunction(() => S.now && S.now.t.track_id === 'trk_a1', null, { timeout: 6000 });
+  assert.equal(await page.evaluate(() => !document.querySelector('.vidhero iframe')), true, 'the video stopped');
+  await noSideways('video tab'); await page.evaluate(() => { audio.pause(); trk('trk_a1').video_url = ''; S.videoLists = null; });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
