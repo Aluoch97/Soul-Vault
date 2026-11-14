@@ -142,3 +142,6 @@
   .shopcard.sold { opacity: .75; } .shopbtn[aria-disabled="true"] { cursor: default; }
   .studio .shopitems { display: grid; gap: 14px; } .studio .shopitem { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.02); }
   .studio .shopphoto { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  /* project card with no picture at all: a plain tile instead of a blank square */
+  .vsc .vart .vph { display: grid; place-items: center; width: 100%; aspect-ratio: 1; font-size: 44px; color: rgba(255,255,255,.55); background: linear-gradient(135deg, #26262b, #141416); }

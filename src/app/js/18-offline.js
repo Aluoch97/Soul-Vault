@@ -12,3 +12,11 @@ function registerSw() {
 window.addEventListener('load', () => setTimeout(registerSw, 2500));   // after the page is up, so it never slows the first visit
 window.addEventListener('offline', () => toast("You're offline. Saved pages still open; songs and videos need a connection."));
 window.addEventListener('online', () => toast('Back online'));
+// "Refresh": an app saved to the home screen has no reload button. This forgets the saved copy and loads the newest version.
+async function refreshApp() {
+  toast('Refreshing…');
+  try { if ('serviceWorker' in navigator) (await navigator.serviceWorker.getRegistrations()).forEach(r => r.unregister()); } catch (e) { /* carry on */ }
+  try { if (window.caches) (await caches.keys()).forEach(k => caches.delete(k)); } catch (e) { /* carry on */ }
+  setTimeout(() => location.reload(), 400);
+}
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-refresh]'); if (t) { e.preventDefault(); refreshApp(); } });

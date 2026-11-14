@@ -87,12 +87,20 @@ function redrawSection(id) {
     The area shows PROJECTS (a release with its matching songs), not every song one by one. Tap a project to open it. */
 const projectsOf = ts => { const m = new Map(); ts.forEach(t => { if (!m.has(t.release_id)) m.set(t.release_id, { r: rel(t.release_id) || {}, songs: [] }); m.get(t.release_id).songs.push(t); }); return [...m.values()]; };
 const nProjects = ts => new Set(ts.map(t => t.release_id)).size;
+// The picture for a project card: its cover; else a song's own cover; else the YouTube picture of a song's video; else a plain tile (never a blank grey square).
+function groupArt(g) {
+  const cid = g.r.cover_file_id || (g.songs.find(t => t.track_cover) || {}).track_cover;
+  if (cid) return `<img class="art" data-cover="${esc(cid)}" alt="">`;
+  const yt = g.songs.map(t => ytId(t.video_url)).find(Boolean);
+  if (yt) return `<img class="art" src="https://i.ytimg.com/vi/${esc(yt)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'art vph',textContent:'${'\u266A'}'}))">`;
+  return `<span class="art vph" aria-hidden="true">&#9834;</span>`;
+}
 function vaultSection(cfg) {
   const st = secState(cfg.id);
   if (!cfg.chips.some(c => c[0] === st.chip)) st.chip = 'all';
   const list = st.chip === 'all' ? cfg.songs : cfg.songs.filter(t => cfg.inChip(t, st.chip)), groups = projectsOf(list);
   const card = g => `<button type="button" class="agc vsc" data-rel="${esc(g.r.release_id)}" aria-label="Open ${esc(g.r.title)}">
-    <span class="vart"><img class="art" data-cover="${esc(g.r.cover_file_id || '')}" alt=""><span class="vtag">${esc(cfg.tagOfGroup(g))}</span></span>
+    <span class="vart">${groupArt(g)}<span class="vtag">${esc(cfg.tagOfGroup(g))}</span></span>
     <span class="agt">${esc(g.r.title)}</span><span class="cs vsub2">${esc(cfg.subOfGroup(g))}</span>${songLines(g)}</button>`;
   const songLines = g => cfg.songLine ? `<span class="vsongs">${g.songs.slice(0, 3).map(t => `<span class="vsong"><b>${esc(cfg.songLine(t).t)}</b></span>`).join('')}${g.songs.length > 3 ? `<span class="vsong more">+${g.songs.length - 3} more</span>` : ''}</span>` : '';
   const body = !groups.length ? '<p class="cs">Nothing here yet.</p>' : `<div class="hrow vrow" aria-label="${esc(cfg.label)}">${groups.map(card).join('')}</div>`;

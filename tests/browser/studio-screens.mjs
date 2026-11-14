@@ -716,6 +716,22 @@ await step('Shop: add a CD in Studio, it shows on Home and its release page with
   await page.evaluate(() => { closeModal && closeModal(); renderHome(); }); await page.waitForSelector('#shopHome .shopcard.sold', { timeout: 8000 });
   assert.deepEqual(await page.evaluate(() => [!!document.querySelector('#shopHome a.shopbtn'), document.querySelector('#shopHome .shopbtn').textContent]), [false, 'Sold out']);
 });
+await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link on Home and in Settings clears the saved copy and reloads', async () => {
+  await page.evaluate(() => renderVault()); await seen('Refresh the app'); const html = await page.evaluate(() => document.body.innerText);
+  assert.ok(html.includes('Refresh the app'), 'Settings has Refresh the app');
+  assert.ok(!html.includes('Producers, places and eras'), 'no Lore row in Settings');
+  await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome());
+  await page.waitForSelector('[data-refresh]');
+  const nav = page.waitForNavigation({ timeout: 8000 }); await page.click('a[data-refresh]'); await nav;
+});
+await step('project cards never show a blank square: cover, else a song cover, else the YouTube picture, else a plain tile', async () => {
+  const r = await page.evaluate(() => {
+    const el = h => { const d = document.createElement('div'); d.innerHTML = h; return d.firstElementChild; };
+    const g = (cover, songs) => ({ r: { cover_file_id: cover }, songs });
+    return [groupArt(g('abc', [{}])), groupArt(g('', [{ track_cover: 'tc1' }])), groupArt(g('', [{ video_url: 'https://youtu.be/dQw4w9WgXcQ' }])), groupArt(g('', [{}]))].map(h => { const e = el(h); return [e.tagName, e.getAttribute('data-cover') || (e.getAttribute('src') || '').replace(/^https:\/\/i\.ytimg\.com\/vi\//, 'yt:'), /vph/.test(e.className)]; });
+  });
+  assert.deepEqual(r, [['IMG', 'abc', false], ['IMG', 'tc1', false], ['IMG', 'yt:dQw4w9WgXcQ/hqdefault.jpg', false], ['SPAN', '', true]]);
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
