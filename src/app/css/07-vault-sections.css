@@ -132,3 +132,13 @@
   .nrend { position: sticky; bottom: 0; padding: 12px 0 4px; background: linear-gradient(180deg, rgba(10,10,11,0), rgba(10,10,11,.96) 40%); }
 
   .bkfiles { display: grid; gap: 8px; margin: 14px 0 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.03); } .bkfiles h3 { margin: 0; font-size: 15px; } .bkfiles .pill { justify-self: start; }
+
+  /* Shop */
+  .shopsec { margin-top: 8px; } .shoplist { display: grid; gap: 12px; margin: 6px 0 4px; }
+  .shopcard { display: flex; gap: 14px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.04); min-width: 0; }
+  .shopimg { flex: none; width: 92px; height: 92px; border-radius: 12px; object-fit: cover; background: #1a1a1c; }
+  .shopinfo { display: grid; gap: 6px; min-width: 0; } .shopname { font-size: 17px; line-height: 1.25; overflow-wrap: anywhere; } .shopprice { font-weight: 800; color: var(--text); opacity: .85; }
+  .shopinfo .cs { margin: 0; overflow-wrap: anywhere; } .shopbtn { justify-self: start; min-height: 44px; text-decoration: none; display: inline-flex; align-items: center; }
+  .shopcard.sold { opacity: .75; } .shopbtn[aria-disabled="true"] { cursor: default; }
+  .studio .shopitems { display: grid; gap: 14px; } .studio .shopitem { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.02); }
+  .studio .shopphoto { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

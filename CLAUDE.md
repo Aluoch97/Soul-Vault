@@ -206,6 +206,7 @@ Next for Nick: add soulnicolas.com in Google Search Console and submit `/sitemap
 - Never edit `dist/`. Change the right part in `src/app/` or `apps-script/*`, rebuild.
 - Backend changes: paste the changed `.gs` into Apps Script, new deployment version, bump `SV_BUILD`, update the "SV build" tag.
 - Keep text escaped with `esc()`. Run a syntax check (esbuild `--target=safari15`) and a phone-width layout check before shipping.
+- Shop (Nov 14, 2026): Nick sells physical CDs/merch through a hosted checkout, normally a Stripe Payment Link (the site never touches card details). Studio > Shop (`#stuShop`, `wireShopEditor` in `app/js/18-shop.js`): name, price, description, buy link, optional photo (`uploadPicture`, sizes t+400), optional release page, "Show on Home", "Sold out" (manual switch; the button turns into "Sold out"). Stored as one list in D1 `kv` key `shop` (`functions/_lib/shop.js`, max 20 items). `getShop` is public, `saveShop` is owner-only; buy links must be `https://` (no `javascript:`, no `user@` links) and open with `target=_blank rel="noopener noreferrer"`. Home shows the "Shop" section (`#shopHome`) and a release page shows items tied to it (`#shopRel`); `fillShop()` must be called from every Home draw (a test caught it missing once). CSP: Stripe links are plain outgoing links, so no `_headers` change is needed.
 
 ## "Status check" (Nick's standing preference, same in all five apps)
 When Nick says "status check", answer in this shape, in plain language:

@@ -356,7 +356,7 @@ function renderRelease(id) {
   const hero = $('#heroArt');
   if (r.world_color) $('#relhead').style.setProperty('--tint', r.world_color);
   setCover(hero, r.cover_file_id, true, () => { if (!r.world_color) tintFrom(hero); });
-  markPlaying(); loadPhotos(); fitTitle(); loadCovers(); applyPageBg(r); $$('#era-videos .vsec').forEach(x => wireRows(x));
+  markPlaying(); loadPhotos(); fitTitle(); loadCovers(); applyPageBg(r); fillShop(); $$('#era-videos .vsec').forEach(x => wireRows(x));
   if (!editing && relPublic(r) && extrasOf(r.release_id, 'photo').length) prepImages(id);   // get this release's pictures ready in the background
 
   if (editing) { makeSortable($('#editList'), moveDraftTo); if ($('#vEditList')) makeSortable($('#vEditList'), vMoveTo); if ($('#pEditList')) makeSortable($('#pEditList'), pMoveTo); }

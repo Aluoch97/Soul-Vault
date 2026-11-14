@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpers.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
-const OWNER_ONLY = ['mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
+const OWNER_ONLY = ['saveShop', 'mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
@@ -994,4 +994,25 @@ test('file list for an offsite copy: owner only, every file with its size and th
   assert.equal((await w.call('mediaManifest', ['wrong'])).ok, false); assert.equal((await w.call('mediaManifest', [])).ok, false);
   const r = (await w.owner('mediaManifest')).result;
   assert.equal(r.count, 2); assert.equal(r.bytes, 6); assert.deepEqual(r.files.map((f) => [f.key, f.size]).sort(), [['img/c1/400', 2], ['rise/01-song.m4a', 4]]); assert.match(r.base, /^https:\/\/media\.soulnicolas\.com\/$/);
+}));
+
+test('shop: anyone can read it, only the owner saves it, only https buy links, tidy fields, max 20', () => withWorld(async (w) => {
+  assert.deepEqual((await w.call('getShop', [])).result, []);
+  assert.equal((await w.call('saveShop', ['wrong', [{ title: 'CD', buy_url: 'https://buy.stripe.com/x' }]])).ok, false);
+  assert.deepEqual((await w.call('getShop', [])).result, [], 'a refused save changes nothing');
+  const good = { title: 'Rise of the Lost CD', buy_url: 'https://buy.stripe.com/abc123', price: '$12', blurb: 'Signed.', image: 'c' + 'a'.repeat(20), release_id: 'rel_x', sold_out: false, home: true };
+  const r = await w.owner('saveShop', [good]);
+  assert.equal(r.ok, true);
+  const got = (await w.call('getShop', [])).result;
+  assert.equal(got.length, 1); assert.deepEqual([got[0].title, got[0].buy_url, got[0].price, got[0].sold_out, got[0].home], ['Rise of the Lost CD', 'https://buy.stripe.com/abc123', '$12', false, true]);
+  for (const bad of ['javascript:alert(1)', 'http://buy.stripe.com/x', 'https://user@evil.com/x', 'https://a b.com', 'data:text/html,hi', '']) {
+    const x = await w.owner('saveShop', [{ title: 'CD', buy_url: bad }]);
+    assert.equal(x.ok, false, bad); assert.match(x.error, /https/);
+  }
+  assert.equal((await w.owner('saveShop', [{ title: '', buy_url: 'https://buy.stripe.com/x' }])).ok, false);
+  assert.equal((await w.owner('saveShop', [{ title: 'CD', buy_url: 'https://buy.stripe.com/x', image: '../../etc' }])).ok, false, 'an odd picture id is refused');
+  const many = Array.from({ length: 21 }, (_, i) => ({ title: 'T' + i, buy_url: 'https://buy.stripe.com/' + i }));
+  assert.equal((await w.owner('saveShop', many)).ok, false);
+  assert.equal((await w.call('getShop', [])).result.length, 1, 'still the last good save');
+  assert.equal((await w.owner('saveShop', [])).ok, true); assert.deepEqual((await w.call('getShop', [])).result, []);
 }));
