@@ -155,7 +155,7 @@ function metaLine(r, ts) {
   if (String(r.recorded_at || '').trim()) html += `<div class="recorded">${I.pin}<span>Recorded in ${esc(r.recorded_at)}</span></div>`;
   html += `<div id="firstRow">${firstRow(r)}</div>`;
   html += agesLine(r) + unrelTag(r) + genreTags(r.genre);
-  html += `<div id="listenRow">${S.editing ? '' : listenRow(r)}</div>`;   // streaming icons, directly under the genre
+  html += `<div id="listenRow">${S.editing ? '' : listenRow(r)}</div>${S.editing ? '' : '<div id="shopRel"></div>'}`;   // streaming icons, directly under the genre
   return html;
 }
 // Release types describe the format. Old "Deluxe"/"B-Sides" labels read as Album until you pick a type in Edit.

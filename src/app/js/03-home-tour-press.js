@@ -91,7 +91,7 @@ function fillHomeLatest() {
   [['single', single, 'Single'], ['project', project, 'Project']].forEach(([slot, r, label]) => {
     const el = $('.homepg [data-slot="' + slot + '"]'); if (el) el.outerHTML = homeCover(r, label, slot);
   });
-  $$('[data-home-cover]').forEach(img => setCover(img, img.dataset.homeCover, true));
+  $$('[data-home-cover]').forEach(img => setCover(img, img.dataset.homeCover, true)); fillShop();
   startHomeVideo($('#sitebg video'), 1200);   // the covers have the connection now; the video can follow
 }
 // The background video starts only after the page has settled, and not at all for reduced motion, data saver or a very slow connection.
@@ -109,7 +109,7 @@ function startHomeVideo(v, delay) {
 function paintHomeShell() { S.homeShell = true; renderHome(); }
 function renderHome() {
   clearPageBg(); S.view = 'home'; renderChrome();
-  if (S.lib && S.homeShell && $('.homepg')) { S.homeShell = false; fillHomeLatest(); return; }
+  if (S.lib && S.homeShell && $('.homepg')) { S.homeShell = false; fillHomeLatest(); fillShop(); return; }
   const { single, project } = homePicks();
   const join = JOIN_URL();
   const yt = (v, label) => `<figure class="lat"><button class="latvid" data-yt="${esc(v[0])}" aria-label="Play ${esc(v[1])}">
@@ -126,6 +126,7 @@ function renderHome() {
       <h2 class="lathead">Latest</h2>
       ${homeCover(single, 'Single', 'single')}${homeCover(project, 'Project', 'project')}${yt(SITE.feature, 'Feature')}${yt(SITE.video, 'Video')}
     </section>
+    <section class="latest shopsec" id="shopHome" aria-label="Shop" hidden></section>
     ${join ? `<section class="tribe" id="tribe" data-join="${esc(join)}"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
       <button type="button" class="pill main" data-tribe-open>${I.mail}Join the Soul Tribe</button></section>` : ''}
@@ -134,6 +135,7 @@ function renderHome() {
   // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
   // (a still image instead if the person asked for less motion or is saving data).
   $$('[data-home-cover]').forEach(img => setCover(img, img.dataset.homeCover, true));
+  fillShop();
   wireYt(); wireTribe();
   window.scrollTo(0, 0);
 }

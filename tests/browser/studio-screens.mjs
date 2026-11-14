@@ -690,6 +690,32 @@ await step('Backups page: the file list for an offsite copy; offline notice; the
   assert.equal(await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length), 0, 'no service worker in an automated browser');
   await page.evaluate(() => window.dispatchEvent(new Event('offline'))); await seen("You're offline");
 });
+await step('Shop: add a CD in Studio, it shows on Home and its release page with a safe Buy link; sold out turns the button off; text is escaped', async () => {
+  await page.evaluate(() => { S.shopP = null; S.shop = null; renderStudio(); }); await page.waitForSelector('#stuShop');
+  await page.evaluate(() => { document.querySelector('#stuShop').open = true; });
+  await page.click('#stuShopAdd'); await page.waitForSelector('[data-shop-item]');
+  await page.fill('[data-shop-item] [data-sh="title"]', 'Rise <b>of</b> the Lost (CD)'); await page.fill('[data-shop-item] [data-sh="price"]', '$12');
+  await page.fill('[data-shop-item] [data-sh="blurb"]', 'Signed copy.');
+  await page.fill('[data-shop-item] [data-sh="buy_url"]', 'javascript:alert(1)'); await page.click('#stuShopSave');
+  await page.waitForFunction(() => /https/.test(document.querySelector('#stuShopSt').textContent), null, { timeout: 5000 });
+  assert.deepEqual((await w.call('getShop', [])).result, [], 'a bad link is not saved');
+  await page.fill('[data-shop-item] [data-sh="buy_url"]', 'https://buy.stripe.com/test123');
+  await page.selectOption('[data-shop-item] [data-sh="release_id"]', 'rel_pub');
+  await page.click('#stuShopSave'); await seen('Shop saved');
+  assert.equal((await w.call('getShop', [])).result.length, 1);
+  await page.evaluate(() => { closeModal && closeModal(); renderHome(); }); await page.waitForSelector('#shopHome .shopcard', { timeout: 8000 });
+  const card = await page.evaluate(() => { const a = document.querySelector('#shopHome a.shopbtn'); return { href: a.href, target: a.target, rel: a.rel, name: document.querySelector('#shopHome .shopname').textContent, bold: !!document.querySelector('#shopHome .shopname b') }; });
+  assert.deepEqual([card.href, card.target, card.rel, card.name, card.bold], ['https://buy.stripe.com/test123', '_blank', 'noopener noreferrer', 'Rise <b>of</b> the Lost (CD)', false]);
+  await noSideways('home with shop');
+  await page.evaluate(() => { S.releaseId = 'rel_pub'; renderRelease('rel_pub'); }); await page.waitForSelector('#shopRel .shopcard', { timeout: 8000 });
+  await page.evaluate(() => { S.releaseId = 'rel_single'; renderRelease('rel_single'); }); await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('#shopRel .shopcard').length), 0, 'only the chosen release shows it');
+  await page.evaluate(() => { S.shopP = null; renderStudio(); }); await page.waitForSelector('#stuShop'); await page.evaluate(() => { document.querySelector('#stuShop').open = true; });
+  await page.waitForSelector('[data-shop-item] [data-sh="sold_out"]'); await page.check('[data-shop-item] [data-sh="sold_out"]'); await page.click('#stuShopSave'); await page.waitForFunction(() => S.shop && S.shop[0] && S.shop[0].sold_out === true, null, { timeout: 8000 });
+  assert.equal((await w.call('getShop', [])).result[0].sold_out, true);
+  await page.evaluate(() => { closeModal && closeModal(); renderHome(); }); await page.waitForSelector('#shopHome .shopcard.sold', { timeout: 8000 });
+  assert.deepEqual(await page.evaluate(() => [!!document.querySelector('#shopHome a.shopbtn'), document.querySelector('#shopHome .shopbtn').textContent]), [false, 'Sold out']);
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

@@ -14,6 +14,7 @@ import * as ST from './_lib/site.js';
 import * as FN from './_lib/fans.js';
 import * as MS from './_lib/missing.js';
 import * as BK from './_lib/backup.js';
+import * as SH from './_lib/shop.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanWorldPart, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
 const appsUrl = env => (env && env.APPS_URL) || cfg.api;
@@ -703,6 +704,11 @@ export async function onRequestPost(ctx) {
       if (out) return json({ ok: true, result: out });
     } else if (fn === 'getVideoLists') {   // the Video tab: two YouTube playlists, read with our key, kept 15 minutes at the edge
       return json({ ok: true, result: await videoLists(ctx) });
+    } else if (fn === 'getShop' && env.DB) {   // the Shop items: public to read
+      return json({ ok: true, result: await SH.getShop(env.DB) });
+    } else if (fn === 'saveShop' && env.DB) {
+      if (!isOwner(env, args[0])) return json({ ok: false, error: 'This link is missing its owner key. Open the app from your owner link.' });
+      try { return json({ ok: true, result: await SH.saveShop(env.DB, args[1]) }); } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'getHome' && env.DB) {
       const out = await edgeHome(ctx, args);
       if (out) return json({ ok: true, result: out });

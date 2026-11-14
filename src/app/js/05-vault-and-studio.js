@@ -272,6 +272,9 @@ function drawStudio() {
       ${f('stFirst', 'First appeared on (DatPiff, Bandcamp…)', lk.first)}
       <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></div></section>
     ${EDGE_UPLOADS() ? `<section data-stupanel="add">${stuAddSection(rid)}</section>` : ''}
+    <details class="stu" id="stuShop"><summary>Shop</summary><div class="stubody"><p class="cs" style="margin:0">CDs and merch. Each item has a buy link from Stripe (or Square). Fans pay on Stripe's own page; this site never sees card details.</p>
+      <div id="stuShopItems" class="shopitems"><p class="cs">Loading…</p></div>
+      <div class="save"><button type="button" class="pill soft" id="stuShopAdd">${I.plus}Add an item</button><button type="button" class="pill main" id="stuShopSave">Save shop</button><span class="st" id="stuShopSt" role="status"></span></div></div></details>
     <details class="stu" id="stuBio"><summary>Your bio</summary><div class="stubody"><p class="cs" style="margin:0">The story fans read on the Lore page.</p>
       <textarea class="field" id="loreBio" maxlength="8000" rows="8" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
       <div class="save"><button class="pill soft" type="button" data-lore-copy>Copy all lore as text</button><button class="pill main" type="button" data-lore-bio>Save bio</button></div></div></details>
@@ -293,7 +296,7 @@ function drawStudio() {
       </div>
       <div class="save"><button type="button" class="pill main" id="bkApply">Apply to the ticked releases</button><span class="st" id="bkSt" role="status"></span></div></div></details>
     </div>`;
-  loadCovers();
+  loadCovers(); wireShopEditor();
   const stuTabs = [...$$('[data-stutab]')], stuPanels = [...$$('[data-stupanel]')];
   const showStuTab = k => { S.stuTab = k; stuTabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.stutab === k))); stuPanels.forEach(x => { x.hidden = x.dataset.stupanel !== k; }); };
   stuTabs.forEach(b => b.addEventListener('click', () => showStuTab(b.dataset.stutab))); showStuTab(tab);
