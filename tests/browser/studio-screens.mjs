@@ -929,6 +929,23 @@ await step('Now Playing: very long unbroken titles fit on a phone (390 and 320 w
   assert.equal(await page.evaluate(() => deviceCannotSetVolume('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605 Version/17.0 Safari/605.1.15', 'MacIntel', 5)), true, 'an iPad that says it is a Mac is recognised by its touch screen');
   await page.evaluate(() => { trk('trk_a1').title = 'Song trk_a1 (feat. Aziza)'; audio.pause(); closeNp(); });
 });
+await step('Lore: The story (bio), Year by year, Stories behind the songs (voice notes); all text escaped; stories play; nothing overflows', async () => {
+  await page.evaluate(() => { S.lib.artist_bio = 'Born in Homa Bay & raised in Tennessee.\n\nSecond <b>paragraph</b> here.'; trk('trk_a1').voice_note_id = 'r2:rise/voice-01.m4a'; trk('trk_a2').voice_note_id = 'r2:secret.m4a'; window.__vn = ''; playVoice = (id) => { window.__vn = id; }; renderLore(); });
+  await page.waitForSelector('#loreStory .lorestory', { timeout: 6000 });
+  const r = await page.evaluate(() => ({ story: document.querySelector('#loreStory p').textContent, more: document.querySelector('#loreStory details').innerHTML, years: [...document.querySelectorAll('.ltl .lty b')].map((e) => e.textContent), chips: document.querySelectorAll('.ltl .lchip[data-rel]').length, stories: [...document.querySelectorAll('.lsl li b')].map((e) => e.textContent), vnBtn: (document.querySelector('.lsl [data-vn]') || {}).dataset && document.querySelector('.lsl [data-vn]').dataset.vn }));
+  assert.equal(r.story, 'Born in Homa Bay & raised in Tennessee.'); assert.ok(r.more.includes('&lt;b&gt;paragraph&lt;/b&gt;') && !r.more.includes('<b>paragraph'), 'bio is escaped: ' + r.more);
+  assert.ok(r.years.length >= 1 && r.years.every((y, i, a) => !i || a[i - 1] >= y || y === 'Undated'), 'newest year first: ' + r.years); assert.ok(r.chips >= 1, 'every release is a chip that opens it');
+  assert.ok(r.stories.includes('Song trk_a1 (feat. Aziza)'), 'a song with a voice note is listed: ' + r.stories);
+  assert.ok(!r.stories.some((t) => /trk_a2/.test(t)), 'a hidden song never shows its story: ' + r.stories);
+  await page.click('.lsl [data-vn="trk_a1"]'); assert.equal(await page.evaluate(() => window.__vn), 'trk_a1', 'tapping Hear plays the voice note');
+  await page.click('.ltl .lchip[data-rel]'); await page.waitForFunction(() => S.view === 'release', null, { timeout: 5000 });
+  await page.evaluate(() => { S.lib.artist_bio = ''; S.lib.tracks.forEach((t) => { t.voice_note_id = ''; }); renderLore(); }); await page.waitForSelector('.lorestats');
+  assert.deepEqual(await page.evaluate(() => [!!document.querySelector('.lorestory'), !!document.querySelector('.lorestories')]), [false, false], 'no bio and no voice notes: those sections do not show');
+  await page.evaluate(() => { S.lib.artist_bio = 'Short story.'; trk('trk_a1').voice_note_id = 'r2:x'; renderLore(); }); await page.waitForSelector('.lorestory');
+  await noSideways('lore');
+  if (process.env.SHOT_LORE) { await page.evaluate(() => document.querySelector('.lorestory').scrollIntoView()); await page.screenshot({ path: process.env.SHOT_LORE }); }
+  await page.evaluate(() => { S.lib.artist_bio = ''; trk('trk_a1').voice_note_id = ''; });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
