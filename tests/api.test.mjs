@@ -695,6 +695,12 @@ test('adopting an area: owner only, known areas only, and the app then answers t
   const fan = await w.call('getPlaylists', ['', 'PUB']);
   assert.deepEqual(fan.result.playlists.map(p => p.title).sort(), ['Mine', 'Shared']);
   assert.equal((await w.call('getPlaylists', ['', 'OFF'])).result.error, 'This link has expired or been turned off.');
+  const pk = (await w.owner('savePlaylist', { title: 'Hardest verses', tracks: ['trk_a1'], fans: true, pick: true })).result;
+  assert.equal(pk.pick, true);
+  const again = (await w.owner('savePlaylist', { id: pk.playlist_id, title: 'Hardest verses', tracks: ['trk_a1'], fans: true })).result;   // a save that does not mention pick keeps it
+  assert.equal(again.pick, true);
+  assert.equal((await w.call('getPlaylists', ['', 'PUB'])).result.playlists.find(p => p.title === 'Hardest verses').pick, true);
+  assert.equal((await w.owner('savePlaylist', { id: pk.playlist_id, title: 'Hardest verses', tracks: ['trk_a1'], fans: true, pick: false })).result.pick, false);
   assert.equal((await w.owner('releaseDomain', 'playlists')).result.owned, false);                        // back to the Sheet
 }));
 

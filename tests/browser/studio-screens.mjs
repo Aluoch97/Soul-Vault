@@ -732,6 +732,20 @@ await step('project cards never show a blank square: cover, else a song cover, e
   });
   assert.deepEqual(r, [['IMG', 'abc', false], ['IMG', 'tc1', false], ['IMG', 'yt:dQw4w9WgXcQ/hqdefault.jpg', false], ['SPAN', '', true]]);
 });
+await step("Soul's Picks: a playlist marked as a pick gets its own section on the Music tab (and leaves the Playlists row)", async () => {
+  { const ad = await page.evaluate(() => run('adoptDomain', BOOT.key, 'playlists')); assert.ok(ad && ad.owned !== false, JSON.stringify(ad)); }
+  await page.evaluate(() => { S.lib.playlists = (S.lib.playlists || []).filter(p => p && p.playlist_id); });
+  await page.evaluate(async () => { const o = await run('savePlaylist', BOOT.key, { title: 'Hardest verses', description: 'My proudest bars.', tracks: ['trk_a1'], fans: true, pick: true }); (S.lib.playlists = S.lib.playlists || []).push(o); renderLibrary(); });
+  await page.waitForSelector('#picks .pickcard');
+  const r = await page.evaluate(() => ({ picks: [...document.querySelectorAll('#picks .pickcard .picktitle')].map(e => e.textContent), rest: [...document.querySelectorAll('#libBody .plcard:not(.new) .nm')].filter(e => e.textContent === 'Hardest verses').length, head: document.querySelector('#picks h2').textContent }));
+  assert.deepEqual([r.picks, r.head], [['Hardest verses'], "Soul's Picks"]);
+  assert.equal(r.rest, 0, 'a pick is not also in the Playlists row');
+  assert.deepEqual(await page.evaluate(() => [document.querySelector('#picks .pickbadge').textContent, document.querySelector('#picks .pickdesc').textContent]), ["Soul's Pick", 'My proudest bars.']);
+  await noSideways("music tab with Soul's Picks");
+  if (process.env.SHOT) await page.locator('#picks').screenshot({ path: process.env.SHOT });
+  await page.evaluate(() => { const p = S.lib.playlists.find(x => x.pick); renderPlaylist(p.playlist_id); }); await page.waitForSelector('.plhead.ispick .pickkick');
+  assert.match(await page.evaluate(() => document.querySelector('.pickkick').textContent), /Curated by Nicólas Soul/);
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

@@ -13,8 +13,26 @@ function mosaic(ts, cls) {
   if (arts.length < 4) return `<div class="mosaic one ${cls || ''}">${arts[0] ? `<img class="art" data-cover="${esc(arts[0])}" alt="">` : ''}</div>`;
   return `<div class="mosaic ${cls || ''}">${arts.map(a => `<img class="art" data-cover="${esc(a)}" alt="">`).join('')}</div>`;
 }
+const plCard = p => { const ts = plTracks(p); return `<button class="plcard" data-pl="${esc(p.playlist_id)}" aria-label="Playlist: ${esc(p.title)}, ${ts.length} songs">
+      ${mosaic(ts)}<span class="nm">${esc(p.title)}</span><span class="cs">${songs(ts.length)}${OWNER ? ' · ' + (p.fans ? 'fan club' : 'private') : ''}</span></button>`; };
+// Soul's Picks: playlists I designed myself (my hardest verses, my best singing), shown like editorial picks: framed gold section, big cards, a badge.
+// Fans see the ones shared with the fan club.
+const pickCard = p => { const ts = plTracks(p), rt = fmtRuntime(runtimeOf(ts));
+  return `<button class="pickcard" data-pl="${esc(p.playlist_id)}" aria-label="Soul's Pick: ${esc(p.title)}, ${ts.length} songs">
+    <span class="pickart">${mosaic(ts)}<span class="pickbadge">${I.star}Soul's Pick</span></span>
+    <span class="picktitle">${esc(p.title)}</span>${p.description ? `<span class="pickdesc">${esc(p.description)}</span>` : ''}
+    <span class="pickmeta">${songs(ts.length)}${rt ? ' · ' + rt : ''}${OWNER ? ' · ' + (p.fans ? 'fan club' : 'private') : ''}</span></button>`; };
+function picksRow() {
+  const ps = (S.lib.playlists || []).filter(p => p.pick && (OWNER || plTracks(p).length));
+  if (!ps.length) return '';
+  return `<section id="picks" class="vsec picks" aria-label="Soul's Picks">
+    <div class="vs-ribbon pickribbon">${I.star}<span>Curated by Nicólas Soul</span></div>
+    <h2 class="sh"><span><b>Soul's Picks</b></span></h2>
+    <p class="cs vs-blurb">Playlists I put together myself: the verses I'm proudest of and the songs where I sing my hardest.</p>
+    <div class="picksgrid">${ps.map(pickCard).join('')}</div></section>`;
+}
 function playlistsRow() {
-  const ps = S.lib.playlists || [];
+  const ps = (S.lib.playlists || []).filter(p => !p.pick);
   if (!ps.length && !OWNER) return '';
   return `<h2 class="sh"><span><b>Playlists</b></span></h2><div class="hrow">
     ${ps.map(p => { const ts = plTracks(p); return `<button class="plcard" data-pl="${esc(p.playlist_id)}" aria-label="Playlist: ${esc(p.title)}, ${ts.length} songs">
@@ -26,10 +44,10 @@ function renderPlaylist(id) {
   const p = plOf(id); if (!p) return renderLibrary();
   clearPageBg(); S.view = 'playlist'; S.plId = id; renderChrome();
   const ts = plTracks(p), ed = OWNER && S.plEditing;
-  if (ed && !S.pldraft) S.pldraft = { title: p.title, description: p.description, fans: p.fans, tracks: ts.map(t => t.track_id) };
+  if (ed && !S.pldraft) S.pldraft = { title: p.title, description: p.description, fans: p.fans, pick: !!p.pick, tracks: ts.map(t => t.track_id) };
   $('#main').innerHTML = `<div class="wrap">
     <button class="back" data-nav="library">${I.back}Music</button>
-    <header class="plhead">${mosaic(ts)}<div><div class="kick">Playlist${OWNER ? ' · ' + (p.fans ? 'shared with the fan club' : 'private') : ''}</div>
+    <header class="plhead${p.pick ? ' ispick' : ''}">${mosaic(ts)}<div><div class="kick${p.pick ? ' pickkick' : ''}">${p.pick ? I.star + "Soul's Pick · Curated by Nicólas Soul" : 'Playlist'}${OWNER ? ' · ' + (p.fans ? 'shared with the fan club' : 'private') : ''}</div>
       <h1>${esc(p.title)}</h1>${p.description ? `<p class="cs" style="margin:0 0 4px;white-space:pre-line">${esc(p.description)}</p>` : ''}
       <div class="cs">${songs(ts.length)}${fmtRuntime(runtimeOf(ts)) ? ' · ' + fmtRuntime(runtimeOf(ts)) : ''}</div>
       <div class="acts">${ts.length ? `<button class="pill main" data-pl-play>${I.play}Play</button><button class="pill soft" data-pl-shuffle>${I.shuffle || ''}Shuffle</button><button class="pill soft" data-pl-queue>${I.queue}Add to queue</button>` : ''}
@@ -46,6 +64,7 @@ function plEditor() {
   return `<div class="pledit">
     <label>Name<input class="field" id="plTitle" maxlength="120" value="${esc(d.title)}"></label>
     <label>Description<textarea class="field" id="plDesc" rows="3" maxlength="1000">${esc(d.description)}</textarea></label>
+    <label class="row2"><input type="checkbox" id="plPick"${d.pick ? ' checked' : ''}> Soul's Pick: show it in its own "Soul's Picks" section on the Music tab (fans only see it if it is also shared with the fan club)</label>
     <label class="row2"><input type="checkbox" id="plFans"${d.fans ? ' checked' : ''}> Share with the fan club (fans only see songs they already have access to)</label>
   </div>
   <ol class="pllist" id="plList">${d.tracks.map((tid, i) => { const t = trk(tid); return t ? `<li class="plrow sortrow">
@@ -62,11 +81,11 @@ function plMoveTo(from, to, byKey) {
   makeSortable($('#plList'), plMoveTo); loadCovers();
   if (byKey) { const g = $(`#plList [data-grip="${to}"]`); if (g) g.focus(); }
 }
-function plReadForm() { const d = S.pldraft; d.title = $('#plTitle').value; d.description = $('#plDesc').value; d.fans = $('#plFans').checked; return d; }
+function plReadForm() { const d = S.pldraft; d.title = $('#plTitle').value; d.description = $('#plDesc').value; d.fans = $('#plFans').checked; d.pick = $('#plPick').checked; return d; }
 async function plSave(btn) {
   const d = plReadForm(); btn.disabled = true;
   try {
-    const out = await run('savePlaylist', BOOT.key, { id: S.plId, title: d.title, description: d.description, tracks: d.tracks, fans: d.fans });
+    const out = await run('savePlaylist', BOOT.key, { id: S.plId, title: d.title, description: d.description, tracks: d.tracks, fans: d.fans, pick: d.pick });
     Object.assign(plOf(S.plId), out); S.plEditing = false; S.pldraft = null; renderPlaylist(S.plId); toast('Playlist saved');
   } catch (e) { btn.disabled = false; const er = $('#plErr'); er.hidden = false; er.textContent = e.message || 'Could not save.'; }
 }
