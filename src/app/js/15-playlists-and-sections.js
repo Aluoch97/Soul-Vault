@@ -139,7 +139,9 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
 ` }));
 
 /* ── volume (iPhones reserve volume for the side buttons, so the slider hides there) ── */
-const canSetVolume = (() => { try { const a = new Audio(); a.volume = 0.5; return Math.abs(a.volume - 0.5) < 0.01; } catch (e) { return false; } })();
+// iPhones and iPads (also an iPad that calls itself a Mac) ignore a page's volume: the side buttons set it. Their `volume` can still read back what was set, so the test below alone was fooled.
+const deviceCannotSetVolume = (ua, platform, touch) => /iPad|iPhone|iPod/.test(ua || '') || (/Mac/.test(platform || '') && touch > 1);
+let canSetVolume = !deviceCannotSetVolume(navigator.userAgent, navigator.platform, navigator.maxTouchPoints) && (() => { try { const a = new Audio(); a.volume = 0.5; return Math.abs(a.volume - 0.5) < 0.01; } catch (e) { return false; } })();
 function initVolume() {
   if (!canSetVolume) { const box = $('.npvol'); if (box) box.hidden = true; return; }
   const v = ls.get('sv_volume', 1); audio.volume = v; const r = $('[data-vol]'); if (r) r.value = Math.round(v * 100);

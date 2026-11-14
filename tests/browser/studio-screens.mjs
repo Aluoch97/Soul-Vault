@@ -793,6 +793,7 @@ await step('Crossfade: near the end of a song the old song keeps playing in the 
     const a0 = +m[1], b0 = m[2] ? Math.min(+m[2], body.length - 1) : body.length - 1;
     return r.fulfill({ status: 206, headers: { ...base, 'content-range': `bytes ${a0}-${b0}/${body.length}`, 'content-length': String(b0 - a0 + 1) }, body: body.subarray(a0, b0 + 1) });
   });
+  await page.evaluate(() => { canSetVolume = true; });   // the test browser poses as an iPhone, which cannot fade; a computer can
   await page.evaluate(() => { S.urlByFile = S.urlByFile || {}; [['ver_a1', 'x1'], ['ver_sg', 'x2']].forEach(([id, f]) => { const v = ver(id); v.audio = 'f_' + id; S.urlByFile['f_' + id] = 'https://media.soulnicolas.com/xf/' + f + '.wav'; }); ls.set('sv_volume', 0.8); S.trans = 'cf3'; S.repeat = 'off'; S.queue = ['ver_a1', 'ver_sg']; S.qi = 0; play('ver_a1'); });
   await page.waitForFunction(() => !audio.paused && audio.currentTime > 0.3 && audio.duration > 10 && S.outUnlocked, null, { timeout: 15000 });
   await page.evaluate(() => { audio.currentTime = audio.duration - 6.5; });
@@ -807,7 +808,7 @@ await step('Crossfade: near the end of a song the old song keeps playing in the 
   await page.waitForFunction(() => !audio.paused && audio.currentTime > 0.3 && audio.duration > 10, null, { timeout: 15000 });
   await page.evaluate(() => { audio.currentTime = audio.duration - 6.5; }); await page.waitForTimeout(2500);
   assert.deepEqual(await page.evaluate(() => [S.qi, audioOut.paused]), [0, true]);
-  await page.evaluate(() => { audio.pause(); S.trans = 'off'; ls.set('sv_volume', 1); audio.volume = 1; });
+  await page.evaluate(() => { audio.pause(); S.trans = 'off'; ls.set('sv_volume', 1); audio.volume = 1; canSetVolume = false; });
   await page.unroute('https://media.soulnicolas.com/xf/**');
 });
 await step('Search by lyrics: ignores capitals, accents and apostrophes, finds a phrase over two lines, falls back to "all the words", puts exact phrases first, and marks the match safely', async () => {
@@ -898,10 +899,35 @@ await step('Now Playing is calmer: no volume bar or transitions menu on the page
   assert.match(r.same, /View release/); assert.ok(!/same name<\/button>/i.test(r.same), 'a single named like its song does not repeat the title');
   if (process.env.SHOT_NP) await page.screenshot({ path: process.env.SHOT_NP });
   await page.click('[data-np-more]'); await page.waitForSelector('#modal [data-trans]', { state: 'visible' });
-  assert.equal(await page.evaluate(() => !!document.querySelector('#modal [data-vol]')), true, 'volume is in the sheet');
+  assert.deepEqual(await page.evaluate(() => [!!document.querySelector('#modal [data-vol]'), /side buttons/.test(document.querySelector('#modal').innerText), [...document.querySelectorAll('#modal [data-trans] option')].map((o) => o.value)]), [false, true, ['off', 'gapless']], 'an iPhone: no slider, a note about the side buttons, no crossfade choices');
+  await page.evaluate(() => { closeModal(); canSetVolume = true; openNpMore(); });
+  assert.deepEqual(await page.evaluate(() => [!!document.querySelector('#modal [data-vol]'), document.querySelectorAll('#modal [data-trans] option').length]), [true, 5], 'a computer: the volume slider and every transition choice');
+  await page.evaluate(() => { canSetVolume = false; });
   await page.selectOption('#modal [data-trans]', 'gapless'); assert.equal(await page.evaluate(() => S.trans), 'gapless'); await page.selectOption('#modal [data-trans]', 'off');
   await page.evaluate(() => closeModal()); await noSideways('now playing');
   await page.evaluate(() => { audio.pause(); closeNp(); });
+});
+await step('Now Playing: very long unbroken titles fit on a phone (390 and 320 wide); on an iPhone there is no volume slider (the side buttons do it) and no crossfade choices', async () => {
+  const LONG = '#ERRBODYGOTHOOPDREAMSANDNIGHTMARESFOREVERANDEVER';
+  const fits = async (label) => {
+    const r = await page.evaluate(() => { const t = document.querySelector('#npT'), b = t.getBoundingClientRect(), np = document.querySelector('#np').getBoundingClientRect(); return { sw: t.scrollWidth, cw: t.clientWidth, left: b.left, right: b.right, vw: window.innerWidth, font: parseFloat(getComputedStyle(t).fontSize), lines: Math.round(t.getBoundingClientRect().height / parseFloat(getComputedStyle(t).lineHeight)) }; });
+    assert.ok(r.sw <= r.cw + 1 && r.left >= 0 && r.right <= r.vw + 1, label + ' title overflows: ' + JSON.stringify(r));
+    return r;
+  };
+  await page.evaluate((t) => { S.queue = ['ver_a1', 'ver_sg']; S.qi = 0; trk('trk_a1').title = t; play('ver_a1'); }, LONG);
+  await page.waitForFunction(() => S.now && S.now.v.version_id === 'ver_a1', null, { timeout: 8000 });
+  await page.evaluate(() => { if (!npOpen()) openNp(); updateNowUI(); }); await page.waitForSelector('#np:not([hidden]) .np-t', { state: 'visible' });
+  await fits('390px');
+  await page.setViewportSize({ width: 320, height: 700 }); await page.waitForTimeout(300); await fits('320px');
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(200);
+  // iPhone: the page cannot set the volume, so no slider and no Crossfade (only Gapless)
+  const ios = await page.evaluate(() => { const was = [canSetVolume, S.trans]; return was; });
+  assert.equal(typeof ios[0], 'boolean');
+  const iphone = await page.evaluate(() => { const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1'; return deviceCannotSetVolume(ua, 'iPhone', 5); });
+  assert.equal(iphone, true, 'an iPhone is recognised as one that cannot set the volume');
+  assert.equal(await page.evaluate(() => deviceCannotSetVolume('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/120 Safari/537.36', 'MacIntel', 0)), false, 'a computer can');
+  assert.equal(await page.evaluate(() => deviceCannotSetVolume('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605 Version/17.0 Safari/605.1.15', 'MacIntel', 5)), true, 'an iPad that says it is a Mac is recognised by its touch screen');
+  await page.evaluate(() => { trk('trk_a1').title = 'Song trk_a1 (feat. Aziza)'; audio.pause(); closeNp(); });
 });
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
