@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { _resetTourCache, usDate } from '../functions/_lib/tour.js';
 import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpers.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
@@ -1062,4 +1063,25 @@ test('shop: anyone can read it, only the owner saves it, only https buy links, t
   assert.equal((await w.owner('saveShop', many)).ok, false);
   assert.equal((await w.call('getShop', [])).result.length, 1, 'still the last good save');
   assert.equal((await w.owner('saveShop', [])).ok, true); assert.deepEqual((await w.call('getShop', [])).result, []);
+}));
+
+test('tour feed: Road to 100 numbers, shows so far, next show from a planned row; public; unreadable sheet hides itself', () => withWorld(async (w) => {
+  const day = (add) => { const d = new Date(Date.now() + add * 864e5); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); };
+  const head = '100 Shows Tracker\nLog every performance here.\n\nShows completed:,3,of 100\n\n#,Date,Venue,City,Show Type / Setlist Notes,Completed,Show Length (min),Reflection,State,Story,Clip\n';
+  const rows = ['1,7/9/2026,Rosemary & Beauty Queen,"Nashville, TN",Artist Showcase,TRUE,4 songs,,TN,,', '2,7/24/2026,Open Chord,"Knoxville, TN",Open Mic,TRUE,2 songs,,TN,"A <b>great</b> night",https://www.youtube.com/embed/rOgojY-PHJc',
+    '3,8/1/2026,Louisville Stage,"Louisville, KY",Showcase,TRUE,3 songs,,KY,,not a link', '4,' + day(9) + ',The Planned Room,"Atlanta, GA",Festival,FALSE,,,GA,,', '5,' + day(-3) + ',An Old Plan,"Dallas, TX",Cancelled,FALSE,,,TX,,'].join('\n');
+  w.tracker = head + rows; _resetTourCache();
+  const t = (await w.call('getTourFeed', [])).result;                                                    // no key needed: public
+  assert.deepEqual([t.available, t.goal, t.completed, t.remaining, t.states, t.cityCount], [true, 100, 3, 97, ['TN', 'KY'], 3]);
+  assert.deepEqual([t.next.venue, t.next.city, t.next.date === '' ? 'none' : 'dated', typeof t.next.dateText], ['The Planned Room', 'Atlanta, GA', 'dated', 'string']);
+  assert.equal(t.shows.length, 5); const s2 = t.shows.find(x => x.n === 2); assert.deepEqual([s2.date, s2.clip, s2.story, s2.done], ['2026-07-24', 'rOgojY-PHJc', 'A <b>great</b> night', true]);
+  assert.equal(t.shows.find(x => x.n === 3).clip, '', 'a clip that is not a YouTube link is dropped');
+  assert.equal(usDate('2/30/2026'), ''); assert.equal(usDate('7/9/26'), '2026-07-09'); assert.equal(usDate('nope'), '');
+  const chi = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: 'numeric', day: 'numeric' }).format(new Date());   // M/D/YYYY, today in Chicago
+  w.tracker = head + rows.split('\n').slice(0, 3).join('\n') + '\n9,' + chi + ',Tonight Room,"Nashville, TN",Showcase,FALSE,,,TN,,'; _resetTourCache();
+  assert.equal((await w.call('getTourFeed', [])).result.next.venue, 'Tonight Room', 'a show that is today still counts as the next show');
+  w.tracker = head + rows.split('\n').slice(0, 3).join('\n'); _resetTourCache();
+  assert.equal((await w.call('getTourFeed', [])).result.next, null, 'no planned show and no Bandsintown key: no next show');
+  w.tracker = null; _resetTourCache();
+  assert.deepEqual((await w.call('getTourFeed', [])).result, { available: false });
 }));

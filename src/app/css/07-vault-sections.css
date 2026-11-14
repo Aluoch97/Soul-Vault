@@ -193,3 +193,12 @@
   .sheet .npvol input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 0; }
   .sheet .npvol input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 0; }
   .sheet .nptrans { justify-content: flex-start; margin: 4px 0 8px; }
+  /* Home: On the road (Road to 100 ring + next show), Continue listening and Soul's Picks */
+  #homeResume .resume { margin: 14px 0; } #picksHome .vsec.picks { margin: 22px 0; }
+  .roadcard { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 18px; padding: 14px; background: linear-gradient(135deg, rgba(210,16,52,.14), rgba(255,255,255,.03)); }
+  .roadmain { flex: 1 1 220px; display: flex; align-items: center; gap: 14px; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; min-height: 44px; }
+  .roadring { width: 76px; height: 76px; flex: none; } .roadring circle { fill: none; stroke-width: 7; } .roadring .bg { stroke: rgba(255,255,255,.12); } .roadring .fg { stroke: var(--red-hi, #ff4d6d); stroke-linecap: round; }
+  .roadring text { fill: #fff; font: 800 24px var(--sans); }
+  .roadtxt { display: grid; gap: 3px; min-width: 0; } .roadhead { font-weight: 800; font-size: 17px; } .roadsub { font-size: 14px; color: var(--dim); }
+  .roadline { font-size: 14px; overflow-wrap: anywhere; } .roadline b { color: #f5c542; font-weight: 800; margin-right: 4px; }
+  .roadtix { flex: none; }

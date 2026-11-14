@@ -228,7 +228,7 @@ export async function getNextBandsintownShow(env) {
   } catch (e) { return null; }
 }
 
-function csvRows(text) {   // small CSV reader: quotes, doubled quotes, commas and newlines inside quotes
+export function csvRows(text) {   // small CSV reader: quotes, doubled quotes, commas and newlines inside quotes
   const rows = []; let row = [], cur = '', q = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
