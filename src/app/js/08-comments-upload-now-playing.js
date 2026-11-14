@@ -203,20 +203,35 @@ function openNp() {
   document.body.style.overflow = 'hidden';
 }
 /* ── videos: Song | Video switch in now playing ── */
-function setMode(mode) {
+// Song <-> Video keeps your place (like YouTube Music): the video's clock is read from YouTube's player messages, so switching back to Song continues the audio from there.
+S.vidClock = { tid: '', t: 0, playing: false };
+function ytClockMessage(e) {
+  if (e.origin !== 'https://www.youtube-nocookie.com') return;
+  let d = e.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (x) { return; } }
+  const info = d && (d.event === 'infoDelivery' || d.event === 'initialDelivery') && d.info; if (!info) return;
+  if (typeof info.currentTime === 'number') S.vidClock.t = info.currentTime;
+  if (typeof info.playerState === 'number') S.vidClock.playing = info.playerState === 1;
+}
+window.addEventListener('message', ytClockMessage);
+function setMode(mode, resume) {
   const n = S.now, id = n && videoOf(n.t, n.v);
-  const wantVideo = mode === 'video' && !!id;
+  const wantVideo = mode === 'video' && !!id, wasVideo = S.videoMode;
   S.videoMode = wantVideo;
+  if (!wantVideo && wasVideo && resume && n && !S.ytSong && !S.scSong && S.vidClock.tid === n.t.track_id && S.vidClock.t > 0.5) {   // back to the song: continue from the video's spot
+    try { audio.currentTime = S.vidClock.t; } catch (x) { /* not seekable yet */ }
+    if (S.vidClock.playing) { const pr = audio.play(); if (pr && pr.catch) pr.catch(() => {}); }
+  }
   if (wantVideo && S.lyrMode) { S.lyrMode = false; S.sync = null; $('#npLyr').hidden = true; $('#lyNote').hidden = true; }
   if (wantVideo) award('video');
   $$('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === (wantVideo ? 'video' : 'song'))));
   const box = $('#npVid');
   if (wantVideo) {
     const start = Math.floor(audio.currentTime || 0);
-    audio.pause();
+    audio.pause(); S.vidClock = { tid: n.t.track_id, t: start, playing: true };
     box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1${start > 3 && !S.ytSong ? '&start=' + start : ''}"
       title="Video: ${esc(n.t.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
     box.dataset.vid = id;
+    const fr = box.querySelector('iframe'); if (fr) fr.addEventListener('load', () => { try { fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), 'https://www.youtube-nocookie.com'); } catch (x) { /* no clock: the switch still works, it just starts the song from where the video began */ } });
     box.hidden = false; $('#npArt').hidden = true;
   } else {
     box.innerHTML = ''; box.dataset.vid = ''; box.hidden = true; $('#npArt').hidden = !!S.lyrMode;
@@ -232,7 +247,7 @@ function syncVideo() {
 function watchVideo(tid) {
   const t = trk(tid); if (!t || !videoOf(t)) return;
   S.videoMode = true;
-  playFromTap(primaryOf(t).version_id);
+  if (!(S.now && S.now.t.track_id === tid)) playFromTap(primaryOf(t).version_id);   // the same song already playing keeps its place and the video starts from there
   openNp();
   setMode('video');
 }
