@@ -403,6 +403,25 @@ async function studio(ctx, fn, a) {
     if (out.checked) { await saveAll(); }
     return out;
   }
+  if (fn === 'fillYoutubeFacts') {   // songs that were added from a YouTube link before the length and date were read automatically: fill them in (a[1] === true applies; otherwise it only says what it would do)
+    if (!String(env.YOUTUBE_API_KEY || '').trim()) throw new Error(YT.NO_KEY);
+    const apply = a[1] === true, vids = store.versions.filter(v => v.format === 'YOUTUBE');
+    const rows = vids.map(v => ({ v, t: store.tracks.find(t => t.track_id === v.track_id) })).filter(x => x.t && YT.ytId(x.t.video_url));
+    const facts = await YT.videoFacts(env, rows.map(x => YT.ytId(x.t.video_url)));
+    const out = { songs: rows.length, durations: 0, releases: [], missing: 0, kept: 0 }, dates = {};
+    rows.forEach(({ v, t }) => {
+      const f = facts[YT.ytId(t.video_url)]; if (!f) { out.missing++; return; }
+      if (!String(v.duration || '').trim() && f.seconds) { out.durations++; if (apply) v.duration = YT.mmss(f.seconds); } else if (String(v.duration || '').trim()) out.kept++;
+      if (f.date && (!dates[t.release_id] || f.date < dates[t.release_id])) dates[t.release_id] = f.date;
+    });
+    Object.keys(dates).forEach(rid => {
+      const r = store.releases.find(x => x.release_id === rid); if (!r || String(r.release_date || '').trim()) return;   // only releases kept here, and only when they have no date yet
+      out.releases.push({ id: rid, title: r.title, date: dates[rid] });
+      if (apply) patchRow(store, 'releases', 'release_id', rid, { release_date: dates[rid], year: dates[rid].slice(0, 4) });
+    });
+    if (apply && (out.durations || out.releases.length)) await saveAll();
+    out.applied = apply; return out;
+  }
   if (fn === 'addYoutubeSong') {
     const o = a[1] || {}, url = String(o.url || '').trim(), vid = YT.ytId(url), relId = String(o.releaseId || '');
     if (!vid) throw new Error("That doesn't look like a YouTube video link.");
@@ -758,7 +777,7 @@ export async function onRequestPost(ctx) {
     } else if (env.DB && /^(addYoutubeSong|createReleaseFromYoutube|addYoutubePlaylistVideos|refreshYoutubeTitles|youtubeTitleStatus|checkYoutube)$/.test(fn) && await youtubeOnEdge(env)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong|createReleaseFromSoundcloud)$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong|createReleaseFromSoundcloud|fillYoutubeFacts)$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpers.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
-const OWNER_ONLY = ['saveShop', 'mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
+const OWNER_ONLY = ['fillYoutubeFacts', 'saveShop', 'mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
@@ -418,6 +418,26 @@ test('YouTube: adding a song by link also fills in its length and the release da
   w.env.YOUTUBE_API_KEY = ''; w.youtube.noOembed = false;
   const noKey = (await w.owner('addYoutubeSong', { releaseId: relId, url: 'https://youtu.be/dQw4w9WgXcQ', title: 'again' }));
   assert.equal(noKey.ok, false);   // (already added: just proves the guard still runs without a key)
+}));
+
+test('YouTube: "fill in link song details" previews first, then fills lengths and missing release dates for songs added earlier, and never overwrites a date', () => withWorld(async (w) => {
+  await ytWorld(w);
+  const rel = (await w.owner('studioNewRelease', { title: 'Old links', type: 'EP', year: '2026' })).result.release_id;
+  await w.owner('addYoutubeSong', { releaseId: rel, url: 'https://youtu.be/aaaaaaaaaaa' });            // added before lengths and dates were read: no stats yet
+  await w.owner('addYoutubeSong', { releaseId: rel, url: 'https://youtu.be/ccccccccccc' });
+  await w.owner('addYoutubeSong', { releaseId: 'rel_pub', url: 'https://youtu.be/dQw4w9WgXcQ' });      // rel_pub already has a release date
+  w.youtube.stats = { aaaaaaaaaaa: { at: '2012-06-01T10:00:00Z', dur: 'PT2M5S' }, ccccccccccc: { at: '2011-02-03T10:00:00Z', dur: 'PT3M' }, dQw4w9WgXcQ: { at: '2009-10-25T06:57:33Z', dur: 'PT3M33S' } };
+  const rels = async () => (await w.owner('studioGet')).result.releases, durs = async () => (await w.owner('getLibrary')).result.versions.filter(v => v.format === 'YOUTUBE').map(v => v.duration || '').sort();
+  assert.deepEqual(await durs(), ['', '', '']);
+  const pre = (await w.owner('fillYoutubeFacts')).result;                                                // preview: changes nothing
+  assert.deepEqual([pre.songs, pre.durations, pre.releases.map(r => [r.title, r.date]), pre.applied], [3, 3, [['Old links', '2011-02-03']], false]);
+  assert.deepEqual(await durs(), ['', '', ''], 'a preview changes nothing');
+  const done = (await w.owner('fillYoutubeFacts', true)).result;
+  assert.deepEqual([done.durations, done.applied], [3, true]);
+  assert.deepEqual(await durs(), ['2:05', '3:00', '3:33']);
+  const after = await rels(); assert.deepEqual([after.find(r => r.release_id === rel).release_date, String(after.find(r => r.release_id === rel).year), after.find(r => r.release_id === 'rel_pub').release_date], ['2011-02-03', '2011', '2024-05-01']);
+  const again = (await w.owner('fillYoutubeFacts', true)).result; assert.deepEqual([again.durations, again.releases.length, again.kept], [0, 0, 3]);   // nothing left to do
+  w.env.YOUTUBE_API_KEY = ''; assert.match((await w.owner('fillYoutubeFacts')).error, /YouTube key/);
 }));
 
 test('YouTube: a song from a link plays through YouTube; the title comes from YouTube unless you typed one; no duplicates', () => withWorld(async (w) => {
