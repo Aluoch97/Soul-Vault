@@ -25,6 +25,7 @@ async function play(vid) {
   }
   if (wasYt && S.videoMode) setMode('song');
   msg('Loading…');
+  if (navigator.onLine === false && !(await offHas(offUrlOf(v)))) { msg("You're offline and this song isn't saved. Saved songs show \"Saved offline\" on their release page."); setToggle(false); return; }
   if (!S.streamKey && S.lib.stream_key) S.streamKey = S.lib.stream_key;
   warmRelease(r.release_id);
   try {

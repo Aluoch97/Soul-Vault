@@ -764,6 +764,25 @@ await step('Song <-> Video keeps your place: the video clock comes from YouTube 
   });
   assert.deepEqual([r.ignored, r.got, r.at, r.played, r.mode, r.other], [0, [42.5, true], 42.5, 1, false, 5]);
 });
+await step('Offline music: Save offline on a release saves its songs inside the app, they then play from the saved copy with no network, and Remove clears them', async () => {
+  assert.match(readFileSync(new URL('../../dist/_headers', import.meta.url), 'utf8'), /connect-src[^\n]*https:\/\/media\.soulnicolas\.com/, 'the page is allowed to fetch songs from our storage (else saving is blocked)');
+  let net = true;
+  await page.route('https://media.soulnicolas.com/test/**', r => (net ? r.fulfill({ status: 200, headers: { 'content-type': 'audio/mp4', 'access-control-allow-origin': '*' }, body: Buffer.from('AAAABBBB') }) : r.fulfill({ status: 500, body: '' })));
+  await page.evaluate(() => { S.urlByFile = S.urlByFile || {}; for (const id of ['ver_a1', 'ver_a2', 'ver_s1']) { const v = ver(id); v.audio = v.audio || 'f_' + id; S.urlByFile[v.audio] = 'https://media.soulnicolas.com/test/' + id + '.m4a'; } caches.delete('sv-music-v1'); renderRelease('rel_pub'); });
+  await page.waitForSelector('[data-off="rel:rel_pub"]:not([hidden])', { timeout: 8000 });
+  assert.match(await page.evaluate(() => document.querySelector('[data-off="rel:rel_pub"]').textContent), /Save offline/);
+  await page.click('[data-off="rel:rel_pub"]'); await page.waitForSelector('[data-off="rel:rel_pub"][data-state="saved"]', { timeout: 8000 });
+  const keys = async () => page.evaluate(async () => (await (await caches.open('sv-music-v1')).keys()).map((k) => k.url.split('/').pop()).sort());
+  assert.deepEqual(await keys(), ['ver_a1.m4a'], 'the visible song is saved; the hidden one is not');
+  net = false;   // no connection from here on
+  const r = await page.evaluate(async () => { const a = await sourceFor(songFile(ver('ver_a1')), true), b = await offSource(S.urlByFile[songFile(ver('ver_s1'))]); return [a.saved === true, /^blob:/.test(a.stream), b]; });
+  assert.deepEqual(r, [true, true, ''], 'a saved song plays from its copy; an unsaved one is not pretended');
+  await page.click('[data-off="rel:rel_pub"]'); await page.waitForSelector('[data-off="rel:rel_pub"][data-state="none"]', { timeout: 8000 });
+  assert.deepEqual(await keys(), []);
+  await noSideways('release page with Save offline');
+  await page.evaluate(() => openOfflineMusic()); await seen('Offline music'); await page.evaluate(() => closeModal());
+  await page.unroute('https://media.soulnicolas.com/test/**');
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

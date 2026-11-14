@@ -341,7 +341,7 @@ function renderRelease(id) {
           ${metaLine(r, ts)}
           <div class="acts">
             ${editing ? '' : `<button class="pill main" data-playall>${I.play}Play</button>
-                              <button class="pill soft" data-shuffleall>${I.shuf}Shuffle</button>${!isLocked(r) && !isUnrel(r) ? `<button class="pill soft" data-share-out="release" aria-label="Share ${esc(r.title)}">${I.share}Share</button>` : ''}<button class="pill soft" data-queue-rel aria-label="Add ${esc(r.title)} to the queue">${I.queue}Add to queue</button>`}
+                              <button class="pill soft" data-shuffleall>${I.shuf}Shuffle</button>${!isLocked(r) && !isUnrel(r) ? `<button class="pill soft" data-share-out="release" aria-label="Share ${esc(r.title)}">${I.share}Share</button>` : ''}<button class="pill soft" data-off="rel:${esc(id)}" hidden>${I.dl}<span>Save offline</span></button><button class="pill soft" data-queue-rel aria-label="Add ${esc(r.title)} to the queue">${I.queue}Add to queue</button>`}
           </div>
           ${OWNER && !editing ? `<div class="tools" role="group" aria-label="Release tools">
             <button class="pill soft" data-share="release" data-id="${esc(id)}">${I.share}<span>Share</span></button>
@@ -356,7 +356,7 @@ function renderRelease(id) {
   const hero = $('#heroArt');
   if (r.world_color) $('#relhead').style.setProperty('--tint', r.world_color);
   setCover(hero, r.cover_file_id, true, () => { if (!r.world_color) tintFrom(hero); });
-  markPlaying(); loadPhotos(); fitTitle(); loadCovers(); applyPageBg(r); fillShop(); $$('#era-videos .vsec').forEach(x => wireRows(x));
+  markPlaying(); loadPhotos(); fitTitle(); loadCovers(); applyPageBg(r); fillShop(); offPaintButtons(); $$('#era-videos .vsec').forEach(x => wireRows(x));
   if (!editing && relPublic(r) && extrasOf(r.release_id, 'photo').length) prepImages(id);   // get this release's pictures ready in the background
 
   if (editing) { makeSortable($('#editList'), moveDraftTo); if ($('#vEditList')) makeSortable($('#vEditList'), vMoveTo); if ($('#pEditList')) makeSortable($('#pEditList'), pMoveTo); }

@@ -50,12 +50,12 @@ function renderPlaylist(id) {
     <header class="plhead${p.pick ? ' ispick' : ''}">${mosaic(ts)}<div><div class="kick${p.pick ? ' pickkick' : ''}">${p.pick ? I.star + "Soul's Pick · Curated by Nicólas Soul" : 'Playlist'}${OWNER ? ' · ' + (p.fans ? 'shared with the fan club' : 'private') : ''}</div>
       <h1>${esc(p.title)}</h1>${p.description ? `<p class="cs" style="margin:0 0 4px;white-space:pre-line">${esc(p.description)}</p>` : ''}
       <div class="cs">${songs(ts.length)}${fmtRuntime(runtimeOf(ts)) ? ' · ' + fmtRuntime(runtimeOf(ts)) : ''}</div>
-      <div class="acts">${ts.length ? `<button class="pill main" data-pl-play>${I.play}Play</button><button class="pill soft" data-pl-shuffle>${I.shuffle || ''}Shuffle</button><button class="pill soft" data-pl-queue>${I.queue}Add to queue</button>` : ''}
+      <div class="acts">${ts.length ? `<button class="pill main" data-pl-play>${I.play}Play</button><button class="pill soft" data-pl-shuffle>${I.shuffle || ''}Shuffle</button><button class="pill soft" data-pl-queue>${I.queue}Add to queue</button><button class="pill soft" data-off="pl:${esc(id)}" hidden>${I.dl}<span>Save offline</span></button>` : ''}
         ${OWNER && !ed ? `<button class="pill soft" data-pl-edit>${I.edit}Edit</button>` : ''}</div></div></header>
     ${ed ? plEditor() : ts.length ? `<ol class="tracks">${ts.map((t, i) => trackRow(t, true).replace(/<span class="n">[^<]*<\/span>/, `<span class="n">${i + 1}</span>`)).join('')}</ol>`
          : `<div class="ins-empty">No songs yet. Use the ⋯ menu on any song and choose <b>Add to playlist</b>.</div>`}
   </div>`;
-  loadCovers(); markPlaying();
+  loadCovers(); markPlaying(); offPaintButtons();
   if (ed) makeSortable($('#plList'), plMoveTo);
   window.scrollTo(0, 0);
 }
