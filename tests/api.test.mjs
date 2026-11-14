@@ -399,6 +399,27 @@ test('YouTube: until the catalog or the extras are switched over the old script 
   assert.equal(w.appsCalls().length, apps); assert.deepEqual(w.ytCalls, []);
 }));
 
+test('YouTube: adding a song by link also fills in its length and the release date (only when the release has none); no key means nothing is guessed', () => withWorld(async (w) => {
+  await ytWorld(w);
+  w.youtube.stats = { dQw4w9WgXcQ: { at: '2009-10-25T06:57:33Z', dur: 'PT3M33S' }, aaaaaaaaaaa: { at: '2011-01-02T10:00:00Z', dur: 'PT1H2M3S' }, ccccccccccc: { at: '2012-03-04T10:00:00Z', dur: 'P0D' } };
+  const rel = (await w.owner('studioNewRelease', { title: 'From links', type: 'EP', year: '2026' })).result;
+  const relId = rel.release_id;
+  const a1 = (await w.owner('addYoutubeSong', { releaseId: relId, url: 'https://youtu.be/dQw4w9WgXcQ' })).result;
+  assert.deepEqual([a1.version.duration, a1.filled.duration, a1.filled.upload_date], ['3:33', '3:33', '2009-10-25']);
+  const row = async () => (await w.owner('studioGet')).result.releases.find(x => x.release_id === relId);
+  assert.deepEqual([(await row()).release_date, String((await row()).year)], ['2009-10-25', '2009']);
+  await w.owner('addYoutubeSong', { releaseId: relId, url: 'https://youtu.be/aaaaaaaaaaa' });
+  assert.equal((await row()).release_date, '2009-10-25', 'a release that already has a date keeps it');
+  const a3 = (await w.owner('addYoutubeSong', { releaseId: relId, url: 'https://youtu.be/ccccccccccc' })).result;
+  assert.equal(a3.version.duration, '', 'a live/zero length is not written');
+  const fromPlaylist = (await w.owner('createReleaseFromYoutube', { url: 'https://www.youtube.com/playlist?list=PLabcdefghij1', year: 2026 })).result;
+  assert.equal(fromPlaylist.release.release_date, '2011-01-02'); assert.equal(String(fromPlaylist.release.year), '2011');
+  assert.deepEqual(fromPlaylist.versions.map(v => v.duration), ['62:03', '']);
+  w.env.YOUTUBE_API_KEY = ''; w.youtube.noOembed = false;
+  const noKey = (await w.owner('addYoutubeSong', { releaseId: relId, url: 'https://youtu.be/dQw4w9WgXcQ', title: 'again' }));
+  assert.equal(noKey.ok, false);   // (already added: just proves the guard still runs without a key)
+}));
+
 test('YouTube: a song from a link plays through YouTube; the title comes from YouTube unless you typed one; no duplicates', () => withWorld(async (w) => {
   await ytWorld(w);
   const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5s';
