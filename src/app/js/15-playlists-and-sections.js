@@ -1,7 +1,8 @@
 /* ── album name in now playing opens the release ── */
 function npSubHtml(n) {
   const parts = [n.v.label !== 'Original' ? esc(n.v.label) : '', artistOf(n.t) ? linkName(artistOf(n.t)) : ''].filter(Boolean);
-  parts.push(`<button class="nprel" data-np-rel="${esc(n.r.release_id)}" aria-label="Open ${esc(n.r.title)}">${esc(n.r.title)}</button>`);
+  const same = String(n.r.title).trim().toLowerCase() === String(n.t.title).trim().toLowerCase();   // a single named like its song: do not say the title twice
+  parts.push(`<button class="nprel" data-np-rel="${esc(n.r.release_id)}" aria-label="Open ${esc(n.r.title)}">${same ? 'View release' : esc(n.r.title)}</button>`);
   return parts.join(', ');
 }
 
@@ -140,8 +141,7 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
 /* ── volume (iPhones reserve volume for the side buttons, so the slider hides there) ── */
 const canSetVolume = (() => { try { const a = new Audio(); a.volume = 0.5; return Math.abs(a.volume - 0.5) < 0.01; } catch (e) { return false; } })();
 function initVolume() {
-  const box = $('.npvol'); if (!box) return;
-  if (!canSetVolume) { box.hidden = true; return; }
+  if (!canSetVolume) { const box = $('.npvol'); if (box) box.hidden = true; return; }
   const v = ls.get('sv_volume', 1); audio.volume = v; const r = $('[data-vol]'); if (r) r.value = Math.round(v * 100);
 }
 /* ── shuffle + repeat ── */

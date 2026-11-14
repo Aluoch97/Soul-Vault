@@ -854,6 +854,26 @@ await step('Settings > Fill in link song details opens, checks YouTube and says 
   assert.match(txt, /Ready|Nothing to fill|YouTube key|link song/, txt);
   await noSideways('fill in link song details'); await page.evaluate(() => closeModal());
 });
+await step('Now Playing is calmer: no volume bar or transitions menu on the page (they are under More), no inline credits, Up next is collapsed, no duplicate title, versions without a heading', async () => {
+  await page.evaluate(() => { S.queue = ['ver_a1', 'ver_sg']; S.qi = 0; S.videoMode = false; play('ver_a1'); });
+  await page.waitForFunction(() => S.now && S.now.v.version_id === 'ver_a1', null, { timeout: 8000 });
+  await page.evaluate(() => { if (!npOpen()) openNp(); updateNowUI(); });
+  await page.waitForSelector('#np:not([hidden]) .np-t', { state: 'visible' });
+  const r = await page.evaluate(() => {
+    const np = document.querySelector('#np'), vis = (e) => !!e && getComputedStyle(e).display !== 'none' && !e.hidden;
+    return { vol: !!np.querySelector('.npvol'), trans: !!np.querySelector('[data-trans]'), credits: vis(np.querySelector('#npCredits')), more: vis(np.querySelector('[data-np-more]')), upnext: np.querySelector('.npq') ? np.querySelector('.npq').open : null,
+      verHeading: !!np.querySelector('#npVers h4'), sub: np.querySelector('#npS').textContent, title: np.querySelector('#npT').textContent,
+      same: npSubHtml({ t: { title: 'Same Name', artist: '' }, r: { title: 'same name', release_id: 'r1' }, v: { label: 'Original' } }) };
+  });
+  assert.deepEqual([r.vol, r.trans, r.credits, r.more, r.upnext, r.verHeading], [false, false, false, true, false, false], JSON.stringify(r));
+  assert.match(r.same, /View release/); assert.ok(!/same name<\/button>/i.test(r.same), 'a single named like its song does not repeat the title');
+  if (process.env.SHOT_NP) await page.screenshot({ path: process.env.SHOT_NP });
+  await page.click('[data-np-more]'); await page.waitForSelector('#modal [data-trans]', { state: 'visible' });
+  assert.equal(await page.evaluate(() => !!document.querySelector('#modal [data-vol]')), true, 'volume is in the sheet');
+  await page.selectOption('#modal [data-trans]', 'gapless'); assert.equal(await page.evaluate(() => S.trans), 'gapless'); await page.selectOption('#modal [data-trans]', 'off');
+  await page.evaluate(() => closeModal()); await noSideways('now playing');
+  await page.evaluate(() => { audio.pause(); closeNp(); });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

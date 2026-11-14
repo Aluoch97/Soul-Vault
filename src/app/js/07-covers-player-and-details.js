@@ -165,12 +165,12 @@ function updateNowUI() {
   setCover(npArt, artFor(n.t, n.v), true, () => { if (!S.npRelBg) $('#npBg').style.backgroundImage = `url("${npArt.src}")`; if (S.lyrMode) syncLyHead(); });
   paintNpBg(n.r);
   const vs = versionsOf(n.t.track_id);
-  $('#npVers').innerHTML = vs.length > 1 ? `<h4>Versions</h4><div class="chips">${vs.map(v => `<button class="chip${isExclusive(v) ? ' excl' : ''}" data-play="${esc(v.version_id)}"${isExclusive(v) ? ' title="Vault exclusive"' : ''}>${isExclusive(v) ? I.star : ''}${esc(v.label)}</button>`).join('')}</div>` : '';
+  $('#npVers').innerHTML = vs.length > 1 ? `<div class="chips npv" role="group" aria-label="Versions">${vs.map(v => `<button class="chip${isExclusive(v) ? ' excl' : ''}" data-play="${esc(v.version_id)}"${isExclusive(v) ? ' title="Vault exclusive"' : ''}>${isExclusive(v) ? I.star : ''}${esc(v.label)}</button>`).join('')}</div>` : '';
   const next = S.queue.slice(S.qi + 1, S.qi + 8).map((vid, k) => ({ v: ver(vid), qi: S.qi + 1 + k })).filter(x => x.v);
-  $('#npNext').innerHTML = next.length ? `<h4>Up next</h4><ol class="upnext">${next.map(x => {
+  $('#npNext').innerHTML = next.length ? `<details class="npq"><summary>Up next <span>${next.length}</span></summary><ol class="upnext">${next.map(x => {
     const t = trk(x.v.track_id);
     return `<li><button data-qi="${x.qi}"><span class="n">${x.qi - S.qi}</span><span>${esc(t.title)}${x.v.label !== 'Original' ? ` <span class="d">(${esc(x.v.label)})</span>` : ''}</span><span class="d">${esc(x.v.duration || '')}</span></button></li>`;
-  }).join('')}</ol>` : '';
+  }).join('')}</ol></details>` : '';
   renderCredits();
   syncVideo();
   mediaSession(n);
