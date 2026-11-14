@@ -46,6 +46,7 @@ export function savePlaylist(o, ow, lib, now) {
   const known = new Set((lib.tracks || []).map(t => t.track_id)), seen = new Set(), tracks = [];
   (o.tracks || []).slice(0, 500).forEach(t => { t = String(t); if (known.has(t) && !seen.has(t)) { seen.add(t); tracks.push(t); } });
   const vals = { title, description: cut(o.description, 1000), tracks, fans: !!o.fans, updated: now };
+  if (o.pick !== undefined) vals.pick = o.pick === true || o.pick === 'true';   // "Soul's Pick": shown in its own section; left alone when a save does not mention it
   const i = o.id ? ow.playlists.findIndex(p => p.playlist_id === o.id) : -1;
   if (i >= 0) ow.playlists[i] = Object.assign({}, ow.playlists[i], vals);
   else ow.playlists.push(Object.assign({ playlist_id: 'pl_' + hex(6) }, vals));
