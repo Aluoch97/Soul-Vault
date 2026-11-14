@@ -130,7 +130,7 @@ function renderHome() {
     ${join ? `<section class="tribe" id="tribe" data-join="${esc(join)}"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
       <button type="button" class="pill main" data-tribe-open>${I.mail}Join the Soul Tribe</button></section>` : ''}
-    <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · <a href="#" data-install>Add to Home Screen</a> · © ${new Date().getFullYear()} Nicólas Soul</p>
+    <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · <a href="#" data-install>Add to Home Screen</a> · <a href="#" data-refresh>Refresh</a> · © ${new Date().getFullYear()} Nicólas Soul</p>
   </div>`;
   // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
   // (a still image instead if the person asked for less motion or is saving data).
