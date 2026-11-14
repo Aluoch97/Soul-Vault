@@ -153,6 +153,7 @@ function renderLore() {
     ${homeHeader(true)}
     <section class="lorephotos${S.loreAll ? ' all' : ''}" aria-label="Photos">${SITE.photos.map((f, i) => `<button type="button" class="lph1${i >= 6 ? ' extra' : ''}" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</section>
     ${SITE.photos.length > 6 ? `<button type="button" class="pill soft lormore" data-lore-all>${S.loreAll ? 'Show fewer photos' : 'See all ' + SITE.photos.length + ' photos'}</button>` : ''}
+    <div id="loreStory"></div>
     <div class="lorestats">
       <div class="kpi"><b>${t.releases}</b><span>Releases</span></div><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
       <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.toNow && t.toNow !== t.from ? '–' + t.toNow : ''}</b><span>Years</span></div></div>
@@ -164,8 +165,10 @@ function renderLore() {
         <span class="cs">${e.songs} ${e.songs === 1 ? 'song' : 'songs'}${fmtRuntime(e.runtime) ? ' · ' + esc(fmtRuntime(e.runtime)) : ''}</span>
         ${e.r.recorded_at ? `<span class="cs">${esc(e.r.recorded_at)}</span>` : ''}${e.ages.made ? `<span class="agechip">made at ${esc(e.ages.made)}</span>` : ''}
         ${nv || e.photos ? `<span class="cs">${[nv ? nv + (nv === 1 ? ' video' : ' videos') : '', e.photos ? e.photos + (e.photos === 1 ? ' photo' : ' photos') : ''].filter(Boolean).join(' · ')}</span>` : ''}</button>`; }).join('')}</div>
+    <div id="loreTimeline"></div>
     ${phRels.length ? `<h2 class="sh"><span><b>Photos</b> from every release</span></h2>
     <div class="loreeras" role="list">${phRels.map(x => `<button type="button" role="listitem" class="loreera" data-lore-phrel="${esc(x.r.release_id)}"><span class="lc"><img data-ss-src="${esc(x.ph[0].file_id)}" alt="" loading="lazy"></span><b>${esc(x.r.title)}</b><span class="cs">${x.ph.length} ${x.ph.length === 1 ? 'photo' : 'photos'}</span></button>`).join('')}</div>` : ''}
+    <div id="loreStories"></div>
     <h2 class="sh"><span><b>The people</b> behind it</span></h2>
     <label class="lorecatsel"><span class="sr-only">Credits</span><select class="field" data-lcatsel aria-label="Credits">${cats.map(c => `<option value="${c[0]}"${c[0] === cat ? ' selected' : ''}>${esc(c[1])} (${c[2].size})</option>`).join('')}</select></label>
     <div id="lorePeople"></div>
@@ -191,6 +194,7 @@ function renderLore() {
   };
   const catSel = $('[data-lcatsel]'); if (catSel) catSel.addEventListener('change', () => { cat = catSel.value; S.loreCat = cat; S.lorePeopleAll = false; drawPeople(); });
   drawPeople();
+  fillLoreExtras(L);
   window.scrollTo(0, 0);
 }
 // Lore photo viewer: full screen; rotate, download, next/previous. (Pinch to zoom works as on any page.)
