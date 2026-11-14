@@ -172,16 +172,20 @@ function renderTour() {
   clearPageBg(); S.view = 'tour'; renderChrome();
   const fit = () => document.documentElement.style.setProperty('--tabh', ($('#tabs') ? $('#tabs').offsetHeight : 70) + 'px');
   fit(); if (window.ResizeObserver && $('#tabs')) { if (S.tabRO) S.tabRO.disconnect(); S.tabRO = new ResizeObserver(fit); S.tabRO.observe($('#tabs')); }   // keep the bottom edge in step with the tab bar
-  const pages = { shows: '/shows.html', road: '/roadto100shows.html' };
-  if (!pages[S.tourTab]) S.tourTab = 'shows';
+  const pages = { overview: '', shows: '/shows.html', road: '/roadto100shows.html' };
+  if (!(S.tourTab in pages)) S.tourTab = 'overview';
   $('#main').innerHTML = `<div class="wrap tourpg">
     <div class="tourseg" role="tablist" aria-label="Tour">
-      <button role="tab" data-tourtab="shows">Shows</button><button role="tab" data-tourtab="road">Road to 100</button></div>
+      <button role="tab" data-tourtab="overview">Overview</button><button role="tab" data-tourtab="shows">Shows</button><button role="tab" data-tourtab="road">Road to 100</button></div>
+    <div class="tourover" id="tourOver" hidden></div>
     <iframe class="tourframe" title="Tour"></iframe></div>`;
-  const frame = $('.tourframe'), btns = [...$$('[data-tourtab]')];
+  const frame = $('.tourframe'), over = $('#tourOver'), btns = [...$$('[data-tourtab]')];
+  const titles = { shows: 'Upcoming and past shows', road: 'Road to 100 Shows tracker' };
   const pick = k => {
-    S.tourTab = k; syncUrl(); frame.title = k === 'shows' ? 'Upcoming and past shows' : 'Road to 100 Shows tracker'; frame.src = pages[k];
+    S.tourTab = k; syncUrl();
     btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tourtab === k)));
+    if (k === 'overview') { frame.style.display = 'none'; frame.removeAttribute('src'); over.hidden = false; drawTourOverview(over); }
+    else { over.hidden = true; frame.style.display = ''; frame.title = titles[k]; frame.src = pages[k]; }
   };
   btns.forEach(b => b.addEventListener('click', () => pick(b.dataset.tourtab)));
   pick(S.tourTab);

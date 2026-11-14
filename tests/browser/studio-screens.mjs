@@ -846,6 +846,35 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, Co
   await page.evaluate(() => { S.tourP = null; S.tour = null; ls.set(resumeKey(), null); renderHome(); }); await page.waitForTimeout(800);
   assert.equal(await page.evaluate(() => document.querySelector('#roadHome').hidden), true, 'no sheet: the card hides itself');
 });
+await step('Tour: Overview has the next show, Road to 100 progress, the shows by month (story + clip, escaped), Book Soul; Shows and Road to 100 still open; addresses work', async () => {
+  const day = (add) => { const d = new Date(Date.now() + add * 864e5); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); };
+  const done = Array.from({ length: 12 }, (_, i) => `${i + 1},${(i % 2 ? '8' : '7')}/${i + 1}/2026,Venue ${i + 1},"Nashville, TN",Showcase,TRUE,3 songs,,TN,${i === 0 ? '"A <b>big</b> night"' : ''},${i === 0 ? 'https://www.youtube.com/embed/rOgojY-PHJc' : ''}`).join('\n');
+  w.tracker = '#,Date,Venue,City,Show Type / Setlist Notes,Completed,Show Length (min),Reflection,State,Story,Clip\n' + done + '\n13,' + day(12) + ',The <i>Planned</i> Room,"Atlanta, GA",Festival,FALSE,,,GA,,\n';
+  await page.route('https://soulnicolas.com/shows.html', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>shows</title><p>stub</p>' }));   // the two embedded pages call Bandsintown / Google: not in this test
+  await page.route('https://soulnicolas.com/roadto100shows.html', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>road</title><p>stub</p>' }));
+  globalThis.__svTour = null;
+  await page.evaluate(() => { S.tourP = null; S.tour = null; S.tourTab = 'overview'; renderTour(); });
+  await page.waitForSelector('#tourOver .tournext', { timeout: 8000 });
+  const r = await page.evaluate(() => ({ next: document.querySelector('.tournext').innerText, html: document.querySelector('#tourOver').innerHTML, prog: document.querySelector('.tpn').innerText, bar: document.querySelector('.tpbar').getAttribute('aria-valuenow'), months: [...document.querySelectorAll('.tmon')].map((e) => e.textContent), rows: document.querySelectorAll('.tshow').length, ics: (document.querySelector('.tournext a[download]') || {}).href || '', book: (document.querySelector('.tourbook a') || {}).href || '', frameHidden: document.querySelector('.tourframe').style.display }));
+  assert.match(r.next, /Planned/); assert.match(r.next, /Atlanta, GA/); assert.ok(!r.html.includes('<i>Planned'), 'sheet text is escaped');
+  assert.match(r.prog, /12\s+of 100 shows/); assert.equal(r.bar, '12'); assert.equal(r.rows, 10, 'the 10 newest shows first'); assert.deepEqual(r.months.slice(0, 2), ['August 2026', 'July 2026']);
+  assert.ok(r.ics.startsWith('data:text/calendar'), 'add to calendar'); assert.match(decodeURIComponent(r.ics), /DTSTART;VALUE=DATE:\d{8}/); assert.match(r.book, /^mailto:/); assert.equal(r.frameHidden, 'none');
+  await page.click('[data-tour-all]'); await page.waitForFunction(() => document.querySelectorAll('.tshow').length === 12, null, { timeout: 3000 });
+  await page.evaluate(() => { const s = [...document.querySelectorAll('.tshow.has summary')][0]; if (s) s.click(); });
+  const st = await page.evaluate(() => ({ story: (document.querySelector('.tstory') || {}).innerHTML || '', clip: !!document.querySelector('.tclip [data-yt="rOgojY-PHJc"]') }));
+  assert.ok(st.story.includes('&lt;b&gt;big&lt;/b&gt;') && st.clip, 'the story is escaped and the clip is a tap-to-play poster: ' + st.story);
+  await noSideways('tour overview');
+  await page.click('[data-tourtab="shows"]'); await page.waitForFunction(() => /\/shows\.html/.test(document.querySelector('.tourframe').getAttribute('src') || '') && location.pathname === '/tour/shows', null, { timeout: 4000 });
+  await page.click('[data-tourtab="road"]'); await page.waitForFunction(() => location.pathname === '/tour/road-to-100', null, { timeout: 4000 });
+  await page.click('[data-tourtab="overview"]'); await page.waitForFunction(() => location.pathname === '/tour' && !document.querySelector('#tourOver').hidden, null, { timeout: 4000 });
+  assert.deepEqual(await page.evaluate(() => ['/tour', '/tour/shows', '/tour/road-to-100'].map((p) => { history.pushState({}, '', p); return parseRoute().tab; })), ['overview', 'shows', 'road']);
+  await page.unroute('https://soulnicolas.com/shows.html'); await page.unroute('https://soulnicolas.com/roadto100shows.html');
+  w.tracker = null; globalThis.__svTour = null;
+  await page.evaluate(() => { S.tourP = null; S.tour = null; renderTour(); }); await page.waitForSelector('#tourOver .tourbook', { timeout: 8000 });
+  assert.match(await page.evaluate(() => document.querySelector('#tourOver').innerText), /can't load right now/, 'no sheet: a friendly message, Book Soul still there');
+  if (process.env.SHOT_TOUR) { w.tracker = '#,Date,Venue,City,Show Type / Setlist Notes,Completed,Show Length (min),Reflection,State,Story,Clip\n' + done + '\n'; globalThis.__svTour = null; await page.evaluate(() => { S.tourP = null; S.tour = null; renderTour(); }); await page.waitForSelector('.tourprog'); await page.screenshot({ path: process.env.SHOT_TOUR }); }
+  await page.evaluate(() => { S.tourTab = 'overview'; });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
