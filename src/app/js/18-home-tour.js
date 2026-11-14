@@ -28,6 +28,5 @@ async function fillRoad() {
 // Everything on Home that needs data after the page is drawn.
 function fillHomeExtras() {
   fillShop(); fillRoad();
-  const r = $('#homeResume'); if (r && S.lib) { r.innerHTML = resumeCard(); loadCovers(); }
   const p = $('#picksHome'); if (p && S.lib) { p.innerHTML = picksRow(); loadCovers(); }
 }
