@@ -164,8 +164,9 @@ function wireYt(root) {
     const f = document.createElement('iframe');
     f.className = 'latplayer'; f.title = (b.getAttribute('aria-label') || 'Video').replace(/^Play /, '');
     f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; web-share'; f.allowFullscreen = true;
-    f.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(b.dataset.yt) + '?autoplay=1&rel=0&playsinline=1';
+    f.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(b.dataset.yt) + '?autoplay=1&rel=0&playsinline=1&enablejsapi=1';
     b.replaceWith(f);
+    f.addEventListener('load', () => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), 'https://www.youtube-nocookie.com'); } catch (x) { /* no end notice: autoplay next just will not happen */ } });
   }));
 }
 function renderTour() {
@@ -237,8 +238,11 @@ function renderVideo() {
   $('#main').innerHTML = `<div class="wrap sitepg presspg videopg">
     <header class="vidhead"><h1 class="vidh1">Soul <span>Videos</span></h1><p class="cs">Freestyles, music videos and press, straight from the channel.</p></header>
     <div class="vidtabs" role="tablist" aria-label="Video">${VIDEO_SECTIONS.map(x => `<button role="tab" data-vidtab="${x[0]}">${x[1]}</button>`).join('')}</div>
+    <div class="vidfind"><label class="vidsearch">${I.search}<input id="vq" type="search" placeholder="Search videos" aria-label="Search videos" autocomplete="off" value="${esc(S.videoQ || '')}"></label>
+      <label class="vidauto"><input type="checkbox" id="vauto"${S.videoAuto === false ? '' : ' checked'}><span>Autoplay next</span></label></div>
     <div class="vidbar"><div id="videoSub"></div><div id="videoSort"></div></div>
     <div id="videoBody"><p class="cs">Loading videos…</p></div></div>`;
+  S.videoAuto = ls.get('sv_vidauto', true);
   const body = $('#videoBody'), btns = [...$$('[data-vidtab]')];
   const draw = (k, idx, autoplay) => {
     const sec = VIDEO_SECTIONS.find(x => x[0] === k), yt = k === 'press' ? '' : 'https://www.youtube.com/playlist?list=' + VIDEO_PL[sec[3][0]];
@@ -249,28 +253,35 @@ function renderVideo() {
       $('#videoSub').innerHTML = `<div class="vidsub" role="tablist" aria-label="Freestyles">${[['all', 'All'], ['originals', 'Originals'], ['remixes', 'Remixes']].map(([x, l]) => `<button type="button" role="tab" data-vidsub="${x}" aria-selected="${x === S.videoSub}" aria-label="${l}, ${n(x)} videos">${l}</button>`).join('')}</div>`;
       $$('[data-vidsub]').forEach(b => b.addEventListener('click', () => { S.videoSub = b.dataset.vidsub; syncUrl(); draw(k, 0); }));
     } else $('#videoSub').innerHTML = '';
-    const all = videosOf(k, k === 'freestyles' ? S.videoSub : '');
-    if (!all.length) { $('#videoSort').innerHTML = ''; body.innerHTML = `<p class="cs">The videos could not load right now.</p>${yt ? `<p><a class="pill" href="${esc(yt)}" target="_blank" rel="noopener">Open on YouTube</a></p>` : ''}`; return; }
+    const all0 = videosOf(k, k === 'freestyles' ? S.videoSub : ''), vq = lyNorm(S.videoQ || ''), all = vq ? all0.filter(v => lyNorm(vidTitle(v.title)).includes(vq)) : all0;
+    if (!all0.length) { $('#videoSort').innerHTML = ''; body.innerHTML = `<p class="cs">The videos could not load right now.</p>${yt ? `<p><a class="pill" href="${esc(yt)}" target="_blank" rel="noopener">Open on YouTube</a></p>` : ''}`; return; }
+    if (!all.length) { $('#videoSort').innerHTML = ''; S.videoNext = null; body.innerHTML = `<p class="cs">No videos match "${esc(S.videoQ)}".</p>`; return; }
     const have = h => all.some(v => v[vidField[h]] != null);
     const opts = VIDEO_SORTS.filter(o => o[0] === 'az' || have(o[0]));
     if (S.videoSort !== 'orig' && !opts.some(o => o[0] === S.videoSort)) S.videoSort = opts[0][0];   // newest first when YouTube told us the dates, else A-Z
     $('#videoSort').innerHTML = opts.length > 1 ? `<label class="vidsort"><span class="sr-only">Sort videos</span><select data-vidsortsel aria-label="Sort videos">${opts.map(o => `<option value="${o[0]}"${o[0] === S.videoSort ? ' selected' : ''}>${o[1]}</option>`).join('')}</select></label>` : '';
     const vs = sortVids(all, S.videoSort), cur = Math.min(Math.max(+idx || 0, 0), vs.length - 1), f = vs[cur];
+    S.videoCur = cur;
+    S.videoNext = (S.videoAuto !== false && cur + 1 < vs.length) ? () => draw(k, cur + 1, true) : null;   // the clip ended: the next one starts (see 18-video-tab.js)
+    const song = S.lib && S.lib.tracks.find(t => ytId(t.video_url) === f.id && !hidden(t) && primaryOf(t));
     const hero = `<section class="vidhero" aria-label="Featured video">
       <button class="vidstage" type="button" data-yt="${esc(f.id)}" aria-label="Play ${esc(vidTitle(f.title))}"><img src="https://i.ytimg.com/vi/${esc(f.id)}/hqdefault.jpg" alt="" onerror="this.remove()"><i class="vidplay">${I.play}</i></button>
       <div class="vidmeta"><span class="vidtag">${esc(f.tag)}</span><h2 class="vidtitle">${esc(vidTitle(f.title))}</h2>${vidMeta(f) ? `<span class="vidstat">${esc(vidMeta(f))}</span>` : ''}
-        <a class="vidyt" href="https://www.youtube.com/watch?v=${esc(f.id)}" target="_blank" rel="noopener">Watch on YouTube</a></div></section>`;
+        <div class="vidacts">${song ? `<button class="pill main vidsong" type="button" data-vid-song="${esc(song.track_id)}">${I.play}Play the song</button>` : ''}<a class="vidyt" href="https://www.youtube.com/watch?v=${esc(f.id)}" target="_blank" rel="noopener">Watch on YouTube</a></div></div></section>`;
     const rest = vs.map((v, i) => i === cur ? '' : `<button type="button" class="vidcard" data-vidpick="${i}" aria-label="Play ${esc(vidTitle(v.title))}">
-      <span class="vidpost"><img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i class="vidplay sm">${I.play}</i></span><span class="vidname">${esc(vidTitle(v.title))}</span>${vidMeta(v) ? `<span class="vidstat">${esc(vidMeta(v))}</span>` : ''}</button>`).join('');
+      <span class="vidpost"><img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i class="vidplay sm">${I.play}</i>${i === cur + 1 ? '<span class="vidnext">Up next</span>' : ''}</span><span class="vidname">${esc(vidTitle(v.title))}</span>${vidMeta(v) ? `<span class="vidstat">${esc(vidMeta(v))}</span>` : ''}</button>`).join('');
     body.innerHTML = hero + (vs.length > 1 ? `<h2 class="vidmore">More <b>${esc(sec[2].toLowerCase())}</b> <span>${vs.length - 1}</span></h2><div class="vidwall">${rest}</div>` : '')
       + (yt && !(k === 'freestyles' && S.videoSub !== 'all') ? `<p class="cs sitefoot"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the whole playlist on YouTube</a></p>` : '');
     wireYt(body);
     if (autoplay) { const st = $('.vidstage', body); if (st) st.click(); }
+    $$('[data-vid-song]', body).forEach(b => b.addEventListener('click', () => { const id = b.dataset.vidSong; draw(k, cur); const t = trk(id); if (t && primaryOf(t)) playFromTap(primaryOf(t).version_id); }));   // the video goes back to its poster, the song plays
     $$('[data-vidsortsel]').forEach(sel => sel.addEventListener('change', () => { S.videoSort = sel.value; draw(k, 0); }));
     $$('[data-vidpick]', body).forEach(b => b.addEventListener('click', () => { draw(k, +b.dataset.vidpick, true); window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }));
   };
   const pick = k => { S.videoTab = k; syncUrl(); btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.vidtab === k))); draw(k, 0); };
   btns.forEach(b => b.addEventListener('click', () => { pick(b.dataset.vidtab); window.scrollTo(0, 0); }));
+  $('#vq').addEventListener('input', e => { S.videoQ = e.target.value; draw(S.videoTab, 0); });
+  $('#vauto').addEventListener('change', e => { S.videoAuto = e.target.checked; ls.set('sv_vidauto', S.videoAuto); draw(S.videoTab, S.videoCur || 0); });
   pick(S.videoTab);
   if (!S.videoLists) runBase('getVideoLists').then(r => { S.videoLists = (r && r.lists) || []; if (S.view === 'video') draw(S.videoTab, 0); }).catch(() => { S.videoLists = []; if (S.view === 'video') draw(S.videoTab, 0); });
   window.scrollTo(0, 0);

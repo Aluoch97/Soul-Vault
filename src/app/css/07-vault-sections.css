@@ -238,3 +238,10 @@
   .pfind { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 560px; margin: 0 0 6px; } .pfind .libsel select { min-height: 44px; font-size: 16px; }
   .pyr { margin: 18px 0 0; font: 800 12px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
   .pcard.pfeat .ptitle { font-size: 22px; }
+  /* Video tab: search, autoplay switch, Play the song, Up next */
+  .vidfind { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 0 0 10px; }
+  .vidsearch { flex: 1 1 200px; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.05); color: var(--dim); }
+  .vidsearch svg { width: 18px; height: 18px; flex: none; } .vidsearch input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--text); font: inherit; font-size: 16px; }
+  .vidauto { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--dim); cursor: pointer; } .vidauto input { width: 20px; height: 20px; accent-color: var(--green-hi, #34C27A); }
+  .vidacts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; } .vidsong { min-height: 44px; }
+  .vidnext { position: absolute; left: 8px; top: 8px; padding: 5px 9px; border-radius: 999px; font: 800 10px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: #1a1304; background: linear-gradient(180deg, #ffe39a, #f5c542); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
