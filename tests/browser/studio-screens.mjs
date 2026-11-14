@@ -830,7 +830,7 @@ await step('Search by lyrics: ignores capitals, accents and apostrophes, finds a
   await noSideways('lyric search results');
   await page.fill('#q', ''); await page.evaluate(() => { trk('trk_a1').lyrics = ''; trk('trk_sg').lyrics = ''; S.lyCache = null; });
 });
-await step('Home: "On the road" shows the Road to 100 ring and the next show, Continue listening and Soul\'s Picks appear, nothing overflows', async () => {
+await step('Home: "On the road" shows the Road to 100 ring and the next show, and Soul\'s Picks appear (Continue listening is Music-tab only), nothing overflows', async () => {
   const day = (add) => { const d = new Date(Date.now() + add * 864e5); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); };
   w.tracker = '#,Date,Venue,City,Show Type / Setlist Notes,Completed,Show Length (min),Reflection,State,Story,Clip\n1,7/9/2026,Rosemary <b>Room</b>,"Nashville, TN",Showcase,TRUE,4 songs,,TN,,\n2,7/24/2026,Open Chord,"Knoxville, TN",Open Mic,TRUE,2 songs,,TN,,\n3,' + day(8) + ',The Planned Room,"Atlanta, GA",Festival,FALSE,,,GA,,\n';
   globalThis.__svTour = null;
@@ -839,7 +839,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, Co
   const r = await page.evaluate(() => ({ txt: document.querySelector('#roadHome').innerText, ring: document.querySelector('#roadHome .roadring text').textContent, html: document.querySelector('#roadHome').innerHTML, resume: !!document.querySelector('#homeResume .resume'), picks: !!document.querySelector('#picksHome .pickcard') }));
   assert.match(r.txt, /2 of 100 shows played/); assert.match(r.txt, /The Planned Room, Atlanta, GA/); assert.equal(r.ring, '2');
   assert.ok(!r.html.includes('<b>Room'), 'sheet text is escaped');
-  assert.equal(r.resume, true, 'Continue listening is on Home'); assert.equal(r.picks, true, "a Soul's Pick shows on Home");
+  assert.equal(r.resume, false, 'Continue listening is not on Home (it stays on the Music tab)'); assert.equal(r.picks, true, "a Soul's Pick shows on Home");
   await noSideways('home with road card');
   if (process.env.SHOT_HOME) await page.screenshot({ path: process.env.SHOT_HOME, fullPage: true });
   await page.click('#roadHome .roadmain'); await page.waitForFunction(() => S.view === 'tour', null, { timeout: 5000 });
@@ -855,33 +855,30 @@ await step('Settings > Fill in link song details opens, checks YouTube and says 
   assert.match(txt, /Ready|Nothing to fill|YouTube key|link song/, txt);
   await noSideways('fill in link song details'); await page.evaluate(() => closeModal());
 });
-await step('Tour: Overview has the next show, Road to 100 progress, the shows by month (story + clip, escaped), Book Soul; Shows and Road to 100 still open; addresses work', async () => {
+await step('Tour: Overview is short (next show, a small Road to 100 card that opens the tracker, Book Soul; no list of shows); Shows and Road to 100 still open; addresses work', async () => {
   const day = (add) => { const d = new Date(Date.now() + add * 864e5); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); };
   const done = Array.from({ length: 12 }, (_, i) => `${i + 1},${(i % 2 ? '8' : '7')}/${i + 1}/2026,Venue ${i + 1},"Nashville, TN",Showcase,TRUE,3 songs,,TN,${i === 0 ? '"A <b>big</b> night"' : ''},${i === 0 ? 'https://www.youtube.com/embed/rOgojY-PHJc' : ''}`).join('\n');
   w.tracker = '#,Date,Venue,City,Show Type / Setlist Notes,Completed,Show Length (min),Reflection,State,Story,Clip\n' + done + '\n13,' + day(12) + ',The <i>Planned</i> Room,"Atlanta, GA",Festival,FALSE,,,GA,,\n';
+  globalThis.__svTour = null;
   await page.route('https://soulnicolas.com/shows.html', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>shows</title><p>stub</p>' }));   // the two embedded pages call Bandsintown / Google: not in this test
   await page.route('https://soulnicolas.com/roadto100shows.html', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>road</title><p>stub</p>' }));
-  globalThis.__svTour = null;
   await page.evaluate(() => { S.tourP = null; S.tour = null; S.tourTab = 'overview'; renderTour(); });
-  await page.waitForSelector('#tourOver .tournext', { timeout: 8000 });
-  const r = await page.evaluate(() => ({ next: document.querySelector('.tournext').innerText, html: document.querySelector('#tourOver').innerHTML, prog: document.querySelector('.tpn').innerText, bar: document.querySelector('.tpbar').getAttribute('aria-valuenow'), months: [...document.querySelectorAll('.tmon')].map((e) => e.textContent), rows: document.querySelectorAll('.tshow').length, ics: (document.querySelector('.tournext a[download]') || {}).href || '', book: (document.querySelector('.tourbook a') || {}).href || '', frameHidden: document.querySelector('.tourframe').style.display }));
+  await page.waitForSelector('#tourOver .thero', { timeout: 8000 });
+  const r = await page.evaluate(() => ({ next: document.querySelector('.thero').innerText, html: document.querySelector('#tourOver').innerHTML, count: document.querySelector('.tcount').innerText, bar: document.querySelector('.tpbar').getAttribute('aria-valuenow'), cards: document.querySelectorAll('#tourOver .tcard').length, shows: document.querySelectorAll('.tshow, .tmon, [data-tour-all]').length, ics: (document.querySelector('.thero a[download]') || {}).href || '', book: (document.querySelector('.tbook a') || {}).href || '', frameHidden: document.querySelector('.tourframe').style.display, tabW: [...document.querySelectorAll('.tourseg button')].map((b) => Math.round(b.getBoundingClientRect().width)) }));
   assert.match(r.next, /Planned/); assert.match(r.next, /Atlanta, GA/); assert.ok(!r.html.includes('<i>Planned'), 'sheet text is escaped');
-  assert.match(r.prog, /12\s+of 100 shows/); assert.equal(r.bar, '12'); assert.equal(r.rows, 10, 'the 10 newest shows first'); assert.deepEqual(r.months.slice(0, 2), ['August 2026', 'July 2026']);
-  assert.ok(r.ics.startsWith('data:text/calendar'), 'add to calendar'); assert.match(decodeURIComponent(r.ics), /DTSTART;VALUE=DATE:\d{8}/); assert.match(r.book, /^mailto:/); assert.equal(r.frameHidden, 'none');
-  await page.click('[data-tour-all]'); await page.waitForFunction(() => document.querySelectorAll('.tshow').length === 12, null, { timeout: 3000 });
-  await page.evaluate(() => { const s = [...document.querySelectorAll('.tshow.has summary')][0]; if (s) s.click(); });
-  const st = await page.evaluate(() => ({ story: (document.querySelector('.tstory') || {}).innerHTML || '', clip: !!document.querySelector('.tclip [data-yt="rOgojY-PHJc"]') }));
-  assert.ok(st.story.includes('&lt;b&gt;big&lt;/b&gt;') && st.clip, 'the story is escaped and the clip is a tap-to-play poster: ' + st.story);
+  assert.match(r.count, /12\s+of 100 shows/); assert.equal(r.bar, '12'); assert.equal(r.cards, 2, 'two cards (next show, Road to 100) and the Book Soul row'); assert.equal(r.shows, 0, 'no list of shows on the overview');
+  assert.ok(r.ics.startsWith('data:text/calendar'), 'add to calendar'); assert.match(r.book, /^mailto:/); assert.equal(r.frameHidden, 'none');
+  assert.ok(Math.max(...r.tabW) - Math.min(...r.tabW) <= 2, 'the three tabs are the same width: ' + r.tabW);
   await noSideways('tour overview');
+  if (process.env.SHOT_TOUR) await page.screenshot({ path: process.env.SHOT_TOUR });
+  await page.click('[data-tour-go="road"]'); await page.waitForFunction(() => location.pathname === '/tour/road-to-100' && /roadto100/.test(document.querySelector('.tourframe').getAttribute('src') || ''), null, { timeout: 4000 });   // the small card opens the tracker tab
   await page.click('[data-tourtab="shows"]'); await page.waitForFunction(() => /\/shows\.html/.test(document.querySelector('.tourframe').getAttribute('src') || '') && location.pathname === '/tour/shows', null, { timeout: 4000 });
-  await page.click('[data-tourtab="road"]'); await page.waitForFunction(() => location.pathname === '/tour/road-to-100', null, { timeout: 4000 });
   await page.click('[data-tourtab="overview"]'); await page.waitForFunction(() => location.pathname === '/tour' && !document.querySelector('#tourOver').hidden, null, { timeout: 4000 });
   assert.deepEqual(await page.evaluate(() => ['/tour', '/tour/shows', '/tour/road-to-100'].map((p) => { history.pushState({}, '', p); return parseRoute().tab; })), ['overview', 'shows', 'road']);
   await page.unroute('https://soulnicolas.com/shows.html'); await page.unroute('https://soulnicolas.com/roadto100shows.html');
   w.tracker = null; globalThis.__svTour = null;
-  await page.evaluate(() => { S.tourP = null; S.tour = null; renderTour(); }); await page.waitForSelector('#tourOver .tourbook', { timeout: 8000 });
+  await page.evaluate(() => { S.tourP = null; S.tour = null; renderTour(); }); await page.waitForSelector('#tourOver .tbook', { timeout: 8000 });
   assert.match(await page.evaluate(() => document.querySelector('#tourOver').innerText), /can't load right now/, 'no sheet: a friendly message, Book Soul still there');
-  if (process.env.SHOT_TOUR) { w.tracker = '#,Date,Venue,City,Show Type / Setlist Notes,Completed,Show Length (min),Reflection,State,Story,Clip\n' + done + '\n'; globalThis.__svTour = null; await page.evaluate(() => { S.tourP = null; S.tour = null; renderTour(); }); await page.waitForSelector('.tourprog'); await page.screenshot({ path: process.env.SHOT_TOUR }); }
   await page.evaluate(() => { S.tourTab = 'overview'; });
 });
 await step('Now Playing is calmer: no volume bar or transitions menu on the page (they are under More), no inline credits, Up next is collapsed, no duplicate title, versions without a heading', async () => {
@@ -946,22 +943,26 @@ await step('Lore: The story (bio), Year by year, Stories behind the songs (voice
   if (process.env.SHOT_LORE) { await page.evaluate(() => document.querySelector('.lorestory').scrollIntoView()); await page.screenshot({ path: process.env.SHOT_LORE }); }
   await page.evaluate(() => { S.lib.artist_bio = ''; trk('trk_a1').voice_note_id = ''; });
 });
-await step('Press tab: a press kit (bio with copy, 6 downloadable photos, contact, links), the featured latest story, years, and a search that filters', async () => {
-  await page.evaluate(() => { renderPress(); }); await page.waitForSelector('.pkit .pkphoto', { timeout: 6000 });
+await step('Press tab: two tabs, Coverage (search, years, equal cards) and Press kit (bio with copy, 6 downloadable photos, contact, links)', async () => {
+  await page.evaluate(() => { S.pressTab = 'coverage'; renderPress(); }); await page.waitForSelector('#pressBody .pcard', { timeout: 6000 });
   await page.evaluate(() => { window.__copied = []; navigator.clipboard.writeText = (t) => { window.__copied.push(t); return Promise.resolve(); }; });
-  const r = await page.evaluate(() => ({ photos: [...document.querySelectorAll('.pkphoto')].map((a) => [a.getAttribute('href'), a.hasAttribute('download')]), mail: document.querySelector('.pkacts a').getAttribute('href'), links: document.querySelectorAll('.pklinks a').length, expectLinks: SITE.links.length, feat: document.querySelectorAll('.pfeat').length, years: [...document.querySelectorAll('.pyr')].map((e) => e.textContent), cards: document.querySelectorAll('#pressBody .pcard').length, total: SITE.press.length, bio: document.querySelector('.pkbio p').textContent.slice(0, 20), more: !!document.querySelector('.pkbio details') }));
-  assert.equal(r.photos.length, 6); assert.ok(r.photos.every(([h, d]) => /^\/photos\/p\d\d\.jpg$/.test(h) && d), JSON.stringify(r.photos));
-  assert.match(r.mail, /^mailto:.+\?subject=/); assert.equal(r.links, r.expectLinks); assert.equal(r.feat, 1, 'the newest story is featured'); assert.ok(r.years.length >= 1); assert.equal(r.cards, r.total); assert.equal(r.bio, 'Nicólas Soul is a he'); assert.equal(r.more, true);
-  await page.click('[data-press-copy="bio"]'); await page.click('[data-press-copy="email"]');
-  const c = await page.evaluate(() => [window.__copied[0] === SITE.bio.trim(), window.__copied[1] === SITE.booking]); assert.deepEqual(c, [true, true], 'Copy bio and Copy booking email put the right text on the clipboard');
+  const c = await page.evaluate(() => ({ kitHidden: document.querySelector('#pressKit').hidden, covHidden: document.querySelector('#pressCoverage').hidden, cards: document.querySelectorAll('#pressBody .pcard').length, total: SITE.press.length, big: document.querySelectorAll('.pfeat').length, years: document.querySelectorAll('.pyr').length, sel: [...document.querySelectorAll('[data-pstab]')].map((b) => b.getAttribute('aria-selected')), w: [...document.querySelectorAll('.psseg button')].map((b) => Math.round(b.getBoundingClientRect().width)) }));
+  assert.deepEqual([c.kitHidden, c.covHidden, c.cards === c.total, c.big, c.sel], [true, false, true, 0, ['true', 'false']], 'Coverage first, no oversized card: ' + JSON.stringify(c)); assert.ok(c.years >= 1); assert.ok(Math.max(...c.w) - Math.min(...c.w) <= 2, 'tabs are the same width');
   await page.fill('#pq', 'smoky'); await page.waitForFunction(() => document.querySelectorAll('#pressBody .pcard').length === 1, null, { timeout: 3000 });
-  assert.equal(await page.evaluate(() => document.querySelectorAll('.pfeat').length), 0, 'no featured card while searching');
   await page.fill('#pq', 'zzzzqq'); await page.waitForFunction(() => /Nothing matches/.test(document.querySelector('#pressBody').innerText), null, { timeout: 3000 });
   await page.fill('#pq', '');
   const yrs = await page.evaluate(() => [...document.querySelectorAll('#pyear option')].map((o) => o.value));
   if (yrs.length > 2) { await page.selectOption('#pyear', yrs[1]); assert.ok(await page.evaluate(() => document.querySelectorAll('.pyr').length === 1), 'one year at a time'); await page.selectOption('#pyear', ''); }
-  await noSideways('press');
-  if (process.env.SHOT_PRESS) await page.screenshot({ path: process.env.SHOT_PRESS, fullPage: false });
+  await noSideways('press coverage');
+  await page.click('[data-pstab="kit"]'); await page.waitForSelector('#pressKit .pkphoto', { state: 'visible', timeout: 4000 });
+  const r = await page.evaluate(() => ({ covHidden: document.querySelector('#pressCoverage').hidden, photos: [...document.querySelectorAll('.pkphoto')].map((a) => [a.getAttribute('href'), a.hasAttribute('download')]), mail: document.querySelector('.pksec .pkacts a').getAttribute('href'), mailText: document.querySelector('.pkmail').textContent, links: document.querySelectorAll('.pklinks a').length, expectLinks: SITE.links.length, secs: [...document.querySelectorAll('.pkh')].map((e) => e.textContent), bio: document.querySelector('.pkbio p').textContent.slice(0, 20), more: !!document.querySelector('.pkbio details') }));
+  assert.equal(r.covHidden, true); assert.deepEqual(r.secs, ['Bio', 'Photos', 'Contact', 'Find Soul']); assert.equal(r.photos.length, 6); assert.ok(r.photos.every(([h, d]) => /^\/photos\/p\d\d\.jpg$/.test(h) && d), JSON.stringify(r.photos));
+  assert.match(r.mail, /^mailto:.+\?subject=/); assert.equal(r.mailText, await page.evaluate(() => SITE.booking)); assert.equal(r.links, r.expectLinks); assert.equal(r.bio, 'Nicólas Soul is a he'); assert.equal(r.more, true);
+  await page.click('[data-press-copy="bio"]'); await page.click('[data-press-copy="email"]');
+  assert.deepEqual(await page.evaluate(() => [window.__copied[0] === SITE.bio.trim(), window.__copied[1] === SITE.booking]), [true, true], 'Copy bio and Copy email put the right text on the clipboard');
+  await noSideways('press kit');
+  if (process.env.SHOT_PRESS) await page.screenshot({ path: process.env.SHOT_PRESS });
+  await page.evaluate(() => { S.pressTab = 'coverage'; });
 });
 await step('Video tab: search, Up next, Play the song for a video that is a song, and autoplay-next when YouTube says the clip ended (only from the featured clip)', async () => {
   await page.evaluate(() => { trk('trk_a1').video_url = 'https://youtu.be/dQw4w9WgXcQ'; S.videoQ = ''; S.videoAuto = true; ls.set('sv_vidauto', true); S.videoSort = 'az'; S.videoTab = 'freestyles'; S.videoSub = 'all';

@@ -122,7 +122,6 @@ function renderHome() {
       <div class="linkgrid" role="group" aria-label="Listen and follow">${SITE.links.map(l => `<a class="soc" href="${esc(l[1])}" target="_blank" rel="noopener" aria-label="${esc(l[0])}" title="${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : esc(l[0])}</a>`).join('')}</div>
       <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
     </section>
-    <div id="homeResume"></div>
     <section class="latest" aria-label="Latest">
       <h2 class="lathead">Latest</h2>
       ${homeCover(single, 'Single', 'single')}${homeCover(project, 'Project', 'project')}${yt(SITE.feature, 'Feature')}${yt(SITE.video, 'Video')}
@@ -197,8 +196,9 @@ function renderPress() {
   clearPageBg(); S.view = 'press'; renderChrome();
   $('#main').innerHTML = `<div class="wrap sitepg presspg">
     <header class="vidhead"><h1 class="vidh1">Soul <span>Press</span></h1><p class="cs">Features, reviews, interviews and a press kit.</p></header>
-    <div id="pressKit"></div><div id="pressFind"></div>
-    <div id="pressBody"></div>
+    <div class="psseg" role="tablist" aria-label="Press"><button role="tab" data-pstab="coverage">Coverage</button><button role="tab" data-pstab="kit">Press kit</button></div>
+    <div id="pressCoverage"><div id="pressFind"></div><div id="pressBody"></div></div>
+    <div id="pressKit" hidden></div>
     <p class="cs sitefoot">Press and booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a></p>
   </div>`;
   fillPress();
