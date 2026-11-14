@@ -83,6 +83,7 @@ function openNpMore() {
   const m = $('#modal'); m.className = 'modal';
   m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Playback options"><h2>Playback</h2>
     ${canSetVolume ? `<div class="npvol"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/></svg></span><input type="range" min="0" max="100" value="${Math.round(userVolume() * 100)}" data-vol aria-label="Volume"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></span></div>` : ''}
+    ${canSetVolume ? '' : '<p class="cs">Use your phone\'s side buttons for volume.</p>'}
     <div class="nptrans"><label>Song transitions <select class="field" data-trans aria-label="Song transitions"></select></label></div>
     <p class="cs">Gapless starts the next song a split second early so there is no silence. Crossfade blends the end of one song into the start of the next.</p>
     <div class="end"><button class="pill soft" data-close>Done</button></div></div>`;
