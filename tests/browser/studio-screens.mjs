@@ -946,6 +946,49 @@ await step('Lore: The story (bio), Year by year, Stories behind the songs (voice
   if (process.env.SHOT_LORE) { await page.evaluate(() => document.querySelector('.lorestory').scrollIntoView()); await page.screenshot({ path: process.env.SHOT_LORE }); }
   await page.evaluate(() => { S.lib.artist_bio = ''; trk('trk_a1').voice_note_id = ''; });
 });
+await step('Press tab: a press kit (bio with copy, 6 downloadable photos, contact, links), the featured latest story, years, and a search that filters', async () => {
+  await page.evaluate(() => { renderPress(); }); await page.waitForSelector('.pkit .pkphoto', { timeout: 6000 });
+  await page.evaluate(() => { window.__copied = []; navigator.clipboard.writeText = (t) => { window.__copied.push(t); return Promise.resolve(); }; });
+  const r = await page.evaluate(() => ({ photos: [...document.querySelectorAll('.pkphoto')].map((a) => [a.getAttribute('href'), a.hasAttribute('download')]), mail: document.querySelector('.pkacts a').getAttribute('href'), links: document.querySelectorAll('.pklinks a').length, expectLinks: SITE.links.length, feat: document.querySelectorAll('.pfeat').length, years: [...document.querySelectorAll('.pyr')].map((e) => e.textContent), cards: document.querySelectorAll('#pressBody .pcard').length, total: SITE.press.length, bio: document.querySelector('.pkbio p').textContent.slice(0, 20), more: !!document.querySelector('.pkbio details') }));
+  assert.equal(r.photos.length, 6); assert.ok(r.photos.every(([h, d]) => /^\/photos\/p\d\d\.jpg$/.test(h) && d), JSON.stringify(r.photos));
+  assert.match(r.mail, /^mailto:.+\?subject=/); assert.equal(r.links, r.expectLinks); assert.equal(r.feat, 1, 'the newest story is featured'); assert.ok(r.years.length >= 1); assert.equal(r.cards, r.total); assert.equal(r.bio, 'Nicólas Soul is a he'); assert.equal(r.more, true);
+  await page.click('[data-press-copy="bio"]'); await page.click('[data-press-copy="email"]');
+  const c = await page.evaluate(() => [window.__copied[0] === SITE.bio.trim(), window.__copied[1] === SITE.booking]); assert.deepEqual(c, [true, true], 'Copy bio and Copy booking email put the right text on the clipboard');
+  await page.fill('#pq', 'smoky'); await page.waitForFunction(() => document.querySelectorAll('#pressBody .pcard').length === 1, null, { timeout: 3000 });
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.pfeat').length), 0, 'no featured card while searching');
+  await page.fill('#pq', 'zzzzqq'); await page.waitForFunction(() => /Nothing matches/.test(document.querySelector('#pressBody').innerText), null, { timeout: 3000 });
+  await page.fill('#pq', '');
+  const yrs = await page.evaluate(() => [...document.querySelectorAll('#pyear option')].map((o) => o.value));
+  if (yrs.length > 2) { await page.selectOption('#pyear', yrs[1]); assert.ok(await page.evaluate(() => document.querySelectorAll('.pyr').length === 1), 'one year at a time'); await page.selectOption('#pyear', ''); }
+  await noSideways('press');
+  if (process.env.SHOT_PRESS) await page.screenshot({ path: process.env.SHOT_PRESS, fullPage: false });
+});
+await step('Video tab: search, Up next, Play the song for a video that is a song, and autoplay-next when YouTube says the clip ended (only from the featured clip)', async () => {
+  await page.evaluate(() => { trk('trk_a1').video_url = 'https://youtu.be/dQw4w9WgXcQ'; S.videoQ = ''; S.videoAuto = true; ls.set('sv_vidauto', true); S.videoSort = 'az'; S.videoTab = 'freestyles'; S.videoSub = 'all';
+    S.videoLists = [{ key: 'originals', videos: [{ id: 'dQw4w9WgXcQ', title: 'Alpha one' }, { id: 'bbbbbbbbbbb', title: 'Bravo <b>two</b>' }, { id: 'ccccccccccc', title: 'Charlie three' }] }, { key: 'remixes', videos: [] }]; renderVideo(); });
+  await page.waitForSelector('.vidhero .vidtitle', { timeout: 8000 });
+  const r = await page.evaluate(() => ({ hero: document.querySelector('.vidtitle').textContent, song: !!document.querySelector('[data-vid-song]'), next: (document.querySelector('.vidnext') || {}).textContent, nextOn: (document.querySelector('.vidnext') || { closest: () => null }).closest('.vidcard') && document.querySelector('.vidnext').closest('.vidcard').getAttribute('aria-label'), auto: document.querySelector('#vauto').checked, cards: document.querySelectorAll('.vidcard').length, html: document.querySelector('#videoBody').innerHTML }));
+  assert.deepEqual([r.hero, r.song, r.next, r.auto, r.cards], ['Alpha one', true, 'Up next', true, 2]); assert.match(r.nextOn, /Bravo/); assert.ok(!r.html.includes('<b>two'), 'titles are escaped');
+  // search
+  await page.fill('#vq', 'char'); await page.waitForFunction(() => document.querySelector('.vidtitle') && document.querySelector('.vidtitle').textContent === 'Charlie three', null, { timeout: 4000 });
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.vidcard').length), 0);
+  await page.fill('#vq', 'zzzz'); await page.waitForFunction(() => /No videos match/.test(document.querySelector('#videoBody').innerText), null, { timeout: 4000 });
+  await page.fill('#vq', ''); await page.waitForFunction(() => document.querySelector('.vidtitle') && document.querySelector('.vidtitle').textContent === 'Alpha one', null, { timeout: 4000 });
+  // autoplay next
+  await page.click('.vidstage'); await page.waitForSelector('.vidhero iframe', { timeout: 4000 });
+  const msg = (origin, own, state) => page.evaluate(([o, own, st]) => { const fr = document.querySelector('.vidhero iframe'); window.dispatchEvent(new MessageEvent('message', { origin: o, source: own ? fr.contentWindow : window, data: JSON.stringify({ event: 'onStateChange', info: st }) })); return document.querySelector('.vidtitle').textContent; }, [origin, own, state]);
+  assert.equal(await msg('https://evil.example', true, 0), 'Alpha one', 'a wrong origin is ignored');
+  assert.equal(await msg('https://www.youtube-nocookie.com', false, 0), 'Alpha one', 'a message from anything but the featured clip is ignored');
+  assert.equal(await msg('https://www.youtube-nocookie.com', true, 1), 'Alpha one', 'playing (state 1) does not skip');
+  assert.equal(await msg('https://www.youtube-nocookie.com', true, 0), 'Bravo <b>two</b>', 'ended: the next clip is featured (and starts)');
+  await page.waitForSelector('.vidhero iframe', { timeout: 4000 });   // it started playing
+  await page.uncheck('#vauto'); assert.equal(await page.evaluate(() => S.videoNext), null, 'switched off: nothing plays next');
+  // Play the song: back to the poster, and the song plays
+  await page.check('#vauto'); await page.evaluate(() => { S.videoAuto = true; renderVideo(); }); await page.waitForSelector('.vidhero .vidtitle');
+  await page.click('[data-vid-song]'); await page.waitForFunction(() => S.now && S.now.t.track_id === 'trk_a1', null, { timeout: 6000 });
+  assert.equal(await page.evaluate(() => !document.querySelector('.vidhero iframe')), true, 'the video stopped');
+  await noSideways('video tab'); await page.evaluate(() => { audio.pause(); trk('trk_a1').video_url = ''; S.videoLists = null; });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
