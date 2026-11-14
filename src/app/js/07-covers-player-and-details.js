@@ -130,6 +130,8 @@ function warmRelease(relId) {
 }
 // Starts fetching the next song in the queue so skipping ahead is near-instant.
 async function sourceFor(fid, allowDirect, force) {
+  const saved = !force && S.urlByFile && S.urlByFile[fid] ? await offSource(S.urlByFile[fid]) : '';   // a copy saved for offline listening plays first (also online: instant, no data)
+  if (saved) return { stream: saved, download: S.urlByFile[fid], viaApi: false, direct: false, own: true, saved: true };
   const own = !force && S.urlByFile && S.urlByFile[fid];   // our own storage first; Drive stays as the spare (force = the retry, and a copy that failed once is not tried again)
   if (own && !(S.badFile && S.badFile[fid])) return { stream: own, download: own, viaApi: false, direct: false, own: true };
   const d = allowDirect ? directUrl(fid) : '';

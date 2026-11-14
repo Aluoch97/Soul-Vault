@@ -80,7 +80,7 @@ const csp = [
   "font-src 'self' data: https://*.bandsintown.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: data: https:",
-  "connect-src 'self' https://script.google.com https://cloudflareinsights.com https://script.googleusercontent.com https://docs.google.com https://*.googleusercontent.com https://www.googleapis.com https://*.bandsintown.com",
+  "connect-src 'self' https://media.soulnicolas.com https://script.google.com https://cloudflareinsights.com https://script.googleusercontent.com https://docs.google.com https://*.googleusercontent.com https://www.googleapis.com https://*.bandsintown.com",
   "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://open.spotify.com https://w.soundcloud.com https://embed.music.apple.com https://*.bandsintown.com https://bandcamp.com https://nrnszn.bandcamp.com",
   "worker-src 'self' blob:", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'",
   "form-action 'self' https://script.google.com https://script.googleusercontent.com",
