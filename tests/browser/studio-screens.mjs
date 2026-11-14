@@ -929,6 +929,23 @@ await step('Now Playing: very long unbroken titles fit on a phone (390 and 320 w
   assert.equal(await page.evaluate(() => deviceCannotSetVolume('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605 Version/17.0 Safari/605.1.15', 'MacIntel', 5)), true, 'an iPad that says it is a Mac is recognised by its touch screen');
   await page.evaluate(() => { trk('trk_a1').title = 'Song trk_a1 (feat. Aziza)'; audio.pause(); closeNp(); });
 });
+await step('Press tab: a press kit (bio with copy, 6 downloadable photos, contact, links), the featured latest story, years, and a search that filters', async () => {
+  await page.evaluate(() => { renderPress(); }); await page.waitForSelector('.pkit .pkphoto', { timeout: 6000 });
+  await page.evaluate(() => { window.__copied = []; navigator.clipboard.writeText = (t) => { window.__copied.push(t); return Promise.resolve(); }; });
+  const r = await page.evaluate(() => ({ photos: [...document.querySelectorAll('.pkphoto')].map((a) => [a.getAttribute('href'), a.hasAttribute('download')]), mail: document.querySelector('.pkacts a').getAttribute('href'), links: document.querySelectorAll('.pklinks a').length, expectLinks: SITE.links.length, feat: document.querySelectorAll('.pfeat').length, years: [...document.querySelectorAll('.pyr')].map((e) => e.textContent), cards: document.querySelectorAll('#pressBody .pcard').length, total: SITE.press.length, bio: document.querySelector('.pkbio p').textContent.slice(0, 20), more: !!document.querySelector('.pkbio details') }));
+  assert.equal(r.photos.length, 6); assert.ok(r.photos.every(([h, d]) => /^\/photos\/p\d\d\.jpg$/.test(h) && d), JSON.stringify(r.photos));
+  assert.match(r.mail, /^mailto:.+\?subject=/); assert.equal(r.links, r.expectLinks); assert.equal(r.feat, 1, 'the newest story is featured'); assert.ok(r.years.length >= 1); assert.equal(r.cards, r.total); assert.equal(r.bio, 'Nicólas Soul is a he'); assert.equal(r.more, true);
+  await page.click('[data-press-copy="bio"]'); await page.click('[data-press-copy="email"]');
+  const c = await page.evaluate(() => [window.__copied[0] === SITE.bio.trim(), window.__copied[1] === SITE.booking]); assert.deepEqual(c, [true, true], 'Copy bio and Copy booking email put the right text on the clipboard');
+  await page.fill('#pq', 'smoky'); await page.waitForFunction(() => document.querySelectorAll('#pressBody .pcard').length === 1, null, { timeout: 3000 });
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.pfeat').length), 0, 'no featured card while searching');
+  await page.fill('#pq', 'zzzzqq'); await page.waitForFunction(() => /Nothing matches/.test(document.querySelector('#pressBody').innerText), null, { timeout: 3000 });
+  await page.fill('#pq', '');
+  const yrs = await page.evaluate(() => [...document.querySelectorAll('#pyear option')].map((o) => o.value));
+  if (yrs.length > 2) { await page.selectOption('#pyear', yrs[1]); assert.ok(await page.evaluate(() => document.querySelectorAll('.pyr').length === 1), 'one year at a time'); await page.selectOption('#pyear', ''); }
+  await noSideways('press');
+  if (process.env.SHOT_PRESS) await page.screenshot({ path: process.env.SHOT_PRESS, fullPage: false });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

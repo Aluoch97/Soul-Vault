@@ -194,15 +194,13 @@ function renderTour() {
 
 function renderPress() {
   clearPageBg(); S.view = 'press'; renderChrome();
-  const articles = `<div class="pcards">${SITE.press.map(p => `<a class="pcard" href="${esc(p.url)}" target="_blank" rel="noopener">
-      <div class="pimg"><span class="pfall" aria-hidden="true">${esc(p.site)}</span><img src="/press-img/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()"></div>
-      <div class="pbody"><div class="ptitle">${esc(p.title)}</div><p class="pdesc">${esc(p.desc)}</p>
-        <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">${esc([p.site, p.author, p.date].filter(Boolean).join(' · '))}</span>${I.chev}</div></div></a>`).join('')}</div>`;
   $('#main').innerHTML = `<div class="wrap sitepg presspg">
-    <header class="vidhead"><h1 class="vidh1">Soul <span>Press</span></h1><p class="cs">Features, reviews and interviews.</p></header>
-    <div id="pressBody">${articles}</div>
+    <header class="vidhead"><h1 class="vidh1">Soul <span>Press</span></h1><p class="cs">Features, reviews, interviews and a press kit.</p></header>
+    <div id="pressKit"></div><div id="pressFind"></div>
+    <div id="pressBody"></div>
     <p class="cs sitefoot">Press and booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a></p>
   </div>`;
+  fillPress();
   window.scrollTo(0, 0);
 }
 
