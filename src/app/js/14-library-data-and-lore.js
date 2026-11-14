@@ -395,7 +395,8 @@ async function addYtSong(relId, btn) {
   try {
     const o = await run('addYoutubeSong', BOOT.key, { releaseId: relId, url: url.trim(), title: ($('#uTitle') || {}).value || '' });
     S.lib.tracks.push(o.track); S.lib.versions.push(o.version);
-    closeModal(); renderRelease(relId); toast(`Added "${o.track.title}" from YouTube. Tip: add the audio file too (Settings, Songs on links only).`);
+    const got = o.filled || {}; if (got.upload_date) { try { await syncCatalog(); } catch (e) { /* the page catches up on its next refresh */ } }   // the release may have just got its date
+    closeModal(); renderRelease(relId); toast(`Added "${o.track.title}" from YouTube${got.duration ? ' (' + got.duration + (got.upload_date ? ', uploaded ' + got.upload_date : '') + ')' : ''}. Length and date were filled in for you. Tip: add the audio file too (Settings, Songs on links only).`);
   } catch (e) { btn.disabled = false; btn.textContent = 'Add from YouTube'; const er = $('#uErr'); er.hidden = false; er.textContent = e.message || 'Could not add it.'; }
 }
 

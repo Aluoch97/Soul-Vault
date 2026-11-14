@@ -109,3 +109,23 @@ export async function refresh(env, rows, force) {
   }
   return { checked: due.length, updated, gone };
 }
+
+/** YouTube's length ("PT3M42S") in seconds; 0 when it has none (a live stream, a premiere that has not started). */
+export function isoSeconds(d) {
+  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(String(d || '')); if (!m) return 0;
+  return (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
+}
+/** Seconds as the app shows song lengths: "3:42". */
+export const mmss = sec => { const s = Math.round(sec); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+/** What YouTube knows about videos, so nobody has to type it: { id: { title, date: 'YYYY-MM-DD' (uploaded), seconds } }. Best effort: no key or any trouble gives {} and the song is added without it. */
+export async function videoFacts(env, ids) {
+  const out = {}, list = [...new Set((ids || []).filter(Boolean))];
+  if (!String(env.YOUTUBE_API_KEY || '').trim()) return out;
+  for (let i = 0; i < list.length; i += 50) {
+    try {
+      const r = await api(env, 'videos', { part: 'snippet,contentDetails', id: list.slice(i, i + 50).join(','), maxResults: 50 });
+      (r.items || []).forEach(it => { const sn = it.snippet || {}; out[it.id] = { title: String(sn.title || '').trim(), date: /^\d{4}-\d{2}-\d{2}/.test(sn.publishedAt || '') ? sn.publishedAt.slice(0, 10) : '', seconds: isoSeconds((it.contentDetails || {}).duration) }; });
+    } catch (e) { /* carry on without the extras */ }
+  }
+  return out;
+}

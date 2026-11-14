@@ -415,8 +415,11 @@ async function studio(ctx, fn, a) {
     const no = Math.max(0, ...all.tracks.filter(t => t.release_id === relId).map(t => Number(t.track_no) || 0)) + 1;
     const track = Object.assign(newTrack(relId, no, title), { video_url: 'https://youtu.be/' + vid }); if (fromApi) track.title_src = YT.srcTag();
     const version = newYoutubeVersion(track.track_id, vid, url);
+    const fact = (await YT.videoFacts(env, [vid]))[vid] || {};   // length and upload date come from YouTube, so nothing has to be typed afterwards
+    if (fact.seconds) version.duration = YT.mmss(fact.seconds);
+    const here = relOf(relId); if (fact.date && here && !here.release_date && (cat || isNat('releases', 'release_id', relId))) patchRow(store, 'releases', 'release_id', relId, { release_date: fact.date, year: fact.date.slice(0, 4) });
     store.tracks.push(track); store.versions.push(version); await saveNat();
-    return { track, version };
+    return { track, version, filled: { duration: version.duration || '', upload_date: fact.date || '' } };
   }
   if (fn === 'addSoundcloudSong') {   // a song that plays through SoundCloud's own player (no audio file, no key needed)
     const o = a[1] || {}, relId = String(o.releaseId || ''), url = YT.scUrl(o.url);
@@ -478,11 +481,13 @@ async function studio(ctx, fn, a) {
         } catch (e) { /* no cover this time: the release is still made */ }
       }
     }
-    const release = newRelease({ title, type, year: String(year), coverId });
+    const facts = await YT.videoFacts(env, src.videos.slice(0, 100).map(v => v.id)), dates = Object.values(facts).map(f => f.date).filter(Boolean).sort();
+    const release = newRelease({ title, type, year: String(dates[0] ? dates[0].slice(0, 4) : year), coverId }); if (dates[0]) release.release_date = dates[0];   // the earliest upload date is the release date (change it in Studio if the release came later)
     const tracks = [], versions = [], tag = YT.srcTag();
     src.videos.slice(0, 100).forEach((v, i) => {
       const t = Object.assign(newTrack(release.release_id, i + 1, String(v.title || 'YouTube song').slice(0, 200)), { video_url: 'https://youtu.be/' + v.id, title_src: tag });
-      tracks.push(t); versions.push(newYoutubeVersion(t.track_id, v.id, o.url));
+      const ver = newYoutubeVersion(t.track_id, v.id, o.url); if ((facts[v.id] || {}).seconds) ver.duration = YT.mmss(facts[v.id].seconds);
+      tracks.push(t); versions.push(ver);
     });
     store.releases.push(release); tracks.forEach(t => store.tracks.push(t)); versions.forEach(v => store.versions.push(v)); await saveNat();
     return { release, tracks, versions, playlist: src.title, total: src.videos.length, truncated: src.videos.length > 100 };   // hidden from fans until you show it
