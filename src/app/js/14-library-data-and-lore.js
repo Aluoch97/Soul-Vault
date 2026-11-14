@@ -438,3 +438,28 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
 ` }));
 
 
+
+/* ── Fill in link song details: songs added from a YouTube link before the length and date were read automatically ── */
+async function openFillFacts() {
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Fill in link song details"><h2>Fill in link song details</h2>
+    <p class="cs" id="ffSt">Checking YouTube…</p><div id="ffList" class="mslistbox"></div><p class="err" id="ffErr" hidden></p>
+    <div class="end"><button class="pill main" id="ffGo" hidden>Fill them in</button><button class="pill soft" data-close>Close</button></div></div>`;
+  m.hidden = false;
+  const show = (r, done) => {
+    const parts = [];
+    if (r.durations) parts.push(`${r.durations} ${r.durations === 1 ? 'song' : 'songs'} ${done ? 'got' : 'will get'} a length`);
+    if (r.releases.length) parts.push(`${r.releases.length} ${r.releases.length === 1 ? 'release' : 'releases'} ${done ? 'got' : 'will get'} a release date`);
+    $('#ffSt').textContent = parts.length ? (done ? 'Done: ' : 'Ready: ') + parts.join(' and ') + '.' : `Nothing to fill in. ${r.songs} link ${r.songs === 1 ? 'song is' : 'songs are'} already complete${r.missing ? ' (' + r.missing + " could not be read from YouTube; they may be private or removed)" : ''}.`;
+    $('#ffList').innerHTML = r.releases.map(x => `<div class="mrow"><b>${esc(x.title)}</b> <span class="cs">release date ${esc(x.date)} (the earliest upload)</span></div>`).join('');
+    $('#ffGo').hidden = done || !parts.length;
+  };
+  try {
+    show(await run('fillYoutubeFacts', BOOT.key, false), false);
+    $('#ffGo').addEventListener('click', async e => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = 'Filling in…';
+      try { const r = await run('fillYoutubeFacts', BOOT.key, true); try { await syncCatalog(); } catch (x) { /* the page catches up on its next refresh */ } show(r, true); toast('Link song details filled in'); }
+      catch (er) { b.disabled = false; b.textContent = 'Fill them in'; const x = $('#ffErr'); x.hidden = false; x.textContent = er.message || 'Could not fill them in.'; }
+    });
+  } catch (er) { $('#ffSt').textContent = ''; const x = $('#ffErr'); x.hidden = false; x.textContent = er.message || 'Could not check YouTube.'; }
+}

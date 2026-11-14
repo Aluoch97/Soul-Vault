@@ -829,6 +829,14 @@ await step('Search by lyrics: ignores capitals, accents and apostrophes, finds a
   await noSideways('lyric search results');
   await page.fill('#q', ''); await page.evaluate(() => { trk('trk_a1').lyrics = ''; trk('trk_sg').lyrics = ''; S.lyCache = null; });
 });
+await step('Settings > Fill in link song details opens, checks YouTube and says what it would fill in (or why it cannot)', async () => {
+  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-fillfacts]');
+  await page.click('[data-fillfacts]'); await page.waitForSelector('#ffSt');
+  await page.waitForFunction(() => { const t = document.querySelector('#ffSt').textContent + (document.querySelector('#ffErr').hidden ? '' : document.querySelector('#ffErr').textContent); return t && !/^Checking/.test(t); }, null, { timeout: 8000 });
+  const txt = await page.evaluate(() => document.querySelector('#ffSt').textContent + ' ' + document.querySelector('#ffErr').textContent);
+  assert.match(txt, /Ready|Nothing to fill|YouTube key|link song/, txt);
+  await noSideways('fill in link song details'); await page.evaluate(() => closeModal());
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
