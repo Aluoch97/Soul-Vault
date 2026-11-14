@@ -62,6 +62,7 @@
           <button class="tog" data-ctl="repeat" aria-pressed="false" aria-label="Repeat: off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="one" hidden>1</span></button>
         </div>
         <div class="npvol"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/></svg></span><input type="range" min="0" max="100" value="100" data-vol aria-label="Volume"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></span></div>
+        <div class="nptrans"><label>Song transitions <select class="field" data-trans aria-label="Song transitions"></select></label></div>
         <div class="npx"><button class="pill soft" data-np-lyrics aria-pressed="false" hidden>Lyrics</button><button class="pill soft" data-np-details>Credits</button></div>
         <div id="npVers"></div>
         <a class="dl" id="npDl" target="_blank" rel="noopener" hidden></a>
@@ -187,6 +188,7 @@
 @@include js/18-settings-pages.js
 @@include js/18-shop.js
 @@include js/18-site-tracking.js
+@@include js/18-transitions.js
 @@include js/19-play-and-startup.js
 </script>
 </body>

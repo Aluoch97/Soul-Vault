@@ -22,7 +22,7 @@ function renderLibrary(keepScroll) {
   $('#main').innerHTML = `
     <div class="wrap">
       ${homeHeader(false)}
-      <label class="search big">${I.search}<input id="q" type="search" placeholder="Search songs and releases" value="${esc(S.q)}" aria-label="Search songs and releases"></label>
+      <label class="search big">${I.search}<input id="q" type="search" placeholder="Search songs, releases and lyrics" value="${esc(S.q)}" aria-label="Search songs, releases and lyrics"></label>
       <div id="libBody"></div>
     </div>`;
   $('#libBody').dataset.types = JSON.stringify(types);
@@ -221,7 +221,7 @@ function renderLibBody() {
     <h2 class="sh"><span><b>Songs</b></span></h2>
     <ol class="tracks">${songHits.map(t => trackRow(t, true)).join('')}</ol>` : '';
   const chips = `<label class="libsel"><span class="sr-only">Type</span><select data-filtersel aria-label="Filter by type">${types.map(t => `<option value="${esc(t)}"${t === S.filter ? ' selected' : ''}>${t === 'All' ? 'All types' : esc(t)}</option>`).join('')}</select></label>`;
-  const empty = `<p class="status" style="padding-left:0">${q ? `Nothing matches "${esc(S.q)}". Try part of a song or release title.` : 'Nothing matches this filter yet.'}</p>`;
+  const empty = `<p class="status" style="padding-left:0">${q ? `Nothing matches "${esc(S.q)}". Try part of a title, or a line from a song.` : 'Nothing matches this filter yet.'}</p>`;
   const view = S.libView = S.libView || ls.get('sv_libview', 'scroll');
   const allMode = view !== 'scroll' && !q;
   const viewBtn = q ? '' : viewMenu(view);

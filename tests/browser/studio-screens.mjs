@@ -783,6 +783,52 @@ await step('Offline music: Save offline on a release saves its songs inside the 
   await page.evaluate(() => openOfflineMusic()); await seen('Offline music'); await page.evaluate(() => closeModal());
   await page.unroute('https://media.soulnicolas.com/test/**');
 });
+await step('Crossfade: near the end of a song the old song keeps playing in the second player while it fades out and the next song fades in; Off changes nothing', async () => {
+  const wav = (secs, hz) => { const rate = 8000, n = rate * secs, b = Buffer.alloc(44 + n); b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(rate, 24); b.writeUInt32LE(rate, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write('data', 36); b.writeUInt32LE(n, 40); for (let i = 0; i < n; i++) b[44 + i] = 128 + Math.round(40 * Math.sin(2 * Math.PI * hz * i / rate)); return b; };
+  const files = { 'x1.wav': wav(14, 440), 'x2.wav': wav(14, 660) };
+  await page.route('https://media.soulnicolas.com/xf/**', (r) => {
+    const body = files[r.request().url().split('/').pop()]; if (!body) return r.fulfill({ status: 404, body: '' });
+    const m = /bytes=(\d+)-(\d*)/.exec(r.request().headers().range || ''), base = { 'content-type': 'audio/wav', 'accept-ranges': 'bytes', 'access-control-allow-origin': '*' };
+    if (!m) return r.fulfill({ status: 200, headers: { ...base, 'content-length': String(body.length) }, body });
+    const a0 = +m[1], b0 = m[2] ? Math.min(+m[2], body.length - 1) : body.length - 1;
+    return r.fulfill({ status: 206, headers: { ...base, 'content-range': `bytes ${a0}-${b0}/${body.length}`, 'content-length': String(b0 - a0 + 1) }, body: body.subarray(a0, b0 + 1) });
+  });
+  await page.evaluate(() => { S.urlByFile = S.urlByFile || {}; [['ver_a1', 'x1'], ['ver_sg', 'x2']].forEach(([id, f]) => { const v = ver(id); v.audio = 'f_' + id; S.urlByFile['f_' + id] = 'https://media.soulnicolas.com/xf/' + f + '.wav'; }); ls.set('sv_volume', 0.8); S.trans = 'cf3'; S.repeat = 'off'; S.queue = ['ver_a1', 'ver_sg']; S.qi = 0; play('ver_a1'); });
+  await page.waitForFunction(() => !audio.paused && audio.currentTime > 0.3 && audio.duration > 10 && S.outUnlocked, null, { timeout: 15000 });
+  await page.evaluate(() => { audio.currentTime = audio.duration - 6.5; });
+  await page.waitForFunction(() => S.qi === 1 && !audioOut.paused, null, { timeout: 15000 });
+  await page.waitForTimeout(1300);
+  const mid = await page.evaluate(() => ({ out: audioOut.volume, inn: audio.volume, outT: audioOut.currentTime, now: S.now.v.version_id }));
+  assert.equal(mid.now, 'ver_sg'); assert.ok(mid.out < 0.8 && mid.out > 0 && mid.inn > 0 && mid.inn < 0.8, 'both are partway through the fade: ' + JSON.stringify(mid));
+  await page.waitForFunction(() => audioOut.paused && Math.abs(audio.volume - 0.8) < 0.02, null, { timeout: 12000 });
+  assert.equal(await page.evaluate(() => !audio.paused && S.now.v.version_id), 'ver_sg', 'the next song keeps playing at the chosen volume');
+  // Off: the same jump near the end changes nothing until the song really ends
+  await page.evaluate(() => { S.trans = 'off'; S.qi = 0; S.queue = ['ver_a1', 'ver_sg']; play('ver_a1'); });
+  await page.waitForFunction(() => !audio.paused && audio.currentTime > 0.3 && audio.duration > 10, null, { timeout: 15000 });
+  await page.evaluate(() => { audio.currentTime = audio.duration - 6.5; }); await page.waitForTimeout(2500);
+  assert.deepEqual(await page.evaluate(() => [S.qi, audioOut.paused]), [0, true]);
+  await page.evaluate(() => { audio.pause(); S.trans = 'off'; ls.set('sv_volume', 1); audio.volume = 1; });
+  await page.unroute('https://media.soulnicolas.com/xf/**');
+});
+await step('Search by lyrics: ignores capitals, accents and apostrophes, finds a phrase over two lines, falls back to "all the words", puts exact phrases first, and marks the match safely', async () => {
+  await page.evaluate(() => { S.lyCache = null; trk('trk_a1').lyrics = "I don't wanna fall\nIn love with caf\u00e9 lights\n[00:10.00]Stay up all night <b>x</b>"; trk('trk_sg').lyrics = 'night after night I stay'; });
+  const r = await page.evaluate(() => {
+    const ids = q => lyricHits(q, []).map(t => t.track_id), snip = q => lyricSnippet(trk('trk_a1'), q);
+    return { apos: ids('DONT wanna fall'), accent: ids('cafe lights'), twoLines: ids('fall in love'), twoSnip: snip('fall in love'), words: ids('night stay'), none: ids('zzzzqq'), short: ids('ab'), rank: ids('stay up all night'), html: snip('<b>x</b>'), pair: snip('dont wanna') };
+  });
+  assert.deepEqual([r.apos, r.accent, r.twoLines, r.words, r.none, r.short], [['trk_a1'], ['trk_a1'], ['trk_a1'], ['trk_a1', 'trk_sg'], [], []]);
+  assert.match(r.twoSnip, /<mark>fall<\/mark>|<mark>fall \/ In love<\/mark>/); assert.ok(/mark/.test(r.twoSnip) && /In love/.test(r.twoSnip));
+  assert.deepEqual(r.rank, ['trk_a1'], 'phrase hit only: the other song lacks "up all"');
+  const order = await page.evaluate(() => { const old = trk('trk_sg').title; trk('trk_sg').title = 'AAA alphabetically first'; trk('trk_sg').lyrics = 'I stay but never go up'; const o = lyricHits('stay up', []).map(t => t.track_id); trk('trk_sg').title = old; return o; });
+  assert.deepEqual(order, ['trk_a1', 'trk_sg'], 'the song with the exact phrase comes before one that only has the words, even though the other sorts first by title');
+  assert.ok(r.html.includes('&lt;') && !r.html.includes('<b>') && !r.html.includes('</b>'), 'lyric text is escaped: ' + r.html);
+  assert.match(r.pair, /<mark>don&#39;t wanna<\/mark>/);
+  await page.evaluate(() => { S.q = ''; renderLibrary(); }); await page.waitForSelector('#q');
+  await page.fill('#q', "dont wanna"); await page.waitForSelector('.lysnip mark', { timeout: 5000 });
+  assert.match(await page.evaluate(() => document.querySelector('#q').placeholder), /lyrics/);
+  await noSideways('lyric search results');
+  await page.fill('#q', ''); await page.evaluate(() => { trk('trk_a1').lyrics = ''; trk('trk_sg').lyrics = ''; S.lyCache = null; });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

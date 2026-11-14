@@ -271,16 +271,50 @@ function doResume() {
 }
 
 /* ── search inside lyrics ── */
+// Lyric search ignores capitals, accents, apostrophes and punctuation ("dont" finds "don't", "cafe" finds "café"), finds a phrase even when it runs over two lines,
+// and, when the exact phrase is not there, songs that contain every word. Exact phrases come first.
+function lyNormMap(text) {   // normalised text plus, for each normalised character, where it came from in the original
+  let out = '', idx = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (/['\u2019\u2018`\u00b4]/.test(ch)) continue;
+    const c = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    for (const x of c) { const k = /[\p{L}\p{N}]/u.test(x) ? x : ' '; if (k === ' ' && (out === '' || out.endsWith(' '))) continue; out += k; idx.push(i); }
+  }
+  return { norm: out.replace(/ $/, ''), idx };
+}
+const lyNorm = s => lyNormMap(String(s || '')).norm;
+function lyFor(t) {   // a song's lyrics, normalised once
+  const c = (S.lyCache = S.lyCache || new Map()), raw = t.lyrics || '', hit = c.get(t.track_id);
+  if (hit && hit.raw === raw) return hit.norm;
+  const norm = lyNorm(plainLyrics(raw)); c.set(t.track_id, { raw, norm }); return norm;
+}
+const lyWords = q => lyNorm(q).split(' ').filter(Boolean);
+function lyrScore(t, q) {   // 2 = the phrase, 1 = every word, 0 = no
+  const n = lyFor(t), nq = lyNorm(q); if (!n || nq.length < 3) return 0;
+  if (n.includes(nq)) return 2;
+  const w = lyWords(q); return w.length > 1 && w.every(x => (' ' + n).includes(' ' + x)) ? 1 : 0;
+}
 function lyricSnippet(t, q) {
-  const line = plainLyrics(t.lyrics).split('\n').find(l => l.toLowerCase().includes(q)); if (!line) return '';
-  const i = line.toLowerCase().indexOf(q);
-  const a = Math.max(0, i - 40), b = Math.min(line.length, i + q.length + 50);
-  return `${a ? '…' : ''}${esc(line.slice(a, i))}<mark>${esc(line.slice(i, i + q.length))}</mark>${esc(line.slice(i + q.length, b))}${b < line.length ? '…' : ''}`;
+  const lines = plainLyrics(t.lyrics).split('\n').map(l => l.trim()).filter(Boolean), nq = lyNorm(q), words = lyWords(q);
+  const tries = lines.map((l, k) => l).concat(lines.slice(0, -1).map((l, k) => l + ' / ' + lines[k + 1]));   // a line, then two lines together (a phrase can run over)
+  let text = tries.find(l => lyNorm(l).includes(nq));
+  if (!text) text = lines.map(l => [l, words.filter(w => (' ' + lyNorm(l)).includes(' ' + w)).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const { norm, idx } = lyNormMap(text), ranges = [];
+  const at = norm.indexOf(nq);
+  if (at > -1) ranges.push([idx[at], idx[at + nq.length - 1] + 1]);
+  else words.forEach(w => { const p = (' ' + norm).indexOf(' ' + w); if (p > -1) ranges.push([idx[p], idx[p + w.length - 1] + 1]); });
+  ranges.sort((a, b) => a[0] - b[0]);
+  const first = ranges.length ? ranges[0][0] : 0, a = Math.max(0, first - 40), b = Math.min(text.length, a + 110);
+  let out = a ? '\u2026' : '', pos = a;
+  ranges.forEach(([r0, r1]) => { if (r0 < pos || r0 >= b) return; out += esc(text.slice(pos, r0)) + '<mark>' + esc(text.slice(r0, Math.min(r1, b))) + '</mark>'; pos = Math.min(r1, b); });
+  return out + esc(text.slice(pos, b)) + (b < text.length ? '\u2026' : '');
 }
 function lyricHits(q, exclude) {
-  if (q.length < 3) return [];
+  if (lyNorm(q).length < 3) return [];
   const skip = new Set(exclude.map(t => t.track_id));
-  return S.lib.tracks.filter(t => !skip.has(t.track_id) && !hidden(t) && primaryOf(t) && plainLyrics(t.lyrics).toLowerCase().includes(q)).slice(0, 12);
+  return S.lib.tracks.filter(t => !skip.has(t.track_id) && !hidden(t) && primaryOf(t)).map(t => [t, lyrScore(t, q)]).filter(x => x[1] > 0)
+    .sort((a, b) => b[1] - a[1] || String(a[0].title).localeCompare(String(b[0].title))).slice(0, 20).map(x => x[0]);
 }
 function lyricRow(t, q) {
   return trackRow(t, true).replace('\n    </div>\n    <span class="dur">', `\n      <div class="lysnip">${lyricSnippet(t, q)}</div>\n    </div>\n    <span class="dur">`);
