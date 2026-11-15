@@ -588,6 +588,18 @@ await step('Nick\'s round: NuRenaissance link under Support, Releases shows the 
   await page.evaluate(() => { S.videoLists = null; S.videoP = null; localStorage.removeItem('sv_videolists'); });
   await noSideways('nick round');
 });
+await step('Release page: the Music back button stays at the top while you scroll, and still goes back', async () => {
+  await page.evaluate(() => { renderRelease('rel_pub'); }); await page.waitForSelector('#relbar .back');
+  await page.evaluate(() => { const d = document.createElement('div'); d.id = 'tallfill'; d.style.height = '3000px'; (document.querySelector('#main > .wrap') || document.querySelector('#main')).appendChild(d); window.scrollTo(0, 1500); });
+  await page.waitForFunction(() => document.getElementById('relbar').classList.contains('stuck'), null, { timeout: 3000 });
+  const b = await page.evaluate(() => { const r = document.querySelector('#relbar .back').getBoundingClientRect(); const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { top: Math.round(r.top), vis: r.bottom > 0 && r.top < 80, hit: !!top && (top.closest('.back') !== null), y: Math.round(window.scrollY) }; });
+  assert.ok(b.y > 500 && b.vis && b.top >= 0 && b.hit, 'the Music button is still on screen, on top, after scrolling: ' + JSON.stringify(b));
+  if (process.env.SHOT_STICKY) await page.screenshot({ path: process.env.SHOT_STICKY });
+  const tabs = await page.evaluate(() => { const e = document.querySelector('.eranav'); if (!e) return null; const r = e.getBoundingClientRect(), bb = document.querySelector('#relbar .back').getBoundingClientRect(); return { below: r.top >= bb.bottom - 2 }; });
+  if (tabs) assert.ok(tabs.below, 'the sticky Songs / Videos tabs sit below the Music button, not under it');
+  await page.click('#relbar .back'); await page.waitForFunction(() => S.view === 'library', null, { timeout: 5000 });
+  await page.evaluate(() => { const d = document.getElementById('tallfill'); if (d) d.remove(); window.scrollTo(0, 0); });
+});
 await step('Lore is calmer: no bio editor in the middle of the page, credits in one dropdown; the bio is edited in Studio', async () => {
   await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-lcatsel]');
   assert.deepEqual(await page.evaluate(() => [document.querySelectorAll('.wrap.lore textarea').length, document.querySelectorAll('.wrap.lore [data-lore-bio], .wrap.lore [data-lore-copy]').length, document.querySelectorAll('.wrap.lore .lorecats').length]), [0, 0, 0], 'no bio editor, no pills on Lore');

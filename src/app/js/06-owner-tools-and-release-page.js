@@ -323,8 +323,8 @@ function renderRelease(id) {
   const editing = OWNER && S.editing;
   const ts = tracksOf(id, editing);
   $('#main').innerHTML = `
+    ${OWNER || CLUB() ? `<div class="relbar" id="relbar"><div class="wrap"><button class="back" data-nav="library-back">${I.back}Music</button></div></div>` : ''}
     <header class="relhead" id="relhead"><div class="wrap">
-      ${OWNER || CLUB() ? `<button class="back" data-nav="library-back">${I.back}Music</button>` : ''}
       <div class="hero">
         <div class="artwrap">
           <img class="art" id="heroArt" alt="Cover of ${esc(r.title)}">
@@ -530,3 +530,6 @@ async function saveLyricsAll(btn) {
   }
 }
 
+
+// The "Music" button on a release page stays at the top while you scroll (the bar gets a backing once the page has moved).
+window.addEventListener('scroll', () => { const b = document.getElementById('relbar'); if (b) b.classList.toggle('stuck', window.scrollY > 40); }, { passive: true });
