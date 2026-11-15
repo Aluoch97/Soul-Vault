@@ -93,12 +93,24 @@ await step('opens as the owner and shows the library', async () => { await page.
 await step('at start-up the owner app loads Studio\'s saved settings (unreleased flags, listen links)', async () => {
   await page.waitForFunction(() => S.links && S.links.flags && S.links.flags.tracks && S.links.flags.tracks.trk_a1 === true, null, { timeout: 8000 });
 });
-await step('Settings opens and lists the owner tools', async () => { await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-nav="vault"]'); await page.click('.wrap.lore [data-nav="vault"]'); await seen('Check YouTube setup'); await seen('Studio');
+await step('Settings opens and lists the owner tools', async () => { await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-nav="vault"]'); await page.click('.wrap.lore [data-nav="vault"]'); await page.waitForSelector('.setpg details.sset'); await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await seen('Check YouTube setup'); await seen('Studio');
   assert.deepEqual(await page.evaluate(() => ['Upload a new release', 'Your bio', 'Recently played'].map((t) => document.body.innerText.includes(t))), [false, false, false], 'Settings no longer lists the upload, bio or Recently played rows (uploads and the bio are in Studio)'); await noSideways('settings'); if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true }); });
+await step('Settings is decluttered: related rows share one folder row (Fix songs, Health checks, Backups, Sign-in & keys) that opens and shuts, and the stat strip shows three numbers', async () => {
+  await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = false; }); });
+  const c = await page.evaluate(() => ({ folders: [...document.querySelectorAll('details.sset')].map((d) => d.dataset.sset), vis: ['[data-missing]', '[data-fillfacts]', '[data-linkonly]', '[data-check-yt]', '[data-backups]', '[data-ownerpw]'].map((q) => { const e = document.querySelector(q); return !!e && e.getBoundingClientRect().height > 0 && e.offsetParent !== null && !!e.closest('details') && e.closest('details').open; }), stats: [...document.querySelectorAll('.setstats .tile strong')].map((e) => e.textContent.trim()), hero: !!document.querySelector('.shero[data-nav="studio"]'), topRows: document.querySelectorAll('.sgroup > .acts-list > li, .sgroup > .sfolders > details, .sgroup > .sfolders > .acts-list > li').length }));
+  assert.deepEqual(c.folders, ['songs', 'health', 'data', 'account'], 'four folders: ' + c.folders); assert.ok(c.vis.every((v) => !v), 'rows inside a shut folder are not on the page: ' + c.vis);
+  assert.ok(c.stats.length === 3 && c.stats.every((x) => /^\d+$/.test(x)), 'three numbers: ' + c.stats); assert.ok(c.hero, 'Studio is the big card at the top');
+  await page.click('details[data-sset="songs"] > summary'); assert.equal(await page.evaluate(() => [...document.querySelectorAll('details[data-sset="songs"] .acts-list button')].filter((b) => b.getBoundingClientRect().height > 0).length), 3, 'tapping Fix songs shows its three rows');
+  await page.waitForFunction(() => S.setOpen.has('songs'), null, { timeout: 3000 });
+  await page.evaluate(() => renderVault()); assert.equal(await page.evaluate(() => document.querySelector('details[data-sset="songs"]').open), true, 'a folder you opened stays open');
+  await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });
+  await noSideways('settings folders');
+  if (process.env.SHOT_SET) { await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = false; }); window.scrollTo(0, 0); }); await page.waitForTimeout(300); await page.screenshot({ path: process.env.SHOT_SET, fullPage: true }); await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); }
+});
 await step('Settings rows are tidy: grouped, one-line titles, same height, same layout', async () => {
   const m = await page.evaluate(() => { const rows = [...document.querySelectorAll('.acts-list button')].map((b) => ({ h: Math.round(b.getBoundingClientRect().height), t: Math.round(b.querySelector('b').getBoundingClientRect().height), x: Math.round(b.querySelector('.si').getBoundingClientRect().left), title: b.querySelector('b').textContent }));
     return { narrow: window.innerWidth < 360, rows, groups: document.querySelectorAll('.sgroup').length, headings: [...document.querySelectorAll('.sgroup .vsub')].map((h) => h.textContent) }; });
-  assert.ok(m.groups >= 5 && new Set(m.headings).size === m.groups, 'five groups with their own headings: ' + m.headings.join(', '));
+  assert.ok(m.groups >= 4 && new Set(m.headings).size === m.groups, 'four groups with their own headings: ' + m.headings.join(', '));
   assert.ok(m.rows.length >= 10, 'rows: ' + m.rows.length);
   for (const r of m.rows) { assert.ok(r.t <= (m.narrow ? 48 : 24), `"${r.title}" wraps onto several lines (${r.t}px tall)`); assert.ok(r.h >= 60 && r.h <= 110, `"${r.title}" row height ${r.h}px`); }
   assert.equal(new Set(m.rows.map((r) => r.x)).size, 1, 'icons line up in one column');
@@ -254,7 +266,7 @@ await step('Lore: only the new-release, share-links and Settings buttons are at 
   await fctx.close();
 });
 await step('Website insights: visitors, pages with time on each, devices, cities, sources, and who is on the site now', async () => {
-  await page.evaluate(() => renderVault());
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });
   await w.db.prepare('DELETE FROM site_views').run();                                                    // (earlier steps' phones were counted too: start from an empty table)
   const rows = [[1, 'a', 'v1', '/', 10, 'phone', 'l.instagram.com', 'Nashville'], [1, 'a', 'v1', '/vault', 50, 'phone', '', 'Nashville'], [1, 'a', 'v1', '/lore', 40, 'phone', '', 'Nashville'], [2, 'b', 'v2', '/', 30, 'desktop', '', 'Memphis'], [2, 'b', 'v2', '/vault', 20, 'desktop', '', 'Memphis'], [3, 'c', 'v3', '/', 60, 'tablet', 'www.google.com', 'Nashville']];
   for (const [ago, dev, visit, path, sec, device, ref, city] of rows)
@@ -281,7 +293,7 @@ await step('Website insights: visitors, pages with time on each, devices, cities
   await page.click('.back'); await seen('Check YouTube setup');
 });
 await step('Listening insights: who is listening now, unique listeners, arrows, charts, no sideways scroll', async () => {
-  await page.evaluate(() => renderVault());
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });
   await page.click('[data-nav="insights"]:visible');
   await page.waitForFunction(() => /2 listening now/.test(document.body.innerText), null, { timeout: 8000 });
   const t = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
@@ -319,7 +331,7 @@ await step('the player tells the site it is playing (about every 30 s) and says 
   await page.evaluate(() => { delete audio.paused; S.now = null; });
 });
 await step('every Settings screen that used to be a grey pop-up now opens as a full page with a back link and a big title', async () => {
-  await page.evaluate(() => renderVault());
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });
   const rows = [['[data-missing]', 'Missing files', 'missing'], ['[data-fans]', 'Soul Tribe fan list', 'tribe'], ['[data-backups]', 'Backups', 'backups'], ['[data-areas]', 'Move off the Sheet', 'sheet'], ['[data-ownerpw]', 'Set owner password', 'password'], ['[data-problems]', 'Problems reported', 'problems'], ['[data-check-yt]', 'Check YouTube setup', 'youtube']];
   for (const [sel, name, word] of rows) {
    try {
@@ -337,7 +349,7 @@ await step('every Settings screen that used to be a grey pop-up now opens as a f
    } finally { await page.evaluate(() => { const m = document.querySelector('#modal'); if (m && !m.hidden) { m.hidden = true; m.innerHTML = ''; } }); }   // never leave a page open for the next steps
   }
 });
-await step('"Check YouTube setup" says YouTube is connected', async () => { await page.evaluate(() => renderVault()); await page.click('[data-check-yt]:visible'); await seen('YouTube is connected').catch(async e => { throw new Error('modal says: ' + (await page.evaluate(() => (document.querySelector('#modal') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await noSideways('youtube check'); await page.click('#modal [data-close]'); });
+await step('"Check YouTube setup" says YouTube is connected', async () => { await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await page.click('[data-check-yt]:visible'); await seen('YouTube is connected').catch(async e => { throw new Error('modal says: ' + (await page.evaluate(() => (document.querySelector('#modal') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 300)); }); await noSideways('youtube check'); await page.click('#modal [data-close]'); });
 let releaseId = null;
 await step('a new release from a YouTube playlist is created, hidden, with its songs', async () => {
   await page.evaluate(() => renderStudio()); await page.waitForSelector('#stuNewRel'); await page.click('#stuNewRel'); await page.waitForSelector('[data-nr-yt]'); /* new releases are made under Studio */ await page.evaluate(() => document.querySelector('[data-nr-yt]').click());
@@ -359,7 +371,7 @@ await step('Studio is calm: a release card, four tabs (Info, Songs, Links, Add) 
   await page.click('[data-stutab="info"]'); await page.waitForSelector('#stuSaveInfo', { state: 'visible' });
 });
 await step('Studio lists the new release and its songs', async () => {
-  await page.evaluate(() => renderVault()); await page.click('[data-nav="studio"]:visible'); await page.waitForSelector('#stuRel');   // (the release page has no Settings button on a phone, so this hop calls the app's own renderVault)
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await page.click('[data-nav="studio"]:visible'); await page.waitForSelector('#stuRel');   // (the release page has no Settings button on a phone, so this hop calls the app's own renderVault)
   await page.selectOption('#stuRel', releaseId);
   for (const t of ['First Test Song', 'Second Test Song']) await page.waitForFunction(x => document.querySelector('#main').textContent.includes(x), t, { timeout: 8000 });   // (songs sit in a collapsed section: textContent, not innerText) await noSideways('studio');
 });
@@ -412,7 +424,7 @@ await step('Extras: the release page says what each extra is (draft, remix, ...)
 });
 await step('Missing files: link a song you added with New release to the missing one', async () => {
   const lib = async () => { const o = await store(); return o; };
-  await page.evaluate(() => renderVault());                                                                // (the voice note step left us on the release page)
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });                                                                // (the voice note step left us on the release page)
   await page.click('[data-missing]:visible'); await page.waitForSelector('#modal .msrow', { timeout: 8000 });
   const row = '#modal .msrow[data-ms="ver_sg"]';
   assert.ok(await page.$(row), 'the missing song is listed');
@@ -496,7 +508,7 @@ await step('Start from a SoundCloud link in the New release form; Songs on links
   await seen('Created “New Single”');
   let nat = await store(); const rel = nat.releases.find((r) => r.title === 'New Single'); assert.ok(rel && rel.hidden, 'a hidden release was made'); assert.ok(rel.cover_file_id, 'with SoundCloud\'s picture as the cover');
   const trk = nat.tracks.find((t) => t.release_id === rel.release_id); assert.ok(trk && trk.sc_url);
-  await page.evaluate(() => renderVault()); await seen('Songs on links only'); await noSideways('settings');
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await seen('Songs on links only'); await noSideways('settings');
   assert.match(await page.textContent('[data-linkonly]'), /depend on a YouTube or SoundCloud link/);
   await page.click('[data-linkonly]'); await page.waitForSelector('#loList [data-lo]');
   const listed = await page.evaluate(() => [...document.querySelectorAll('#loList [data-lo]')].map((r) => r.dataset.lo));
@@ -678,7 +690,7 @@ await step('song downloads are for the owner link only: no song download for fan
 await step('Soul Tribe fan list: every submitted detail is listed, search works, a fan can be edited and deleted', async () => {
   await w.call('joinSubmit', [{ firstName: 'Ana', lastName: 'Lee', email: 'ana@example.com', emailConsent: true, city: 'Nashville, TN', birthYear: '1995', social: '@ana', howHeard: 'Instagram', favoriteRelease: 'soulLESS' }], { ip: '5.5.5.5' });
   await w.call('joinSubmit', [{ firstName: 'Bo', email: 'bo@example.com', emailConsent: true }], { ip: '6.6.6.6' });
-  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-fans]'); await page.evaluate(() => document.querySelector('[data-fans]').click());
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await page.waitForSelector('[data-fans]'); await page.evaluate(() => document.querySelector('[data-fans]').click());
   await page.waitForSelector('.fnrow'); await noSideways('fan list');
   assert.equal(await page.evaluate(() => document.querySelectorAll('.fnrow').length >= 2), true);
   await page.evaluate(() => { const r = [...document.querySelectorAll('.fnrow')].find((x) => /Ana Lee/.test(x.textContent)); r.open = true; });
@@ -708,7 +720,7 @@ await step('New release form: clear boxes with option cards, the seal date only 
   const nat = await store(); const rel = nat.releases.find((r) => r.title === 'No Songs Yet'); assert.ok(rel && rel.hidden === true, 'a hidden release with no songs yet was made');
 });
 await step('Backups page: the file list for an offsite copy; offline notice; the saved-copy service worker stays off in automated browsers', async () => {
-  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-backups]'); await page.evaluate(() => document.querySelector('[data-backups]').click()); await page.waitForSelector('#bkFiles');
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await page.waitForSelector('[data-backups]'); await page.evaluate(() => document.querySelector('[data-backups]').click()); await page.waitForSelector('#bkFiles');
   const dl = page.waitForEvent('download', { timeout: 10000 }); await page.click('#bkFiles'); const file = await dl; assert.equal(file.suggestedFilename(), 'soul-vault-files.json');
   await page.waitForFunction(() => /\d+ files, [\d.]+ MB/.test(document.querySelector('#bkFilesSt').textContent), null, { timeout: 8000 });
   assert.match(await page.textContent('.bkfiles'), /tools\/download-media\.py/, 'it says how to make the copy'); await noSideways('backups page'); await page.evaluate(() => closeModal());
@@ -716,7 +728,7 @@ await step('Backups page: the file list for an offsite copy; offline notice; the
   await page.evaluate(() => window.dispatchEvent(new Event('offline'))); await seen("You're offline");
 });
 await step('Shop: add a CD in Studio, it shows on Home and its release page with a safe Buy link; sold out turns the button off; text is escaped', async () => {
-  await page.evaluate(() => { renderVault(); }); await page.waitForSelector('[data-nav="shop"]');
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await page.waitForSelector('[data-nav="shop"]');
   assert.equal(await page.evaluate(() => !!document.querySelector('.settings-list [data-nav="shop"], [data-nav="shop"]')), true, 'Shop has its own row in Settings');
   await page.evaluate(() => { S.shopP = null; S.shop = null; renderStudio(); }); await page.waitForSelector('.studio .vh');
   assert.equal(await page.evaluate(() => !document.querySelector('#stuShop') && !document.querySelector('#stuShopItems')), true, 'Studio no longer has the Shop in it');
@@ -745,7 +757,7 @@ await step('Shop: add a CD in Studio, it shows on Home and its release page with
   assert.deepEqual(await page.evaluate(() => [!!document.querySelector('#shopHome a.shopbtn'), document.querySelector('#shopHome .shopbtn').textContent]), [false, 'Sold out']);
 });
 await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link on Home and in Settings clears the saved copy and reloads', async () => {
-  await page.evaluate(() => renderVault()); await seen('Refresh the app'); const html = await page.evaluate(() => document.body.innerText);
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await seen('Refresh the app'); const html = await page.evaluate(() => document.body.innerText);
   assert.ok(html.includes('Refresh the app'), 'Settings has Refresh the app');
   assert.ok(!html.includes('Producers, places and eras'), 'no Lore row in Settings');
   await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome());
@@ -895,7 +907,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   assert.equal(await page.evaluate(() => document.querySelector('#roadHome').hidden), true, 'no sheet: the card hides itself');
 });
 await step('Settings > Fill in link song details opens, checks YouTube and says what it would fill in (or why it cannot)', async () => {
-  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-fillfacts]');
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await page.waitForSelector('[data-fillfacts]');
   await page.click('[data-fillfacts]'); await page.waitForSelector('#ffSt');
   await page.waitForFunction(() => { const t = document.querySelector('#ffSt').textContent + (document.querySelector('#ffErr').hidden ? '' : document.querySelector('#ffErr').textContent); return t && !/^Checking/.test(t); }, null, { timeout: 8000 });
   const txt = await page.evaluate(() => document.querySelector('#ffSt').textContent + ' ' + document.querySelector('#ffErr').textContent);
@@ -1054,7 +1066,7 @@ await step('Header buttons: Studio, Share links and a Settings gear (no "NS" let
   assert.deepEqual(g, ['', true], 'a gear, not "NS"');
   await page.evaluate(() => renderShop()); await page.waitForSelector('.shoppg .vh');
   assert.deepEqual(await page.evaluate(() => [document.querySelector('.shoppg .vh [data-nav="vault"]').textContent.trim(), !!document.querySelector('.shoppg .vh [data-nav="vault"] svg')]), ['', true]);
-  await page.evaluate(() => renderVault()); await page.waitForSelector('.vh [data-nav="library"]');
+  await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await page.waitForSelector('.vh [data-nav="library"]');
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'NS')), false, 'no "NS" button left on the Settings page');
   await noSideways('settings header');
   if (process.env.SHOT_HDR) { await page.evaluate(() => renderLore()); await page.waitForSelector('.home-h-bar'); await page.locator('.home-h-bar').screenshot({ path: process.env.SHOT_HDR }); }

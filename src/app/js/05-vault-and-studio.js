@@ -5,48 +5,63 @@ function renderVault() {
   const tracks = S.lib.tracks.filter(t => !hidden(t) && primaryOf(t));
   const rels = S.lib.releases.filter(r => tracksOf(r.release_id).length);
   const live = (S.lib.shares || []).filter(s => s.active);
-  const tile = (cls, nav, icon, title, sub) => `<button class="tile ${cls}" ${nav}><span class="ic">${icon}</span><strong>${title}</strong><span>${sub}</span></button>`;
+  const tile = (cls, nav, icon, num, label) => `<button class="tile ${cls}" ${nav}><span class="ic">${icon}</span><strong>${num}</strong><span>${label}</span></button>`;
   // One row = icon, a one-line title with its note underneath, a chevron. Every row is built the same way so they all line up.
   const row = (attr, icon, title, sub, subId) => `<li><button ${attr}><span class="si">${icon}</span><span class="st"><b>${title}</b><span class="cs"${subId ? ` id="${subId}"` : ''}>${sub}</span></span><span class="sc">${I.chev}</span></button></li>`;
   const group = (title, rows, cls) => `<section class="sgroup ${cls || ''}"><h2 class="vsub">${title}</h2><ul class="acts-list">${rows.filter(Boolean).join('')}</ul></section>`;
+  // A folder: ONE row that opens to show the related rows inside it (kept open or shut while you are in the app).
+  S.setOpen = S.setOpen || new Set();
+  const folder = (key, icon, title, sub, rows, badge, badgeId) => `<details class="sset" data-sset="${key}"${S.setOpen.has(key) ? ' open' : ''}><summary><span class="si">${icon}</span><span class="st"><b>${title}</b><span class="cs">${sub}</span></span>${badge != null || badgeId ? `<span class="sbadge"${badgeId ? ` id="${badgeId}"` : ''}>${badge == null ? '' : badge}</span>` : ''}<span class="sc">${I.chev}</span></summary><ul class="acts-list inner">${rows.filter(Boolean).join('')}</ul></details>`;
+  const fold = (cls, title, items) => `<section class="sgroup ${cls}"><h2 class="vsub">${title}</h2><div class="sfolders">${items.filter(Boolean).join('')}</div></section>`;
   const edge = EDGE_UPLOADS();
-  $('#main').innerHTML = `<div class="wrap">
+  const nLink = linkOnlySongs().length;
+  $('#main').innerHTML = `<div class="wrap setpg">
     <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Settings</b></h1><button class="round" data-nav="library" aria-label="Home">${I.home}</button></header>
-    <div class="tiles three">
-      ${tile('r', 'data-nav="search"', I.note, 'Songs', tracks.length + ' songs')}
-      ${tile('g', 'data-jump="all"', I.disc, 'Releases', rels.length + ' releases')}
-      ${tile('g', 'data-nav="shares"', I.link, 'Share links', live.length + ' on')}
+    <div class="tiles three setstats">
+      ${tile('r', 'data-nav="search"', I.note, tracks.length, 'Songs')}
+      ${tile('g', 'data-jump="all"', I.disc, rels.length, 'Releases')}
+      ${tile('g', 'data-nav="shares"', I.link, live.length, 'Share links on')}
     </div>
-    ${group('Create &amp; edit', [
-      row('data-nav="studio"', I.edit, 'Studio', 'New releases, songs, info, links and your bio'),
-      row('data-nav="shop"', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>', 'Shop', 'CDs and merch with a Stripe buy link'),
-      edge ? row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio') : '',
-      edge ? row('data-fillfacts', I.clock, 'Fill in link song details', 'Length and release date from YouTube, for songs added earlier') : '',
-      edge ? row('data-linkonly', I.link, 'Songs on links only', linkOnlySongs().length ? linkOnlySongs().length + ' depend on a YouTube or SoundCloud link' : 'All songs have their own file') : '',
-    ])}
+    <section class="sgroup g-create"><h2 class="vsub">Create &amp; edit</h2>
+      <button class="shero" data-nav="studio"><span class="si">${I.edit}</span><span class="st"><b>Studio</b><span class="cs">New releases, songs, info, links and your bio</span></span><span class="sc">${I.chev}</span></button>
+      <div class="sfolders">
+        <ul class="acts-list single">${row('data-nav="shop"', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>', 'Shop', 'CDs and merch with a Stripe buy link')}</ul>
+        ${edge ? folder('songs', I.up2, 'Fix songs', 'Missing audio, link-only songs, lengths and dates', [
+          row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio'),
+          row('data-fillfacts', I.clock, 'Fill in link song details', 'Length and release date from YouTube, for songs added earlier'),
+          row('data-linkonly', I.link, 'Songs on links only', nLink ? nLink + ' depend on a YouTube or SoundCloud link' : 'All songs have their own file'),
+        ], nLink ? nLink : null) : ''}
+      </div>
+    </section>
     ${group('Fans &amp; activity', [
       row('data-nav="siteinsights"', I.chart, 'Website insights', 'Visitors, pages, cities and devices'),
       row('data-nav="insights"', I.chart, 'Listening insights', 'Plays and listeners'),
       edge ? row('data-fans', I.link, 'Soul Tribe fan list', 'Sign-ups from /join, to download') : '',
-    ])}
-    ${group('Health checks', [
-      row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version. You have v' + esc(APP_VERSION || '?')),
-      row('data-check-yt', I.film, 'Check YouTube setup', 'Needed for playlists from YouTube'),
-      row('data-yt-titles', I.up2, 'YouTube titles', 'checking…', 'ytTitlesCount'),
-      row('data-check-playback', I.play, 'Check playback setup', 'Tests your API key'),
-      row('data-problems', I.layers, 'Problems reported', 'checking…', 'probCount'),
-    ])}
-    ${group('Backups &amp; Cloudflare', [
-      edge ? row('data-backups', I.up2, 'Backups', 'A copy of everything on Cloudflare') : '',
-      row('data-backup', I.up2, 'Back up my Sheet now', esc(backupLine())),
-      edge ? row('data-areas', I.layers, 'Move off the Sheet', 'Move playlists, extras and bio over') : '',
-    ])}
-    ${group('Account', [
-      row('data-ownerpw', I.lock, 'Set owner password', 'Sign in at /admin, no key needed'),
-      row('data-signout', I.x, 'Sign out on this device', 'Sign back in with your password'),
-      row('data-ownerkey', I.link, 'Copy owner key', 'For Cloudflare setup. Keep private'),
-    ], 'account')}
+    ], 'g-fans')}
+    <section class="sgroup g-health"><h2 class="vsub">Health &amp; data</h2>
+      <ul class="acts-list single">${row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version. You have v' + esc(APP_VERSION || '?'))}</ul>
+      <div class="sfolders">
+        ${folder('health', I.layers, 'Health checks', 'YouTube, playback and problems reported', [
+          row('data-check-yt', I.film, 'Check YouTube setup', 'Needed for playlists from YouTube'),
+          row('data-yt-titles', I.up2, 'YouTube titles', 'checking…', 'ytTitlesCount'),
+          row('data-check-playback', I.play, 'Check playback setup', 'Tests your API key'),
+          row('data-problems', I.layers, 'Problems reported', 'checking…', 'probCount'),
+        ], null, 'healthBadge')}
+        ${folder('data', I.up2, 'Backups &amp; Cloudflare', esc(backupLine()), [
+          edge ? row('data-backups', I.up2, 'Backups', 'A copy of everything on Cloudflare') : '',
+          row('data-backup', I.up2, 'Back up my Sheet now', esc(backupLine())),
+          edge ? row('data-areas', I.layers, 'Move off the Sheet', 'Move playlists, extras and bio over') : '',
+        ])}
+      </div>
+    </section>
+    <section class="sgroup account"><h2 class="vsub">Account</h2><div class="sfolders">
+      ${folder('account', I.lock, 'Sign-in &amp; keys', 'Owner password, sign out, owner key', [
+        row('data-ownerpw', I.lock, 'Set owner password', 'Sign in at /admin, no key needed'),
+        row('data-signout', I.x, 'Sign out on this device', 'Sign back in with your password'),
+        row('data-ownerkey', I.link, 'Copy owner key', 'For Cloudflare setup. Keep private'),
+      ])}</div></section>
   </div>`;
+  $$('details[data-sset]').forEach(d => d.addEventListener('toggle', () => { d.open ? S.setOpen.add(d.dataset.sset) : S.setOpen.delete(d.dataset.sset); }));
   $('[data-ownerpw]').addEventListener('click', openOwnerPw);
   if ($('[data-areas]')) $('[data-areas]').addEventListener('click', openAreas);
   if ($('[data-fans]')) $('[data-fans]').addEventListener('click', openFans);
