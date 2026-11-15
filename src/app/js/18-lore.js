@@ -10,11 +10,11 @@ function loreTimelineHtml(L) {
   L.eras.forEach(e => { const y = String(e.r.year || '').trim() || 'Undated'; if (!years.has(y)) years.set(y, []); years.get(y).push(e); });
   const keys = [...years.keys()].sort((a, b) => (b === 'Undated') - (a === 'Undated') || b.localeCompare(a)).filter(k => k !== 'Undated').concat(years.has('Undated') ? ['Undated'] : []);
   if (!keys.length) return '';
-  return `<section class="loretime" aria-label="Year by year"><h2 class="sh"><span><b>Year</b> by year</span></h2><ol class="ltl">${keys.map(y => {
+  return `<section class="loretime" aria-label="Year by year"><details class="ltdet" data-lore-tl${S.loreTl ? ' open' : ''}><summary class="sh"><span><b>Year</b> by year</span><span class="ltsum cs">${keys.length} ${keys.length === 1 ? 'year' : 'years'}<i aria-hidden="true"></i></span></summary><ol class="ltl">${keys.map(y => {
     const es = years.get(y), songs = es.reduce((n, e) => n + e.songs, 0);
     return `<li><div class="lty"><b>${esc(y)}</b><span class="cs">${es.length} ${es.length === 1 ? 'release' : 'releases'} · ${songs} ${songs === 1 ? 'song' : 'songs'}</span></div>
       <div class="ltr">${es.map(e => `<button type="button" class="lchip" data-rel="${esc(e.r.release_id)}">${esc(e.r.title)}<i>${esc(typeOf(e.r))}</i></button>`).join('')}</div></li>`;
-  }).join('')}</ol></section>`;
+  }).join('')}</ol></details></section>`;
 }
 function loreStoriesHtml(all) {
   const ts = S.lib.tracks.filter(t => t.voice_note_id && !hidden(t) && primaryOf(t)); if (!ts.length) return '';
@@ -29,4 +29,5 @@ function fillLoreExtras(L) {
   set('loreStory', loreStoryHtml()); set('loreTimeline', loreTimelineHtml(L));
   const drawStories = all => { set('loreStories', loreStoriesHtml(all)); const b = $('[data-lore-stories-all]'); if (b) b.addEventListener('click', () => drawStories(true)); };
   drawStories(false);
+  const tl = $('[data-lore-tl]'); if (tl) tl.addEventListener('toggle', () => { S.loreTl = tl.open; });
 }
