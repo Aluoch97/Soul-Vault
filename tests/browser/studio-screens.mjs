@@ -725,7 +725,12 @@ await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link
   assert.ok(!html.includes('Producers, places and eras'), 'no Lore row in Settings');
   await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome());
   await page.waitForSelector('[data-refresh]');
+  const ver0 = await page.evaluate(() => [APP_VERSION, document.querySelector('.appver').textContent]);
+  assert.ok(/^\d+-[0-9a-f]+$/.test(ver0[0]) && ver0[1] === 'v' + ver0[0], 'the version is shown: ' + ver0);
+  const urls = []; page.on('request', (rq) => { if (rq.isNavigationRequest()) urls.push(rq.url()); });
   const nav = page.waitForNavigation({ timeout: 8000 }); await page.click('a[data-refresh]'); await nav;
+  assert.ok(urls.some((u) => /[?&]r=\d+/.test(u)), 'it reloads on a fresh address nothing has saved: ' + urls.join(' '));
+  await page.waitForFunction(() => !new URL(location.href).searchParams.has('r'), null, { timeout: 5000 });   // ...and that extra part is removed again
 });
 await step('project cards never show a blank square: cover, else a song cover, else the YouTube picture, else a plain tile', async () => {
   const r = await page.evaluate(() => {
@@ -998,6 +1003,7 @@ await step('Header buttons: Studio, Share links and a Settings gear (no "NS" let
   const h = await page.evaluate(() => ({ btns: [...document.querySelectorAll('.home-h-bar .hbtns button')].map((b) => [b.getAttribute('data-nav'), b.getAttribute('aria-label'), !!b.querySelector('svg'), b.textContent.trim()]) }));
   assert.deepEqual(h.btns, [['studio', 'Studio', true, ''], ['shares', 'Share links', true, ''], ['vault', 'Settings', true, '']], JSON.stringify(h.btns));
   await page.click('.home-h-bar [data-nav="studio"]'); await page.waitForSelector('.studio .vh', { timeout: 8000 });
+  await page.waitForSelector('.studio #stuBio', { timeout: 15000 });   // wait until Studio has finished loading, or its late redraw lands on top of the next page
   assert.equal(await page.evaluate(() => document.querySelector('.studio .vh').innerText.includes('Studio')), true);
   const g = await page.evaluate(() => [document.querySelector('.studio .vh [data-nav="vault"]').textContent.trim(), !!document.querySelector('.studio .vh [data-nav="vault"] svg')]);
   assert.deepEqual(g, ['', true], 'a gear, not "NS"');

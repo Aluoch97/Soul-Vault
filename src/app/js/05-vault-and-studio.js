@@ -30,7 +30,7 @@ function renderVault() {
       edge ? row('data-fans', I.link, 'Soul Tribe fan list', 'Sign-ups from /join, to download') : '',
     ])}
     ${group('Health checks', [
-      row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version (use this on the home-screen app)'),
+      row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version. You have v' + esc(APP_VERSION || '?')),
       row('data-check-yt', I.film, 'Check YouTube setup', 'Needed for playlists from YouTube'),
       row('data-yt-titles', I.up2, 'YouTube titles', 'checking…', 'ytTitlesCount'),
       row('data-check-playback', I.play, 'Check playback setup', 'Tests your API key'),
