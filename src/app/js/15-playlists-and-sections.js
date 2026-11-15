@@ -30,7 +30,7 @@ function picksRow() {
     <div class="vs-ribbon pickribbon">${I.star}<span>Curated by Nicólas Soul</span></div>
     <h2 class="sh"><span><b>Soul's Picks</b></span></h2>
     <p class="cs vs-blurb">Playlists I put together myself: the verses I'm proudest of and the songs where I sing my hardest.</p>
-    <div class="picksgrid">${ps.map(pickCard).join('')}</div></section>`;
+    <div class="hrow picksgrid" role="list">${ps.map(pickCard).join('')}</div></section>`;
 }
 function playlistsRow() {
   const ps = (S.lib.playlists || []).filter(p => !p.pick);
