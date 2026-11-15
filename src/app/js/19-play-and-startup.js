@@ -128,7 +128,8 @@ renderVault = function () { __renderVault.apply(this, arguments); vaultExtras();
 async function vaultExtras() {
   if (!OWNER) return;
   const pc = $('#probCount'), yt = $('#ytTitlesCount');
-  try { const s = await run('errorSummary', BOOT.key); S.errSum = s; if (pc) pc.textContent = s.total ? `${s.total} in the last 7 days` : 'none in the last 7 days'; } catch (e) { if (pc) pc.textContent = 'could not check'; }
+  const hb = $('#healthBadge');
+  try { const s = await run('errorSummary', BOOT.key); S.errSum = s; if (pc) pc.textContent = s.total ? `${s.total} in the last 7 days` : 'none in the last 7 days'; if (hb) { hb.textContent = s.total ? String(s.total) : '✓'; hb.classList.toggle('warn', !!s.total); hb.classList.toggle('ok', !s.total); } } catch (e) { if (pc) pc.textContent = 'could not check'; }
   try { const y = await run('youtubeTitleStatus', BOOT.key); if (yt) yt.textContent = y.total ? `${y.total} from YouTube${y.stale ? ', ' + y.stale + ' due for a refresh' : ', all fresh'}` : 'none stored from YouTube'; } catch (e) { if (yt) yt.textContent = 'could not check'; }
 }
 function showProblems() {
