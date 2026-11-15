@@ -220,14 +220,18 @@ async function saveLetterEdits(btn, clear) {
 const vn = new Audio(); vn.preload = 'none';
 async function playVoice(tid) {
   const t = trk(tid); if (!t || !t.voice_note_id) return;
+  S.vnTitle = t.title;
   audio.pause();
   if (S.videoMode) setMode('song');
   $('#vbT').textContent = 'On ' + t.title; $('#voicebar').hidden = false;
+  // An older note is a Drive file, so its address arrives after a wait, and an iPhone only starts sound inside the tap itself:
+  // start the player on a silent clip right now (still inside the tap), then swap in the note when its address is ready.
+  if (!/^r2:/.test(t.voice_note_id)) { try { vn.src = SILENT; const p0 = vn.play(); if (p0 && p0.catch) p0.catch(() => {}); } catch (e) { /* the note may still play */ } }
   try {
     // a note kept on our own storage is "r2:<file>" and plays straight from there; an older one is a Google Drive file
     vn.src = /^r2:/.test(t.voice_note_id) ? MEDIA_BASE + t.voice_note_id.slice(3) : (await run('prepareAudio', t.voice_note_id, BOOT.key, BOOT.token)).stream;
     await vn.play(); award('voice');
-  } catch (e) { $('#vbT').textContent = 'This voice note could not be played right now.'; }
+  } catch (e) { $('#vbT').textContent = 'Tap the play button to hear this voice note.'; }   // (the play button in the bar starts it if the phone held it back)
 }
 vn.addEventListener('timeupdate', () => $('#vnBar').style.setProperty('--p', (vn.duration ? vn.currentTime / vn.duration * 100 : 0) + '%'));
 vn.addEventListener('play', () => ($('[data-vn-toggle]').innerHTML = I.pause));

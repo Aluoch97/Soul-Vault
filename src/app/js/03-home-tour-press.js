@@ -122,6 +122,7 @@ function renderHome() {
       <p class="herop">${esc(SITE.tagline)}</p>
       <div class="linkgrid" role="group" aria-label="Listen and follow">${SITE.links.map(l => `<a class="soc" href="${esc(l[1])}" target="_blank" rel="noopener" aria-label="${esc(l[0])}" title="${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : esc(l[0])}</a>`).join('')}</div>
       <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
+      <a class="nulink" href="https://www.nrnszn.com" target="_blank" rel="noopener">NuRenaissance Media<span aria-hidden="true"> ↗</span><span class="sr-only"> (opens nrnszn.com)</span></a>
     </section>
     <section class="hsec" aria-label="New music">
       <h2 class="sh"><span><b>New</b> music</span></h2>
@@ -275,21 +276,29 @@ function renderVideo() {
       <button class="vidstage" type="button" data-yt="${esc(f.id)}" aria-label="Play ${esc(vidTitle(f.title))}"><img src="https://i.ytimg.com/vi/${esc(f.id)}/hqdefault.jpg" alt="" onerror="this.remove()"><i class="vidplay">${I.play}</i></button>
       <div class="vidmeta"><span class="vidtag">${esc(f.tag)}</span><h2 class="vidtitle">${esc(vidTitle(f.title))}</h2>${vidMeta(f) ? `<span class="vidstat">${esc(vidMeta(f))}</span>` : ''}
         <div class="vidacts">${song ? `<button class="pill main vidsong" type="button" data-vid-song="${esc(song.track_id)}">${I.play}Play the song</button>` : ''}<a class="vidyt" href="https://www.youtube.com/watch?v=${esc(f.id)}" target="_blank" rel="noopener">Watch on YouTube</a></div></div></section>`;
-    const rest = vs.map((v, i) => i === cur ? '' : `<button type="button" class="vidcard" data-vidpick="${i}" aria-label="Play ${esc(vidTitle(v.title))}">
-      <span class="vidpost"><img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i class="vidplay sm">${I.play}</i>${i === cur + 1 ? '<span class="vidnext">Up next</span>' : ''}</span><span class="vidname">${esc(vidTitle(v.title))}</span>${vidMeta(v) ? `<span class="vidstat">${esc(vidMeta(v))}</span>` : ''}</button>`).join('');
-    body.innerHTML = hero + (vs.length > 1 ? `<h2 class="vidmore">More <b>${esc(sec[2].toLowerCase())}</b> <span>${vs.length - 1}</span></h2><div class="vidwall">${rest}</div>` : '')
+    const restAll = vs.map((v, i) => i === cur ? '' : `<button type="button" class="vidcard" data-vidpick="${i}" aria-label="Play ${esc(vidTitle(v.title))}">
+      <span class="vidpost"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i class="vidplay sm">${I.play}</i>${i === cur + 1 ? '<span class="vidnext">Up next</span>' : ''}</span><span class="vidname">${esc(vidTitle(v.title))}</span>${vidMeta(v) ? `<span class="vidstat">${esc(vidMeta(v))}</span>` : ''}</button>`).filter(Boolean), VID_FIRST = 24, rest = restAll.slice(0, VID_FIRST).join('');
+    body.innerHTML = hero + (vs.length > 1 ? `<h2 class="vidmore">More <b>${esc(sec[2].toLowerCase())}</b> <span>${vs.length - 1}</span></h2><div class="vidwall">${rest}</div>${restAll.length > VID_FIRST ? `<button type="button" class="pill soft vidmorebtn" data-vidmore>Show ${restAll.length - VID_FIRST} more</button>` : ''}` : '')
       + (yt && !(k === 'freestyles' && S.videoSub !== 'all') ? `<p class="cs sitefoot"><a href="${esc(yt)}" target="_blank" rel="noopener">Open the whole playlist on YouTube</a></p>` : '');
     wireYt(body);
     if (autoplay) { const st = $('.vidstage', body); if (st) st.click(); }
     $$('[data-vid-song]', body).forEach(b => b.addEventListener('click', () => { const id = b.dataset.vidSong; draw(k, cur); const t = trk(id); if (t && primaryOf(t)) playFromTap(primaryOf(t).version_id); }));   // the video goes back to its poster, the song plays
     $$('[data-vidsortsel]').forEach(sel => sel.addEventListener('change', () => { S.videoSort = sel.value; draw(k, 0); }));
-    $$('[data-vidpick]', body).forEach(b => b.addEventListener('click', () => { draw(k, +b.dataset.vidpick, true); window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }));
+    const wirePick = b => b.addEventListener('click', () => { draw(k, +b.dataset.vidpick, true); window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
+    $$('[data-vidpick]', body).forEach(wirePick);
+    const more = $('[data-vidmore]', body); if (more) more.addEventListener('click', () => { const wall = $('.vidwall', body); wall.insertAdjacentHTML('beforeend', restAll.slice(VID_FIRST).join('')); $$('[data-vidpick]', wall).forEach(b => { if (!b.dataset.w) { b.dataset.w = '1'; wirePick(b); } }); more.remove(); });
   };
   const pick = k => { S.videoTab = k; syncUrl(); btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.vidtab === k))); draw(k, 0); };
   btns.forEach(b => b.addEventListener('click', () => { pick(b.dataset.vidtab); window.scrollTo(0, 0); }));
   $('#vq').addEventListener('input', e => { S.videoQ = e.target.value; draw(S.videoTab, 0); });
   $('#vauto').addEventListener('change', e => { S.videoAuto = e.target.checked; ls.set('sv_vidauto', S.videoAuto); draw(S.videoTab, S.videoCur || 0); });
   pick(S.videoTab);
-  if (!S.videoLists) runBase('getVideoLists').then(r => { S.videoLists = (r && r.lists) || []; if (S.view === 'video') draw(S.videoTab, 0); }).catch(() => { S.videoLists = []; if (S.view === 'video') draw(S.videoTab, 0); });
+  if (!S.videoLists) S.videoLists = keptVideoLists();   // the last list kept on this device shows at once
+  if (S.videoLists) draw(S.videoTab, 0);
+  loadVideoLists().then(lists => {
+    const was = JSON.stringify(S.videoLists || null);
+    if (lists && lists.length) S.videoLists = lists; else if (!S.videoLists) S.videoLists = [];
+    if (S.view === 'video' && JSON.stringify(S.videoLists) !== was && !$('.vidhero iframe')) draw(S.videoTab, S.videoCur || 0);   // (not while a video is playing)
+  });
   window.scrollTo(0, 0);
 }
