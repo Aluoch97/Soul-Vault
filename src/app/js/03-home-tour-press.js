@@ -133,7 +133,6 @@ function renderHome() {
       <div class="hgrid2">${yt(SITE.feature, 'Feature')}${yt(SITE.video, 'Video')}</div>
     </section>
     <section class="hsec roadsec" id="roadHome" aria-label="On the road" hidden></section>
-    <div id="picksHome"></div>
     <section class="hsec shopsec" id="shopHome" aria-label="Shop" hidden></section>
     ${join ? `<section class="tribe" id="tribe" data-join="${esc(join)}"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>

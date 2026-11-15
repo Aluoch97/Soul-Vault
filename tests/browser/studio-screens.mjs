@@ -939,7 +939,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   const r = await page.evaluate(() => ({ txt: document.querySelector('#roadHome').innerText, ring: document.querySelector('#roadHome .roadring text').textContent, html: document.querySelector('#roadHome').innerHTML, resume: !!document.querySelector('#homeResume .resume'), picks: !!document.querySelector('#picksHome .pickcard') }));
   assert.match(r.txt, /2 of 100 shows played/); assert.match(r.txt, /The Planned Room, Atlanta, GA/); assert.equal(r.ring, '2');
   assert.ok(!r.html.includes('<b>Room'), 'sheet text is escaped');
-  assert.equal(r.resume, false, 'Continue listening is not on Home (it stays on the Music tab)'); assert.equal(r.picks, true, "a Soul's Pick shows on Home");
+  assert.equal(r.resume, false, 'Continue listening is not on Home (it stays on the Music tab)'); assert.equal(r.picks, false, "Soul's Picks are on the Music tab only, not on Home"); assert.equal(await page.evaluate(() => !!document.querySelector('.homepg #picks, #picksHome')), false, 'no Soul\'s Picks section anywhere on Home');
   const lay = await page.evaluate(() => {
     const h = [...document.querySelectorAll('.homepg h2')].map((e) => e.className + ':' + e.textContent.trim());
     const cols = (sel) => { const g = document.querySelector(sel); return g ? getComputedStyle(g).gridTemplateColumns.split(' ').length : 0; };
