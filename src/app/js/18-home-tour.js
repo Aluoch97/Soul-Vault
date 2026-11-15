@@ -27,6 +27,5 @@ async function fillRoad() {
 }
 // Everything on Home that needs data after the page is drawn.
 function fillHomeExtras() {
-  fillShop(); fillRoad();
-  const p = $('#picksHome'); if (p && S.lib) { p.innerHTML = picksRow(); loadCovers(); }
+  fillShop(); fillRoad();   // (Soul's Picks live on the Music tab only)
 }
