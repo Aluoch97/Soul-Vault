@@ -28,7 +28,7 @@ const shopItemForm = (it, rels) => `<div class="shopitem" data-shop-item data-id
   <div class="save"><button type="button" class="pill soft danger" data-shop-del>${I.trash}Remove this item</button></div></div>`;
 async function wireShopEditor() {
   const box = $('#stuShopItems'); if (!box) return;
-  const rels = (S.stu && S.stu.releases || []).slice().sort((a, b) => String(a.title).localeCompare(String(b.title)));
+  const rels = (S.lib && S.lib.releases || []).slice().sort((a, b) => String(a.title).localeCompare(String(b.title)));
   const items = await loadShop(); if (!$('#stuShopItems')) return;
   const draw = list => { box.innerHTML = list.length ? list.map(it => shopItemForm(it, rels)).join('') : '<p class="cs">Nothing for sale yet. Tap Add an item.</p>'; };
   draw(items);

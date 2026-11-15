@@ -93,7 +93,7 @@ await step('opens as the owner and shows the library', async () => { await page.
 await step('at start-up the owner app loads Studio\'s saved settings (unreleased flags, listen links)', async () => {
   await page.waitForFunction(() => S.links && S.links.flags && S.links.flags.tracks && S.links.flags.tracks.trk_a1 === true, null, { timeout: 8000 });
 });
-await step('Settings opens and lists the owner tools', async () => { await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore .avatar[data-nav="vault"]'); await page.click('.wrap.lore .avatar[data-nav="vault"]'); await seen('Check YouTube setup'); await seen('Studio');
+await step('Settings opens and lists the owner tools', async () => { await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-nav="vault"]'); await page.click('.wrap.lore [data-nav="vault"]'); await seen('Check YouTube setup'); await seen('Studio');
   assert.deepEqual(await page.evaluate(() => ['Upload a new release', 'Your bio', 'Recently played'].map((t) => document.body.innerText.includes(t))), [false, false, false], 'Settings no longer lists the upload, bio or Recently played rows (uploads and the bio are in Studio)'); await noSideways('settings'); if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true }); });
 await step('Settings rows are tidy: grouped, one-line titles, same height, same layout', async () => {
   const m = await page.evaluate(() => { const rows = [...document.querySelectorAll('.acts-list button')].map((b) => ({ h: Math.round(b.getBoundingClientRect().height), t: Math.round(b.querySelector('b').getBoundingClientRect().height), x: Math.round(b.querySelector('.si').getBoundingClientRect().left), title: b.querySelector('b').textContent }));
@@ -243,9 +243,9 @@ await step('Video tab: Freestyles (originals + remixes together), Music Videos a
 await step('Lore: only the new-release, share-links and Settings buttons are at the top (no Karibu tena / Soul Vault greeting)', async () => {
   await page.evaluate(() => renderLore());
   await page.waitForSelector('.wrap.lore .home-h');
-  const t = await page.evaluate(() => { const w = document.querySelector('.wrap.lore'), h = w.querySelector('.home-h'); return { first: w.firstElementChild === h, hello: !!h.querySelector('.hello'), brand: !!h.querySelector('.brand'), btns: ['[data-nav="shares"]', '.avatar[data-nav="vault"]', '[data-newrel]'].map((q) => !!h.querySelector(q)) }; });
-  assert.ok(t.first, 'it is the very first thing on the Lore page'); assert.equal(t.hello, false, 'no greeting on Lore'); assert.equal(t.brand, false, 'no Soul Vault name on Lore'); assert.deepEqual(t.btns, [true, true, false], 'share links and Settings only: new releases are made under Studio');
-  await noSideways('lore page'); await page.click('.wrap.lore .home-h .avatar');
+  const t = await page.evaluate(() => { const w = document.querySelector('.wrap.lore'), h = w.querySelector('.home-h'); return { first: w.firstElementChild === h, hello: !!h.querySelector('.hello'), brand: !!h.querySelector('.brand'), btns: ['[data-nav="shares"]', '[data-nav="vault"]', '[data-newrel]'].map((q) => !!h.querySelector(q)) }; });
+  assert.ok(t.first, 'it is the very first thing on the Lore page'); assert.equal(t.hello, false, 'no greeting on Lore'); assert.equal(t.brand, false, 'no Soul Vault name on Lore'); assert.deepEqual(t.btns, [true, true, false], 'share links and Settings only here (Studio has its own button; new releases are made under Studio)');
+  await noSideways('lore page'); await page.click('.wrap.lore .home-h [data-nav="vault"]');
   await seen('Check YouTube setup');                                                                         // the avatar opens Settings
   const fctx = await phoneContext(), fan = await fctx.newPage();
   await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLore()); await fan.waitForSelector('.wrap.lore .lorephotos');
@@ -691,8 +691,11 @@ await step('Backups page: the file list for an offsite copy; offline notice; the
   await page.evaluate(() => window.dispatchEvent(new Event('offline'))); await seen("You're offline");
 });
 await step('Shop: add a CD in Studio, it shows on Home and its release page with a safe Buy link; sold out turns the button off; text is escaped', async () => {
-  await page.evaluate(() => { S.shopP = null; S.shop = null; renderStudio(); }); await page.waitForSelector('#stuShop');
-  await page.evaluate(() => { document.querySelector('#stuShop').open = true; });
+  await page.evaluate(() => { renderVault(); }); await page.waitForSelector('[data-nav="shop"]');
+  assert.equal(await page.evaluate(() => !!document.querySelector('.settings-list [data-nav="shop"], [data-nav="shop"]')), true, 'Shop has its own row in Settings');
+  await page.evaluate(() => { S.shopP = null; S.shop = null; renderStudio(); }); await page.waitForSelector('.studio .vh');
+  assert.equal(await page.evaluate(() => !document.querySelector('#stuShop') && !document.querySelector('#stuShopItems')), true, 'Studio no longer has the Shop in it');
+  await page.evaluate(() => { S.shopP = null; S.shop = null; renderShop(); }); await page.waitForSelector('#stuShopItems');
   await page.click('#stuShopAdd'); await page.waitForSelector('[data-shop-item]');
   await page.fill('[data-shop-item] [data-sh="title"]', 'Rise <b>of</b> the Lost (CD)'); await page.fill('[data-shop-item] [data-sh="price"]', '$12');
   await page.fill('[data-shop-item] [data-sh="blurb"]', 'Signed copy.');
@@ -710,7 +713,7 @@ await step('Shop: add a CD in Studio, it shows on Home and its release page with
   await page.evaluate(() => { S.releaseId = 'rel_pub'; renderRelease('rel_pub'); }); await page.waitForSelector('#shopRel .shopcard', { timeout: 8000 });
   await page.evaluate(() => { S.releaseId = 'rel_single'; renderRelease('rel_single'); }); await page.waitForTimeout(400);
   assert.equal(await page.evaluate(() => document.querySelectorAll('#shopRel .shopcard').length), 0, 'only the chosen release shows it');
-  await page.evaluate(() => { S.shopP = null; renderStudio(); }); await page.waitForSelector('#stuShop'); await page.evaluate(() => { document.querySelector('#stuShop').open = true; });
+  await page.evaluate(() => { S.shopP = null; renderShop(); }); await page.waitForSelector('#stuShopItems');
   await page.waitForSelector('[data-shop-item] [data-sh="sold_out"]'); await page.check('[data-shop-item] [data-sh="sold_out"]'); await page.click('#stuShopSave'); await page.waitForFunction(() => S.shop && S.shop[0] && S.shop[0].sold_out === true, null, { timeout: 8000 });
   assert.equal((await w.call('getShop', [])).result[0].sold_out, true);
   await page.evaluate(() => { closeModal && closeModal(); renderHome(); }); await page.waitForSelector('#shopHome .shopcard.sold', { timeout: 8000 });
@@ -989,6 +992,21 @@ await step('Video tab: search, Up next, Play the song for a video that is a song
   await page.click('[data-vid-song]'); await page.waitForFunction(() => S.now && S.now.t.track_id === 'trk_a1', null, { timeout: 6000 });
   assert.equal(await page.evaluate(() => !document.querySelector('.vidhero iframe')), true, 'the video stopped');
   await noSideways('video tab'); await page.evaluate(() => { audio.pause(); trk('trk_a1').video_url = ''; S.videoLists = null; });
+});
+await step('Header buttons: Studio, Share links and a Settings gear (no "NS" letters); Studio and Shop pages have the gear too', async () => {
+  await page.evaluate(() => { renderLore(); }); await page.waitForSelector('.home-h-bar .hbtns');
+  const h = await page.evaluate(() => ({ btns: [...document.querySelectorAll('.home-h-bar .hbtns button')].map((b) => [b.getAttribute('data-nav'), b.getAttribute('aria-label'), !!b.querySelector('svg'), b.textContent.trim()]) }));
+  assert.deepEqual(h.btns, [['studio', 'Studio', true, ''], ['shares', 'Share links', true, ''], ['vault', 'Settings', true, '']], JSON.stringify(h.btns));
+  await page.click('.home-h-bar [data-nav="studio"]'); await page.waitForSelector('.studio .vh', { timeout: 8000 });
+  assert.equal(await page.evaluate(() => document.querySelector('.studio .vh').innerText.includes('Studio')), true);
+  const g = await page.evaluate(() => [document.querySelector('.studio .vh [data-nav="vault"]').textContent.trim(), !!document.querySelector('.studio .vh [data-nav="vault"] svg')]);
+  assert.deepEqual(g, ['', true], 'a gear, not "NS"');
+  await page.evaluate(() => renderShop()); await page.waitForSelector('.shoppg .vh');
+  assert.deepEqual(await page.evaluate(() => [document.querySelector('.shoppg .vh [data-nav="vault"]').textContent.trim(), !!document.querySelector('.shoppg .vh [data-nav="vault"] svg')]), ['', true]);
+  await page.evaluate(() => renderVault()); await page.waitForSelector('.vh [data-nav="library"]');
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'NS')), false, 'no "NS" button left on the Settings page');
+  await noSideways('settings header');
+  if (process.env.SHOT_HDR) { await page.evaluate(() => renderLore()); await page.waitForSelector('.home-h-bar'); await page.locator('.home-h-bar').screenshot({ path: process.env.SHOT_HDR }); }
 });
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;

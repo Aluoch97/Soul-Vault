@@ -321,6 +321,7 @@ document.addEventListener('click', e => {
     else if (d.nav === 'insights' && OWNER) renderInsights();
     else if (d.nav === 'siteinsights' && OWNER) renderSiteInsights();
     else if (d.nav === 'studio' && OWNER) renderStudio();
+    else if (d.nav === 'shop' && OWNER) renderShop();
     else if (d.nav === 'home') renderHome();
     else if (d.nav === 'tour') renderTour();
     else if (d.nav === 'press') renderPress();
