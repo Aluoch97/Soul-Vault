@@ -60,10 +60,10 @@ function trackRow(t, withRelease, xkind) {
 }
 
 function markPlaying() {
-  $$('.row.on, .chip.on').forEach(el => el.classList.remove('on'));
+  $$('.row.on, .chip.on, .plsong.on').forEach(el => el.classList.remove('on'));
   document.body.classList.toggle('paused', audio.paused);
   if (!S.now) return;
-  $$(`.row[data-track="${CSS.escape(S.now.t.track_id)}"]`).forEach(li => li.classList.add('on'));
+  $$(`.row[data-track="${CSS.escape(S.now.t.track_id)}"], .plsong[data-track="${CSS.escape(S.now.t.track_id)}"]`).forEach(li => li.classList.add('on'));
   $$(`.chip[data-play="${CSS.escape(S.now.v.version_id)}"]`).forEach(c => c.classList.add('on'));
 }
 

@@ -588,6 +588,13 @@ await step('Nick\'s round: NuRenaissance link under Support, Releases shows the 
   await page.evaluate(() => { S.videoLists = null; S.videoP = null; localStorage.removeItem('sv_videolists'); });
   await noSideways('nick round');
 });
+await step('Playlist page: each song is a cover, a bold one-line title and its release, on a clean list; tapping a row plays it', async () => {
+  await page.evaluate(() => { const p = S.lib.playlists.find((x) => (x.tracks || []).length) || S.lib.playlists[0]; renderPlaylist(p.playlist_id); }); await page.waitForSelector('.plsongs .plsong');
+  const r = await page.evaluate(() => { const rows = [...document.querySelectorAll('.plsongs .plsong')], b = rows[0].querySelector('button').getBoundingClientRect(), t = rows[0].querySelector('.plt b'), cs = getComputedStyle(t), im = rows[0].querySelector('.plart').getBoundingClientRect(); return { n: rows.length, h: Math.round(b.height), cover: Math.round(im.width), one: cs.whiteSpace === 'nowrap' && cs.textOverflow === 'ellipsis', size: parseFloat(cs.fontSize), sub: rows[0].querySelector('.plrel').textContent.length > 0, old: document.querySelectorAll('.tracks .row .dur').length, hasPlay: !!rows[0].querySelector('[data-play]') }; });
+  assert.ok(r.n >= 1 && r.cover >= 60 && r.h >= 76 && r.one && r.size >= 17 && r.sub && r.old === 0 && r.hasPlay, 'the new playlist rows: ' + JSON.stringify(r));
+  await noSideways('playlist rows');
+  if (process.env.SHOT_PL) { await page.evaluate(() => { document.querySelector('.plsongs').scrollIntoView(); window.scrollBy(0, -10); }); await page.screenshot({ path: process.env.SHOT_PL }); }
+});
 await step('Lore is calmer: no bio editor in the middle of the page, credits in one dropdown; the bio is edited in Studio', async () => {
   await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-lcatsel]');
   assert.deepEqual(await page.evaluate(() => [document.querySelectorAll('.wrap.lore textarea').length, document.querySelectorAll('.wrap.lore [data-lore-bio], .wrap.lore [data-lore-copy]').length, document.querySelectorAll('.wrap.lore .lorecats').length]), [0, 0, 0], 'no bio editor, no pills on Lore');

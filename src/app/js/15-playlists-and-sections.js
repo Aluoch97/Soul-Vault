@@ -53,7 +53,7 @@ function renderPlaylist(id) {
       <div class="cs">${songs(ts.length)}${fmtRuntime(runtimeOf(ts)) ? ' · ' + fmtRuntime(runtimeOf(ts)) : ''}</div>
       <div class="acts">${ts.length ? `<button class="pill main" data-pl-play>${I.play}Play</button><button class="pill soft" data-pl-shuffle>${I.shuffle || ''}Shuffle</button><button class="pill soft" data-pl-queue>${I.queue}Add to queue</button><button class="pill soft" data-off="pl:${esc(id)}" hidden>${I.dl}<span>Save offline</span></button>` : ''}
         ${OWNER && !ed ? `<button class="pill soft" data-pl-edit>${I.edit}Edit</button>` : ''}</div></div></header>
-    ${ed ? plEditor() : ts.length ? `<ol class="tracks">${ts.map((t, i) => trackRow(t, true).replace(/<span class="n">[^<]*<\/span>/, `<span class="n">${i + 1}</span>`)).join('')}</ol>`
+    ${ed ? plEditor() : ts.length ? `<ol class="plsongs">${ts.map(t => { const v = primaryOf(t); return `<li class="plsong" data-track="${esc(t.track_id)}"><button type="button" data-play="${esc(v.version_id)}" aria-label="Play ${esc(t.title)}"><img class="plart" data-cover="${esc(artFor(t))}" alt=""><span class="plt"><b>${esc(t.title)}</b><span class="plrel">${esc((rel(t.release_id) || {}).title || '')}</span></span></button></li>`; }).join('')}</ol>`
          : `<div class="ins-empty">No songs yet. Use the ⋯ menu on any song and choose <b>Add to playlist</b>.</div>`}
   </div>`;
   loadCovers(); markPlaying(); offPaintButtons();
