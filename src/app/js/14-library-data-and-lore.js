@@ -156,8 +156,9 @@ function renderLore() {
     <div id="loreStory"></div>
     <section class="lorenums" aria-label="By the numbers"><h2 class="sh"><span><b>By the</b> numbers</span></h2>
     <div class="lorestats">
-      <div class="kpi"><b>${t.releases}</b><span>Releases</span></div><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
+      <button type="button" class="kpi tap" data-lore-types aria-expanded="false" aria-controls="loreTypes"><b>${t.releases}</b><span>Releases</span></button><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
       <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.toNow && t.toNow !== t.from ? '–' + t.toNow : ''}</b><span>Years</span></div></div>
+    <div id="loreTypes" class="loretypes" hidden></div>
     ${hi.length ? `<div class="lorehi">${hi.map(h => `<div class="hi"><span class="cs">${esc(h[0])}</span><b>${esc(h[1].name)}</b><span class="cs">${h[1].releases.size} ${h[1].releases.size === 1 ? 'release' : 'releases'}</span></div>`).join('')}</div>` : ''}</section>
     <h2 class="sh"><span><b>Eras</b></span></h2>
     <div class="loreeras" role="list">${L.eras.map(e => { const c = /^#[0-9a-f]{6}$/i.test(e.r.world_color || '') ? e.r.world_color : '', nv = Object.values(e.vcount).reduce((a, b) => a + b, 0);
@@ -175,6 +176,13 @@ function renderLore() {
     <div id="lorePeople"></div>
   </div>`;
   $$('[data-lphoto]').forEach(b => b.addEventListener('click', () => openLorePhoto(+b.dataset.lphoto)));
+  const tyBtn = $('[data-lore-types]'), tyBox = $('#loreTypes');
+  if (tyBtn && tyBox) {   // Releases by kind: Albums, EPs, Mixtapes, Singles...
+    const counts = new Map(); L.eras.forEach(e => { const k = typeOf(e.r); counts.set(k, (counts.get(k) || 0) + 1); });
+    const plural = { Album: 'Albums', EP: 'EPs', Mixtape: 'Mixtapes', Single: 'Singles', Live: 'Live', Compilation: 'Compilations', Other: 'Other' };
+    tyBox.innerHTML = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, n]) => `<div class="lty2"><b>${n}</b><span>${esc(plural[k] || k)}</span></div>`).join('');
+    tyBtn.addEventListener('click', () => { const open = tyBox.hidden; tyBox.hidden = !open; tyBtn.setAttribute('aria-expanded', String(open)); });
+  }
   $$('[data-lcover]').forEach(img => setCover(img, img.dataset.lcover));
   $$('[data-lore-phrel]').forEach(b => { ssThumb(b.querySelector('img')); b.addEventListener('click', () => { S.releaseId = b.dataset.lorePhrel; openSlideshow(0); }); });
   // The people: one list at a time as name chips; tap a name to see which releases they are on.

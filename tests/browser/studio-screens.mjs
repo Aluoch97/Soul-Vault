@@ -557,6 +557,37 @@ await step('Release page header is calmer: Play and Shuffle are the two big butt
   if (process.env.SHOT_REL) await page.screenshot({ path: process.env.SHOT_REL });
   await page.evaluate(() => { S.shop = []; S.shopP = Promise.resolve([]); });
 });
+await step('Nick\'s round: NuRenaissance link under Support, Releases shows the kinds, bigger Lore photos, centred Tour and Press tabs, voice notes start inside the tap, Video opens from the kept list', async () => {
+  // Home: a link to the NuRenaissance site sits right under the Support button
+  await page.evaluate(() => renderHome()); await page.waitForSelector('.homepg .support');
+  const hl = await page.evaluate(() => { const l = document.querySelector('.homepg .support + .nulink'); return l ? { href: l.getAttribute('href'), rel: l.rel, target: l.target, h: Math.round(l.getBoundingClientRect().height), txt: l.textContent } : null; });
+  assert.ok(hl && hl.href === 'https://www.nrnszn.com' && /noopener/.test(hl.rel) && hl.target === '_blank' && hl.h >= 44 && /NuRenaissance/.test(hl.txt), 'a NuRenaissance link right under Support: ' + JSON.stringify(hl));
+  // Lore: tapping Releases lists how many of each kind; the photos are a big shelf
+  await page.evaluate(() => renderLore()); await page.waitForSelector('[data-lore-types]');
+  assert.equal(await page.evaluate(() => document.querySelector('#loreTypes').hidden), true, 'the kinds start hidden');
+  await page.click('[data-lore-types]');
+  const ty = await page.evaluate(() => ({ shown: !document.querySelector('#loreTypes').hidden, expanded: document.querySelector('[data-lore-types]').getAttribute('aria-expanded'), items: [...document.querySelectorAll('#loreTypes .lty2')].map((e) => [e.querySelector('span').textContent, +e.querySelector('b').textContent]), total: +document.querySelector('[data-lore-types] b').textContent }));
+  assert.ok(ty.shown && ty.expanded === 'true' && ty.items.length >= 1 && ty.items.reduce((n, x) => n + x[1], 0) === ty.total, 'the kinds add up to the number of releases: ' + JSON.stringify(ty));
+  await page.click('[data-lore-types]'); assert.equal(await page.evaluate(() => document.querySelector('#loreTypes').hidden), true, 'tapping again hides them');
+  const ph = await page.evaluate(() => { const c = document.querySelector('.lphshelf .lph1'), b = c.getBoundingClientRect(), h = document.querySelector('.lorephotos > .sh').getBoundingClientRect(), sh = document.querySelector('.lphshelf').getBoundingClientRect(); return { w: Math.round(b.width), h: Math.round(b.height), gap: Math.round(sh.top - h.bottom) }; });
+  assert.ok(ph.w >= 230 && ph.h > ph.w && ph.gap < 40, 'big photo cards, heading right above them: ' + JSON.stringify(ph));
+  // Tour and Press tab text is centred
+  const centred = async (sel) => page.evaluate((q) => [...document.querySelectorAll(q)].map((b) => { const r = document.createRange(); r.selectNodeContents(b); const t = r.getBoundingClientRect(), bb = b.getBoundingClientRect(); return Math.abs((t.left + t.right) / 2 - (bb.left + bb.right) / 2) < 2; }), sel);
+  await page.evaluate(() => renderTour()); await page.waitForSelector('.tourseg button');
+  assert.ok((await centred('.tourseg button')).every(Boolean), 'Tour tab text is centred');
+  await page.evaluate(() => renderPress()); await page.waitForSelector('.psseg button');
+  assert.ok((await centred('.psseg button')).every(Boolean), 'Press tab text is centred');
+  // Voice notes: an older (Drive) note starts the player inside the tap, before its address has arrived
+  const vnr = await page.evaluate(() => { const t = S.lib.tracks[0]; t.voice_note_id = 'DRIVEID123'; playVoice(t.track_id); const out = { early: vn.src.slice(0, 15), bar: !document.getElementById('voicebar').hidden }; t.voice_note_id = ''; return out; });
+  assert.ok(/^data:audio\/wav/.test(vnr.early) && vnr.bar, 'the voice player starts inside the tap: ' + JSON.stringify(vnr));
+  await page.evaluate(() => { vn.pause(); document.getElementById('voicebar').hidden = true; });
+  // Video: the last list is kept on the device and drawn at once, even while the fresh one is still being fetched
+  await page.evaluate(() => { localStorage.setItem('sv_videolists', JSON.stringify({ lists: [{ key: 'originals', name: 'Originals', id: 'x', videos: [{ id: 'aaaaaaaaaaa', title: 'Kept one' }, { id: 'bbbbbbbbbbb', title: 'Kept two' }] }], at: Date.now() })); S.videoTab = 'freestyles'; S.videoSub = 'all'; S.videoQ = ''; S.videoLists = null; S.videoP = new Promise(() => {}); renderVideo(); });
+  await page.waitForSelector('.vidhero', { timeout: 3000 });
+  assert.match(await page.evaluate(() => document.querySelector('.vidhero').innerText), /Kept/, 'the kept list shows before the fresh one arrives');
+  await page.evaluate(() => { S.videoLists = null; S.videoP = null; localStorage.removeItem('sv_videolists'); });
+  await noSideways('nick round');
+});
 await step('Lore is calmer: no bio editor in the middle of the page, credits in one dropdown; the bio is edited in Studio', async () => {
   await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-lcatsel]');
   assert.deepEqual(await page.evaluate(() => [document.querySelectorAll('.wrap.lore textarea').length, document.querySelectorAll('.wrap.lore [data-lore-bio], .wrap.lore [data-lore-copy]').length, document.querySelectorAll('.wrap.lore .lorecats').length]), [0, 0, 0], 'no bio editor, no pills on Lore');
@@ -1031,7 +1062,7 @@ await step('Press tab: two tabs, Coverage (search, years, equal cards) and Press
 });
 await step('Video tab: search, Up next, Play the song for a video that is a song, and autoplay-next when YouTube says the clip ended (only from the featured clip)', async () => {
   await page.evaluate(() => { trk('trk_a1').video_url = 'https://youtu.be/dQw4w9WgXcQ'; S.videoQ = ''; S.videoAuto = true; ls.set('sv_vidauto', true); S.videoSort = 'az'; S.videoTab = 'freestyles'; S.videoSub = 'all';
-    S.videoLists = [{ key: 'originals', videos: [{ id: 'dQw4w9WgXcQ', title: 'Alpha one' }, { id: 'bbbbbbbbbbb', title: 'Bravo <b>two</b>' }, { id: 'ccccccccccc', title: 'Charlie three' }] }, { key: 'remixes', videos: [] }]; renderVideo(); });
+    S.videoLists = [{ key: 'originals', videos: [{ id: 'dQw4w9WgXcQ', title: 'Alpha one' }, { id: 'bbbbbbbbbbb', title: 'Bravo <b>two</b>' }, { id: 'ccccccccccc', title: 'Charlie three' }] }, { key: 'remixes', videos: [] }]; S.videoP = new Promise(() => {}); renderVideo(); });
   await page.waitForSelector('.vidhero .vidtitle', { timeout: 8000 });
   const r = await page.evaluate(() => ({ hero: document.querySelector('.vidtitle').textContent, song: !!document.querySelector('[data-vid-song]'), next: (document.querySelector('.vidnext') || {}).textContent, nextOn: (document.querySelector('.vidnext') || { closest: () => null }).closest('.vidcard') && document.querySelector('.vidnext').closest('.vidcard').getAttribute('aria-label'), auto: document.querySelector('#vauto').checked, cards: document.querySelectorAll('.vidcard').length, html: document.querySelector('#videoBody').innerHTML }));
   assert.deepEqual([r.hero, r.song, r.next, r.auto, r.cards], ['Alpha one', true, 'Up next', true, 2]); assert.match(r.nextOn, /Bravo/); assert.ok(!r.html.includes('<b>two'), 'titles are escaped');

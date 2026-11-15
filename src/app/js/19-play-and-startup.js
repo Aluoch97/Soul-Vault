@@ -268,7 +268,7 @@ document.addEventListener('click', e => {
   else if ('letterClear' in d) saveLetterEdits(el, true);
   else if ('letterMore' in d) { const b = $('#lbody'); const open = b.classList.toggle('open'); el.textContent = open ? 'Show less' : 'Read the whole note'; }
   else if (d.vn) playVoice(d.vn);
-  else if ('vnToggle' in d) { vn.paused ? vn.play() : vn.pause(); }
+  else if ('vnToggle' in d) { vn.paused ? vn.play().then(() => { $('#vbT').textContent = 'On ' + ((S.vnTitle) || 'this song'); }).catch(() => {}) : vn.pause(); }
   else if ('vnClose' in d) { vn.pause(); $('#voicebar').hidden = true; }
   else if ('lyrics' in d) { const l = $('#lyr'); l.hidden = !l.hidden; el.textContent = l.hidden ? 'Show lyrics' : 'Hide lyrics'; el.setAttribute('aria-expanded', String(!l.hidden)); if (!l.hidden) award('lyrics'); }
   else if (d.voiceGo) uploadVoice(el);
