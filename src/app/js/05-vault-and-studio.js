@@ -11,7 +11,7 @@ function renderVault() {
   const group = (title, rows, cls) => `<section class="sgroup ${cls || ''}"><h2 class="vsub">${title}</h2><ul class="acts-list">${rows.filter(Boolean).join('')}</ul></section>`;
   const edge = EDGE_UPLOADS();
   $('#main').innerHTML = `<div class="wrap">
-    <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Settings</b></h1><button class="avatar" data-nav="library" aria-label="Home">NS</button></header>
+    <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Settings</b></h1><button class="round" data-nav="library" aria-label="Home">${I.home}</button></header>
     <div class="tiles three">
       ${tile('r', 'data-nav="search"', I.note, 'Songs', tracks.length + ' songs')}
       ${tile('g', 'data-jump="all"', I.disc, 'Releases', rels.length + ' releases')}
@@ -19,6 +19,7 @@ function renderVault() {
     </div>
     ${group('Create &amp; edit', [
       row('data-nav="studio"', I.edit, 'Studio', 'New releases, songs, info, links and your bio'),
+      row('data-nav="shop"', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>', 'Shop', 'CDs and merch with a Stripe buy link'),
       edge ? row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio') : '',
       edge ? row('data-fillfacts', I.clock, 'Fill in link song details', 'Length and release date from YouTube, for songs added earlier') : '',
       edge ? row('data-linkonly', I.link, 'Songs on links only', linkOnlySongs().length ? linkOnlySongs().length + ' depend on a YouTube or SoundCloud link' : 'All songs have their own file') : '',
@@ -29,7 +30,7 @@ function renderVault() {
       edge ? row('data-fans', I.link, 'Soul Tribe fan list', 'Sign-ups from /join, to download') : '',
     ])}
     ${group('Health checks', [
-      row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version (use this on the home-screen app)'),
+      row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version. You have v' + esc(APP_VERSION || '?')),
       row('data-check-yt', I.film, 'Check YouTube setup', 'Needed for playlists from YouTube'),
       row('data-yt-titles', I.up2, 'YouTube titles', 'checking…', 'ytTitlesCount'),
       row('data-check-playback', I.play, 'Check playback setup', 'Tests your API key'),
@@ -196,7 +197,7 @@ function wireStuAdd(rid) {
 const STU_SERVICES = ['Spotify', 'Apple Music', 'YouTube Music', 'YouTube', 'Bandcamp', 'SoundCloud', 'DatPiff', 'Audiomack', 'Tidal', 'Amazon Music', 'Deezer'];
 async function renderStudio() {
   clearPageBg(); S.view = 'studio'; renderChrome();
-  const head = '<button class="back" data-nav="vault">' + I.back + 'Settings</button><header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>';
+  const head = '<button class="back" data-nav="vault">' + I.back + 'Settings</button><header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="round" data-nav="vault" aria-label="Settings">' + I.gear + '</button></header>';
   $('#main').innerHTML = `<div class="wrap studio">${head}<p class="cs">Loading your catalog…</p></div>`;
   try { S.stu = await run('studioGet', BOOT.key); }
   catch (e) { $('#main').innerHTML = `<div class="wrap studio">${head}<p class="status">${esc(e.message || 'Studio could not load.')}</p><button class="pill main" data-nav="studio">Try again</button></div>`; return; }
@@ -233,7 +234,7 @@ function drawStudio() {
   const nowHidden = r.hidden === true;
   $('#main').innerHTML = `<div class="wrap studio">
     <button class="back" data-nav="vault">${I.back}Settings</button>
-    <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="avatar" data-nav="vault" aria-label="Settings">NS</button></header>
+    <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="round" data-nav="vault" aria-label="Settings">${I.gear}</button></header>
     <div class="stupick"><select class="field stusel" id="stuRel" aria-label="Release">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
       ${EDGE_UPLOADS() ? `<button type="button" class="pill main" id="stuNewRel">${I.plus}New</button>` : ''}</div>
     <section class="stuhead" aria-label="${esc(r.title)}">
@@ -274,9 +275,6 @@ function drawStudio() {
       ${f('stFirst', 'First appeared on (DatPiff, Bandcamp…)', lk.first)}
       <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></div></section>
     ${EDGE_UPLOADS() ? `<section data-stupanel="add">${stuAddSection(rid)}</section>` : ''}
-    <details class="stu" id="stuShop"><summary>Shop</summary><div class="stubody"><p class="cs" style="margin:0">CDs and merch. Each item has a buy link from Stripe (or Square). Fans pay on Stripe's own page; this site never sees card details.</p>
-      <div id="stuShopItems" class="shopitems"><p class="cs">Loading…</p></div>
-      <div class="save"><button type="button" class="pill soft" id="stuShopAdd">${I.plus}Add an item</button><button type="button" class="pill main" id="stuShopSave">Save shop</button><span class="st" id="stuShopSt" role="status"></span></div></div></details>
     <details class="stu" id="stuBio"><summary>Your bio</summary><div class="stubody"><p class="cs" style="margin:0">The story fans read on the Lore page.</p>
       <textarea class="field" id="loreBio" maxlength="8000" rows="8" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
       <div class="save"><button class="pill soft" type="button" data-lore-copy>Copy all lore as text</button><button class="pill main" type="button" data-lore-bio>Save bio</button></div></div></details>
@@ -298,7 +296,7 @@ function drawStudio() {
       </div>
       <div class="save"><button type="button" class="pill main" id="bkApply">Apply to the ticked releases</button><span class="st" id="bkSt" role="status"></span></div></div></details>
     </div>`;
-  loadCovers(); wireShopEditor();
+  loadCovers();
   const stuTabs = [...$$('[data-stutab]')], stuPanels = [...$$('[data-stupanel]')];
   const showStuTab = k => { S.stuTab = k; stuTabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.stutab === k))); stuPanels.forEach(x => { x.hidden = x.dataset.stupanel !== k; }); };
   stuTabs.forEach(b => b.addEventListener('click', () => showStuTab(b.dataset.stutab))); showStuTab(tab);
@@ -373,3 +371,15 @@ function drawStudio() {
   }));
 }
 
+
+// Settings > Shop: its own page (it used to be a section inside Studio). The editor itself is wireShopEditor() in 18-shop.js.
+function renderShop() {
+  clearPageBg(); S.view = 'shop'; renderChrome();
+  const head = '<button class="back" data-nav="vault">' + I.back + 'Settings</button><header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Shop</b></h1><button class="round" data-nav="vault" aria-label="Settings">' + I.gear + '</button></header>';
+  $('#main').innerHTML = `<div class="wrap studio shoppg">${head}
+    <p class="cs">CDs and merch. Each item has a buy link from Stripe (Payment Links, Copy link). Fans pay on Stripe, never on this site. Items show on Home and, if you pick a release, on that release's page.</p>
+    <div id="stuShopItems" class="shopitems"><p class="cs">Loading…</p></div>
+    <div class="save"><button type="button" class="pill soft" id="stuShopAdd">${I.plus}Add an item</button><button type="button" class="pill main" id="stuShopSave">Save shop</button><span class="st" id="stuShopSt" role="status" aria-live="polite"></span></div></div>`;
+  wireShopEditor();
+  window.scrollTo(0, 0);
+}

@@ -13,10 +13,15 @@ window.addEventListener('load', () => setTimeout(registerSw, 2500));   // after 
 window.addEventListener('offline', () => toast("You're offline. Saved pages still open; songs and videos need a connection."));
 window.addEventListener('online', () => toast('Back online'));
 // "Refresh": an app saved to the home screen has no reload button. This forgets the saved copy and loads the newest version.
+// The version this page is running, read from its own script address (/app.js?v=<build>-<fingerprint>). Shown in the Home footer and Settings so you can always tell which one you have.
+const APP_VERSION = (/[?&]v=([^&"]+)/.exec(((document.querySelector('script[src*="/app.js"]') || {}).src) || '') || [])[1] || '';
 async function refreshApp() {
   toast('Refreshing…');
-  try { if ('serviceWorker' in navigator) (await navigator.serviceWorker.getRegistrations()).forEach(r => r.unregister()); } catch (e) { /* carry on */ }
-  try { if (window.caches) (await caches.keys()).forEach(k => caches.delete(k)); } catch (e) { /* carry on */ }
-  setTimeout(() => location.reload(), 400);
+  try { if ('serviceWorker' in navigator) await Promise.all((await navigator.serviceWorker.getRegistrations()).map(r => r.unregister())); } catch (e) { /* carry on */ }
+  try { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch (e) { /* carry on */ }
+  // Ask the network for fresh copies of the page and the code (skipping the browser's saved ones), then reload on an address nothing has saved (?r=<time>, removed again on load).
+  try { const code = (document.querySelector('script[src*="/app.js"]') || {}).src; await Promise.all([fetch('/', { cache: 'reload' }), code ? fetch(code, { cache: 'reload' }) : null]); } catch (e) { /* offline: the reload below says so */ }
+  try { const u = new URL(location.href); u.searchParams.set('r', String(Date.now())); location.replace(u.toString()); } catch (e) { location.reload(); }
 }
+try { const u = new URL(location.href); if (u.searchParams.has('r')) { u.searchParams.delete('r'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } } catch (e) { /* leave the address alone */ }
 document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-refresh]'); if (t) { e.preventDefault(); refreshApp(); } });
