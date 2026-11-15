@@ -822,6 +822,8 @@ await step("Soul's Picks: a playlist marked as a pick gets its own section on th
   await page.waitForSelector('#picks .pickcard');
   const r = await page.evaluate(() => ({ picks: [...document.querySelectorAll('#picks .pickcard .picktitle')].map(e => e.textContent), rest: [...document.querySelectorAll('#libBody .plcard:not(.new) .nm')].filter(e => e.textContent === 'Hardest verses').length, head: document.querySelector('#picks h2').textContent }));
   assert.deepEqual([r.picks, r.head], [['Hardest verses'], "Soul's Picks"]);
+  const sh = await page.evaluate(() => { const row = document.querySelector('#picks .picksgrid'), cs = getComputedStyle(row), c = document.querySelector('#picks .pickcard').getBoundingClientRect(); return { flex: cs.display, ox: cs.overflowX, snap: cs.scrollSnapType, w: Math.round(c.width), wrapped: !!row.closest('.scrollwrap') }; });
+  assert.ok(sh.flex === 'flex' && /auto|scroll/.test(sh.ox) && /x/.test(sh.snap) && sh.w >= 180 && sh.w <= 300, "Soul's Picks is a scrolling shelf of big cards: " + JSON.stringify(sh));
   assert.equal(r.rest, 0, 'a pick is not also in the Playlists row');
   assert.deepEqual(await page.evaluate(() => [document.querySelector('#picks .pickbadge').textContent, document.querySelector('#picks .pickdesc').textContent]), ["Soul's Pick", 'My proudest bars.']);
   await noSideways("music tab with Soul's Picks");

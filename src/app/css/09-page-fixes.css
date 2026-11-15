@@ -14,3 +14,7 @@
   .plsong > button:active { background: rgba(255,255,255,.05); } .plsong .plart { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; background: #1a1a1c; } .plsong .plart:not([src]) { visibility: hidden; }
   .plsong .plt { display: grid; gap: 3px; min-width: 0; } .plsong .plt b { font-weight: 800; font-size: 18px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .plsong .plrel { font-size: 15px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .plsong.on .plt b { color: var(--brass, #f5c542); }
+  /* Soul's Picks: one scrolling shelf of big cards, like the other shelves on the Music tab */
+  .vsec.picks .picksgrid { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 12px -16px 0; padding: 6px 16px 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .vsec.picks .picksgrid::-webkit-scrollbar { display: none; }
+  .vsec.picks .pickcard { flex: 0 0 min(64vw, 250px); scroll-snap-align: start; }
