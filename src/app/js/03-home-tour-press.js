@@ -61,14 +61,15 @@ function homePicks() {
 }
 // Until the library arrives, the single and project show a grey placeholder; the rest of Home does not need the library.
 function homeCover(r, label, slot) {
+  const cap = (title, year) => `<figcaption><span class="latlabel">${label}</span><span class="lattitle2">${title ? esc(title) : '&nbsp;'}</span>${year ? `<span class="latsub">${esc(String(year))}</span>` : ''}</figcaption>`;
   if (!S.lib) {   // first visit: getHome may already have sent the two covers (small pictures); the library follows
     const l = S.homeLite && S.homeLite[slot];
     if (l && (l.src || l.img || l.thumb)) return `<figure class="lat" data-slot="${slot}"><button class="latcover" data-rel="${esc(l.release_id)}" aria-label="Open ${esc(l.title)}">
-      <img src="${esc(l.src || l.img || l.thumb)}" alt="${esc(l.title)} cover"></button><figcaption class="latlabel">${label}</figcaption></figure>`;
+      <img src="${esc(l.src || l.img || l.thumb)}" alt="${esc(l.title)} cover"></button>${cap(l.title, l.year)}</figure>`;
   }
-  if (!S.lib) return `<figure class="lat" data-slot="${slot}"><div class="latcover skel" aria-hidden="true"></div><figcaption class="latlabel">${label}</figcaption></figure>`;
+  if (!S.lib) return `<figure class="lat" data-slot="${slot}"><div class="latcover skel" aria-hidden="true"></div>${cap('', '')}</figure>`;
   return r ? `<figure class="lat" data-slot="${slot}"><button class="latcover" data-rel="${esc(r.release_id)}" aria-label="Open ${esc(r.title)}">
-      <img data-home-cover="${esc(r.cover_file_id)}" alt="${esc(r.title)} cover"></button><figcaption class="latlabel">${label}</figcaption></figure>` : '';
+      <img data-home-cover="${esc(r.cover_file_id)}" alt="${esc(r.title)} cover"></button>${cap(r.title, r.year)}</figure>` : '';
 }
 // getHome answered before the library: show the two covers now (the library swaps in the full version later).
 function paintHomeLite(p) {
@@ -114,7 +115,7 @@ function renderHome() {
   const join = JOIN_URL();
   const yt = (v, label) => `<figure class="lat"><button class="latvid" data-yt="${esc(v[0])}" aria-label="Play ${esc(v[1])}">
       <img src="https://i.ytimg.com/vi/${esc(v[0])}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><i>${I.play}</i></button>
-      <div class="lattitle">${esc(v[1])}</div><figcaption class="latlabel">${label}</figcaption></figure>`;
+      <figcaption><span class="latlabel">${label}</span><span class="lattitle2">${esc(v[1])}</span></figcaption></figure>`;
   $('#main').innerHTML = `<div class="wrap sitepg homepg">
     <section class="sitehero">
       <h1 class="herot">Nicólas <span>Soul</span></h1>
@@ -122,17 +123,23 @@ function renderHome() {
       <div class="linkgrid" role="group" aria-label="Listen and follow">${SITE.links.map(l => `<a class="soc" href="${esc(l[1])}" target="_blank" rel="noopener" aria-label="${esc(l[0])}" title="${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : esc(l[0])}</a>`).join('')}</div>
       <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
     </section>
-    <section class="latest" aria-label="Latest">
-      <h2 class="lathead">Latest</h2>
-      ${homeCover(single, 'Single', 'single')}${homeCover(project, 'Project', 'project')}${yt(SITE.feature, 'Feature')}${yt(SITE.video, 'Video')}
+    <section class="hsec" aria-label="New music">
+      <h2 class="sh"><span><b>New</b> music</span></h2>
+      <div class="hgrid2">${homeCover(single, 'Single', 'single')}${homeCover(project, 'Project', 'project')}</div>
     </section>
-    <section class="latest roadsec" id="roadHome" aria-label="On the road" hidden></section>
+    <section class="hsec" aria-label="Watch">
+      <h2 class="sh"><span><b>Watch</b></span></h2>
+      <div class="hgrid2">${yt(SITE.feature, 'Feature')}${yt(SITE.video, 'Video')}</div>
+    </section>
+    <section class="hsec roadsec" id="roadHome" aria-label="On the road" hidden></section>
     <div id="picksHome"></div>
-    <section class="latest shopsec" id="shopHome" aria-label="Shop" hidden></section>
+    <section class="hsec shopsec" id="shopHome" aria-label="Shop" hidden></section>
     ${join ? `<section class="tribe" id="tribe" data-join="${esc(join)}"><div><div class="tt2">Join the <b>Soul Tribe</b></div>
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
       <button type="button" class="pill main" data-tribe-open>${I.mail}Join the Soul Tribe</button></section>` : ''}
-    <p class="cs sitefoot">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a> · <a href="/privacy-policy">Privacy policy</a> · <a href="#" data-install>Add to Home Screen</a> · <a href="#" data-offline-music>Offline music</a> · <a href="#" data-refresh>Refresh</a> · <span class="appver" title="The version of the app on this device">v${esc(APP_VERSION || '?')}</span> · © ${new Date().getFullYear()} Nicólas Soul</p>
+    <footer class="hfoot"><p class="cs">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a></p>
+      <nav class="hlinks" aria-label="More"><a href="/privacy-policy">Privacy</a><a href="#" data-install>Add to Home Screen</a><a href="#" data-offline-music>Offline music</a><a href="#" data-refresh>Refresh</a></nav>
+      <p class="cs hver"><span class="appver" title="The version of the app on this device">v${esc(APP_VERSION || '?')}</span> · © ${new Date().getFullYear()} Nicólas Soul</p></footer>
   </div>`;
   // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
   // (a still image instead if the person asked for less motion or is saving data).
@@ -164,7 +171,7 @@ function wireYt(root) {
     f.className = 'latplayer'; f.title = (b.getAttribute('aria-label') || 'Video').replace(/^Play /, '');
     f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; web-share'; f.allowFullscreen = true;
     f.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(b.dataset.yt) + '?autoplay=1&rel=0&playsinline=1&enablejsapi=1';
-    b.replaceWith(f);
+    const fig = b.closest('figure.lat'); b.replaceWith(f); if (fig) fig.classList.add('playing');
     f.addEventListener('load', () => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), 'https://www.youtube-nocookie.com'); } catch (x) { /* no end notice: autoplay next just will not happen */ } });
   }));
 }

@@ -247,3 +247,20 @@
   .pkphoto img { width: 100%; height: 100%; object-fit: cover; display: block; } .pkphoto span { position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.65); color: #fff; } .pkphoto span svg { width: 15px; height: 15px; }
   .pkfoot { margin: 8px 0 0; font-size: 13px; } .pkfoot a { color: #f5c542; }
   .pklinks { display: flex; flex-wrap: wrap; gap: 6px; } .pklinks a { min-height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; background: rgba(255,255,255,.07); color: inherit; text-decoration: none; font-size: 14px; font-weight: 700; }
+
+  /* Home, cleaner: left-aligned sections with the app's normal headings, two-up covers and videos, calmer footer */
+  .homepg .hsec { margin: 30px 0 0; text-align: left; } .homepg .hsec > .sh { justify-content: flex-start; margin: 0 0 12px; font-size: 22px; }
+  .hgrid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  .homepg .hgrid2 .lat { margin: 0; display: grid; justify-items: stretch; gap: 8px; align-content: start; min-width: 0; }
+  .hgrid2 .latcover { width: 100%; border-radius: 12px; } .hgrid2 .latvid, .hgrid2 .latplayer { width: 100%; border-radius: 12px; }
+  .hgrid2 .latvid i { width: 44px; height: 44px; margin: -22px 0 0 -22px; } .hgrid2 .latvid i svg { width: 20px; height: 20px; }
+  .hgrid2 .lat.playing { grid-column: 1 / -1; }
+  .homepg .lat figcaption { display: grid; gap: 3px; text-align: left; min-width: 0; text-shadow: none; }
+  .homepg .latlabel { font: 800 11px/1 var(--sans); letter-spacing: .12em; text-indent: 0; text-transform: uppercase; text-shadow: none; color: #f5c542; }
+  .homepg .lattitle2 { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .homepg .latsub { font-size: 13px; color: var(--dim); }
+  .homepg .roadcard { margin: 0; } .homepg .shoplist { margin: 0; } .homepg .shopcard { text-align: left; }
+  .hfoot { margin: 34px 0 0; text-align: center; } .hfoot p { margin: 0; } .hfoot a { color: inherit; }
+  .hlinks { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 4px; margin: 4px 0; } .hlinks a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 10px; font-size: 14px; font-weight: 600; color: var(--dim); text-decoration: none; }
+  .hlinks a:hover, .hlinks a:focus-visible { color: var(--text); }
+  .hver { font-size: 12px; opacity: .7; }

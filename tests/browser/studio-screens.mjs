@@ -848,6 +848,17 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   assert.match(r.txt, /2 of 100 shows played/); assert.match(r.txt, /The Planned Room, Atlanta, GA/); assert.equal(r.ring, '2');
   assert.ok(!r.html.includes('<b>Room'), 'sheet text is escaped');
   assert.equal(r.resume, false, 'Continue listening is not on Home (it stays on the Music tab)'); assert.equal(r.picks, true, "a Soul's Pick shows on Home");
+  const lay = await page.evaluate(() => {
+    const h = [...document.querySelectorAll('.homepg h2')].map((e) => e.className + ':' + e.textContent.trim());
+    const cols = (sel) => { const g = document.querySelector(sel); return g ? getComputedStyle(g).gridTemplateColumns.split(' ').length : 0; };
+    return { h, lathead: document.querySelectorAll('.homepg .lathead').length, grids: [...document.querySelectorAll('.homepg .hgrid2')].map((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length), titles: [...document.querySelectorAll('.homepg .lat .lattitle2')].map((e) => e.textContent.trim()).filter(Boolean).length, links: [...document.querySelectorAll('.hlinks a')].map((a) => Math.round(a.getBoundingClientRect().height)) };
+  });
+  assert.equal(lay.lathead, 0, 'no giant letter-spaced headings on Home: ' + lay.h);
+  assert.ok(lay.h.every((x) => x.startsWith('sh:')), 'every Home heading uses the app heading style: ' + lay.h);
+  assert.ok(lay.h.some((x) => /On the road/.test(x)) && lay.h.some((x) => /Shop|Watch|New music/.test(x)), 'section headings present: ' + lay.h);
+  assert.deepEqual(lay.grids, [2, 2], 'new music and videos sit two across');
+  assert.ok(lay.titles >= 2, 'covers and videos show their titles');
+  assert.ok(lay.links.length === 4 && lay.links.every((n) => n >= 44), 'footer links have 44px tap room: ' + lay.links);
   await noSideways('home with road card');
   if (process.env.SHOT_HOME) await page.screenshot({ path: process.env.SHOT_HOME, fullPage: true });
   await page.click('#roadHome .roadmain'); await page.waitForFunction(() => S.view === 'tour', null, { timeout: 5000 });
