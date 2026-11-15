@@ -599,6 +599,7 @@ await step('Release page: the Music back button stays at the top while you scrol
   if (tabs) assert.ok(tabs.below, 'the sticky Songs / Videos tabs sit below the Music button, not under it');
   await page.click('#relbar .back'); await page.waitForFunction(() => S.view === 'library', null, { timeout: 5000 });
   await page.evaluate(() => { const d = document.getElementById('tallfill'); if (d) d.remove(); window.scrollTo(0, 0); });
+});
 await step('Playlist page: each song is a cover, a bold one-line title and its release, on a clean list; tapping a row plays it', async () => {
   await page.evaluate(() => { const p = S.lib.playlists.find((x) => (x.tracks || []).length) || S.lib.playlists[0]; renderPlaylist(p.playlist_id); }); await page.waitForSelector('.plsongs .plsong');
   const r = await page.evaluate(() => { const rows = [...document.querySelectorAll('.plsongs .plsong')], b = rows[0].querySelector('button').getBoundingClientRect(), t = rows[0].querySelector('.plt b'), cs = getComputedStyle(t), im = rows[0].querySelector('.plart').getBoundingClientRect(); return { n: rows.length, h: Math.round(b.height), cover: Math.round(im.width), one: cs.whiteSpace === 'nowrap' && cs.textOverflow === 'ellipsis', size: parseFloat(cs.fontSize), sub: rows[0].querySelector('.plrel').textContent.length > 0, old: document.querySelectorAll('.tracks .row .dur').length, hasPlay: !!rows[0].querySelector('[data-play]') }; });
