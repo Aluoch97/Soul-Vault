@@ -8,3 +8,9 @@
   .lty2 { display: inline-flex; align-items: baseline; gap: 6px; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid var(--line); } .lty2 b { font: 800 18px/1 var(--serif); } .lty2 span { font-size: 13px; font-weight: 700; color: var(--dim); }
   .tourseg button, .psseg button { display: inline-flex; align-items: center; justify-content: center; text-align: center; }
   .vidmorebtn { display: flex; margin: 16px auto 0; min-height: 44px; }
+  /* Playlist page: the song list is a cover, a bold one-line title and the release underneath, with hairlines between rows */
+  .plsongs { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--line); }
+  .plsong { border-bottom: 1px solid var(--line); } .plsong > button { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; width: 100%; min-height: 84px; padding: 10px 2px; text-align: left; }
+  .plsong > button:active { background: rgba(255,255,255,.05); } .plsong .plart { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; background: #1a1a1c; } .plsong .plart:not([src]) { visibility: hidden; }
+  .plsong .plt { display: grid; gap: 3px; min-width: 0; } .plsong .plt b { font-weight: 800; font-size: 18px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plsong .plrel { font-size: 15px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .plsong.on .plt b { color: var(--brass, #f5c542); }
