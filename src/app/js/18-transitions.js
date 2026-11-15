@@ -10,9 +10,9 @@ S.trans = TRANS_CHOICES.some(c => c[0] === ls.get('sv_trans', 'off')) ? ls.get('
 const userVolume = () => { const v = Number(ls.get('sv_volume', 1)); return v >= 0 && v <= 1 ? v : 1; };
 const transSecs = () => { const c = TRANS_CHOICES.find(x => x[0] === S.trans); const s = c ? c[2] : 0; return s > 0.3 && !canSetVolume ? 0.3 : s; };   // no volume control (iPhone): a short overlap instead of a fade
 // Phones only let a player start inside a tap: unlock the second player the same way the first one is (called from the first tap on a song).
-function unlockOut() { try { if (!S.outUnlocked) { audioOut.src = SILENT; audioOut.play().then(() => { S.outUnlocked = true; audioOut.pause(); }).catch(() => {}); } } catch (e) { /* the fade just will not happen */ } }
-// the first tap anywhere unlocks it (a phone only allows sound that starts inside a tap); song starts try again
-document.addEventListener('pointerdown', () => unlockOut(), { capture: true });
+function unlockOut() { try { if (!S.outUnlocked && S.trans !== 'off') { audioOut.src = SILENT; audioOut.play().then(() => { S.outUnlocked = true; audioOut.pause(); }).catch(() => {}); } } catch (e) { /* the fade just will not happen */ } }
+// NOT on the first tap anywhere: on an iPhone even a silent clip takes over the audio and stops music playing from another app just because the app was opened.
+// It runs only when a song starts (play()) or when you pick a transition, and never while transitions are Off.
 function rampVolume(el, from, to, ms, done) {
   clearInterval(el._ramp); const t0 = performance.now();
   el._ramp = setInterval(() => {
@@ -73,7 +73,7 @@ function paintTransChoice() {
 }
 document.addEventListener('change', e => {
   const sel = e.target.closest && e.target.closest('[data-trans]'); if (!sel) return;
-  S.trans = sel.value; ls.set('sv_trans', S.trans); transCancel(true);
+  S.trans = sel.value; ls.set('sv_trans', S.trans); transCancel(true); unlockOut();
   toast(S.trans === 'off' ? 'Song transitions off' : S.trans === 'gapless' ? 'Gapless playback on' : 'Crossfade ' + sel.value.replace('cf', '') + ' seconds');
 });
 paintTransChoice();

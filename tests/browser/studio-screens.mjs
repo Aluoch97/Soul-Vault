@@ -524,6 +524,27 @@ await step('a song\'s Options (release page > Edit) has a guest-spot checkbox: i
   await page.waitForFunction(() => /Open Album/.test(document.querySelector('#features').innerText) && /Guest spot/.test(document.querySelector('#features .vtag').textContent), null, { timeout: 8000 });
   await page.evaluate((t) => { const x = S.lib.tracks.find((y) => y.track_id === t); x.feature_role = ''; }, tid);
 });
+await step('opening the app and tapping around never starts any sound (it would stop music playing from another app on a phone)', async () => {
+  const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('quiet page error: ' + e.message));
+  await pg.addInitScript(() => { window.__plays = []; const o = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { if (!this.muted) window.__plays.push((this.src || '').slice(0, 30)); return o.apply(this, arguments); }; });
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });
+  for (const n of ['library', 'video', 'tour', 'press', 'lore', 'home']) { await pg.click('.tabs [data-nav="' + n + '"]'); await pg.waitForTimeout(250); }
+  await pg.mouse.click(190, 300);
+  const r = await pg.evaluate(() => ({ plays: window.__plays, trans: S.trans, out: !!S.outUnlocked }));
+  assert.deepEqual(r.plays, [], 'no sound was started by just opening the app and tapping: ' + JSON.stringify(r));
+  await c.close();
+});
+await step('Release page header is calmer: Play and Shuffle are the two big buttons, Share / Save offline / Queue sit on one quiet row, the small facts share a line', async () => {
+  await page.evaluate(() => { S.links = S.links || { releases: {} }; S.links.releases = S.links.releases || {}; S.links.releases.rel_pub = { first: 'DatPiff', links: [['Spotify', 'https://open.spotify.com/x']] }; S.shop = [{ title: 'Test CD', price: '$12', blurb: 'Ships from Nashville.', buy_url: 'https://buy.stripe.com/x', release_id: 'rel_pub' }]; S.shopP = Promise.resolve(S.shop); renderRelease('rel_pub'); });
+  await page.waitForSelector('#relhead .acts'); await page.waitForSelector('#shopRel .shopcard', { timeout: 5000 });
+  const r = await page.evaluate(() => { const rc = (q) => { const e = document.querySelector('#relhead ' + q); if (!e || e.hidden) return null; const b = e.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; }; const sec = [...document.querySelectorAll('#relhead .acts .pill')].filter((e) => !e.hasAttribute('data-playall') && !e.hasAttribute('data-shuffleall') && !e.hidden && e.getBoundingClientRect().height > 0).map((e) => { const b = e.getBoundingClientRect(); return { y: Math.round(b.y), h: Math.round(b.height) }; }); return { play: rc('[data-playall]'), shuf: rc('[data-shuffleall]'), sec, sub: getComputedStyle(document.querySelector('#relhead .relmeta.sub') || document.body).display, shopH: rc('#shopRel .shopcard') && rc('#shopRel .shopcard').h, headH: rc('.hero') && rc('.hero').h }; });
+  assert.ok(r.play && r.shuf && r.play.y === r.shuf.y && Math.abs(r.play.w - r.shuf.w) < 4 && r.play.w > 140, 'Play and Shuffle are side by side and equally wide: ' + JSON.stringify(r));
+  assert.ok(r.sec.length >= 2 && r.sec.every((x) => x.y === r.sec[0].y && x.h >= 44) && r.sec[0].y > r.play.y, 'the other buttons share one quiet row below, each 44px+ tall: ' + JSON.stringify(r.sec));
+  assert.ok(r.shopH && r.shopH < 90, 'the shop card is a slim row: ' + r.shopH);
+  await noSideways('release header');
+  if (process.env.SHOT_REL) await page.screenshot({ path: process.env.SHOT_REL });
+  await page.evaluate(() => { S.shop = []; S.shopP = Promise.resolve([]); });
+});
 await step('Lore is calmer: no bio editor in the middle of the page, credits in one dropdown; the bio is edited in Studio', async () => {
   await page.evaluate(() => renderLore()); await page.waitForSelector('.wrap.lore [data-lcatsel]');
   assert.deepEqual(await page.evaluate(() => [document.querySelectorAll('.wrap.lore textarea').length, document.querySelectorAll('.wrap.lore [data-lore-bio], .wrap.lore [data-lore-copy]').length, document.querySelectorAll('.wrap.lore .lorecats').length]), [0, 0, 0], 'no bio editor, no pills on Lore');
@@ -531,6 +552,10 @@ await step('Lore is calmer: no bio editor in the middle of the page, credits in 
   assert.deepEqual(opts, ['Producers', 'Engineers', 'Featured', 'Places', 'Photographers'], 'one dropdown for the credits');
   await page.selectOption('[data-lcatsel]', await page.evaluate(() => [...document.querySelectorAll('[data-lcatsel] option')].find((o) => /^Featured/.test(o.textContent)).value));
   await page.waitForFunction(() => document.querySelectorAll('#lorePeople .lchip').length > 0 && /Aziza/.test(document.querySelector('#lorePeople').innerText), null, { timeout: 5000 });
+  const ph = await page.evaluate(() => { const sh = document.querySelector('.lphshelf'); return { n: document.querySelectorAll('.lphshelf [data-lphoto]').length, scrolls: sh ? sh.scrollWidth > sh.clientWidth + 4 : null, grid: sh ? getComputedStyle(sh).display : '', all: !!document.querySelector('[data-lore-all]'), oldGrid: !!document.querySelector('.lorephotos:not(section)'), heads: [...document.querySelectorAll('.wrap.lore h2, .wrap.lore summary.sh')].map((e) => e.textContent.trim().replace(/\s+/g, ' ')) }; });
+  assert.ok(ph.n >= 6 && ph.scrolls && ph.grid === 'flex', 'the Lore photos are one scrolling shelf: ' + JSON.stringify(ph)); assert.equal(ph.all, false, 'no "See all photos" button any more');
+  assert.ok(ph.heads.some((h) => /^Photos/.test(h)) && ph.heads.some((h) => /numbers/.test(h)) && ph.heads.some((h) => /^Year by year/.test(h)), 'section headings: ' + ph.heads.join(' | '));
+  await page.click('.lphshelf [data-lphoto="2"]'); await page.waitForSelector('#lbStage'); await page.evaluate(() => document.querySelector('#lbX').click());
   await noSideways('lore calm');
   await page.evaluate(() => renderStudio()); await page.waitForSelector('#stuBio'); await page.evaluate(() => { document.querySelector('#stuBio').open = true; }); await page.waitForSelector('#loreBio', { state: 'visible' });
   assert.equal(await page.evaluate(() => !!document.querySelector('[data-lore-bio]') && !!document.querySelector('[data-lore-copy]')), true, 'Save bio and Copy lore are here now');
@@ -802,7 +827,10 @@ await step('Crossfade: near the end of a song the old song keeps playing in the 
     return r.fulfill({ status: 206, headers: { ...base, 'content-range': `bytes ${a0}-${b0}/${body.length}`, 'content-length': String(b0 - a0 + 1) }, body: body.subarray(a0, b0 + 1) });
   });
   await page.evaluate(() => { canSetVolume = true; });   // the test browser poses as an iPhone, which cannot fade; a computer can
-  await page.evaluate(() => { S.urlByFile = S.urlByFile || {}; [['ver_a1', 'x1'], ['ver_sg', 'x2']].forEach(([id, f]) => { const v = ver(id); v.audio = 'f_' + id; S.urlByFile['f_' + id] = 'https://media.soulnicolas.com/xf/' + f + '.wav'; }); ls.set('sv_volume', 0.8); S.trans = 'cf3'; S.repeat = 'off'; S.queue = ['ver_a1', 'ver_sg']; S.qi = 0; play('ver_a1'); });
+  await page.evaluate(() => { S.urlByFile = S.urlByFile || {}; [['ver_a1', 'x1'], ['ver_sg', 'x2']].forEach(([id, f]) => { const v = ver(id); v.audio = 'f_' + id; S.urlByFile['f_' + id] = 'https://media.soulnicolas.com/xf/' + f + '.wav'; }); ls.set('sv_volume', 0.8); S.trans = 'cf3'; S.repeat = 'off'; S.queue = ['ver_a1', 'ver_sg']; S.qi = 0; document.addEventListener('pointerdown', () => unlockOut(), { once: true, capture: true }); });
+  await page.mouse.click(5, 5); await page.waitForFunction(() => S.outUnlocked, null, { timeout: 8000 });   // picking a transition is a tap; that tap is what unlocks the second player
+  await page.evaluate(() => { play('ver_a1'); });
+  await page.waitForFunction(() => !audio.paused && audio.currentTime > 0.3 && audio.duration > 10, null, { timeout: 15000 });
   await page.waitForFunction(() => !audio.paused && audio.currentTime > 0.3 && audio.duration > 10 && S.outUnlocked, null, { timeout: 15000 });
   await page.evaluate(() => { audio.currentTime = audio.duration - 6.5; });
   await page.waitForFunction(() => S.qi === 1 && !audioOut.paused, null, { timeout: 15000 });
@@ -954,6 +982,12 @@ await step('Lore: The story (bio), Year by year, Stories behind the songs (voice
   assert.ok(r.stories.includes('Song trk_a1 (feat. Aziza)'), 'a song with a voice note is listed: ' + r.stories);
   assert.ok(!r.stories.some((t) => /trk_a2/.test(t)), 'a hidden song never shows its story: ' + r.stories);
   await page.click('.lsl [data-vn="trk_a1"]'); assert.equal(await page.evaluate(() => window.__vn), 'trk_a1', 'tapping Hear plays the voice note');
+  const tl = await page.evaluate(() => { const d = document.querySelector('[data-lore-tl]'), ol = d.querySelector('.ltl'); return { open0: d.open, vis0: document.documentElement.scrollHeight, sum: d.querySelector('summary').textContent.trim() }; });
+  assert.equal(tl.open0, false, 'the timeline starts collapsed'); const h0 = tl.vis0; assert.ok(/Year by year/.test(tl.sum) && /\d+ years?/.test(tl.sum), 'the summary names it and counts the years: ' + tl.sum);
+  await page.click('[data-lore-tl] > summary'); assert.equal(await page.evaluate((h) => [document.querySelector('[data-lore-tl]').open, document.documentElement.scrollHeight > h + 100].join(), h0), 'true,true', 'tapping opens it and the page grows');
+  await page.waitForFunction(() => S.loreTl === true, null, { timeout: 3000 }); await page.evaluate(() => renderLore()); assert.equal(await page.evaluate(() => document.querySelector('[data-lore-tl]').open), true, 'it stays open while you are in the app');
+  await page.click('[data-lore-tl] > summary'); await page.waitForFunction(() => S.loreTl === false, null, { timeout: 3000 }); assert.equal(await page.evaluate(() => document.querySelector('[data-lore-tl]').open), false, 'tapping again collapses it'); await page.click('[data-lore-tl] > summary');
+  await noSideways('lore timeline open');
   await page.click('.ltl .lchip[data-rel]'); await page.waitForFunction(() => S.view === 'release', null, { timeout: 5000 });
   await page.evaluate(() => { S.lib.artist_bio = ''; S.lib.tracks.forEach((t) => { t.voice_note_id = ''; }); renderLore(); }); await page.waitForSelector('.lorestats');
   assert.deepEqual(await page.evaluate(() => [!!document.querySelector('.lorestory'), !!document.querySelector('.lorestories')]), [false, false], 'no bio and no voice notes: those sections do not show');
