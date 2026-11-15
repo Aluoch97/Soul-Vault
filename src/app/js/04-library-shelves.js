@@ -227,9 +227,9 @@ function renderLibBody() {
   const view = S.libView = S.libView || ls.get('sv_libview', 'scroll');
   const allMode = view !== 'scroll' && !q;
   const viewBtn = q ? '' : viewMenu(view);
-  // Order on the Music tab: Recently played, Discography, Extras (tabs: Unreleased, Features, Series), Playlists (then coming attractions).
-  $('#libBody').innerHTML = (!q ? resumeCard() : '') + (!q && !allMode ? recentRow() : '') + (!q ? '<h2 class="sh" id="discography"><span><b>Discography</b></span></h2>' : '') + `<div class="libbar">${chips}${viewBtn}</div>` + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
-    (!q ? extrasSection() : '') + (!q && !allMode ? picksRow() + playlistsRow() + dropsRow() : '') +
+  // Order on the Music tab: Discography, Extras (tabs: Unreleased, Features, Series), Playlists, coming attractions, then Recently played (last, Nick's choice Nov 15).
+  $('#libBody').innerHTML = (!q ? resumeCard() : '') + (!q ? '<h2 class="sh" id="discography"><span><b>Discography</b></span></h2>' : '') + `<div class="libbar">${chips}${viewBtn}</div>` + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
+    (!q ? extrasSection() : '') + (!q && !allMode ? picksRow() + playlistsRow() + dropsRow() + recentRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
   wireShelf();
