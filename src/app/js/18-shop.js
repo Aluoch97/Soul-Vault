@@ -13,7 +13,7 @@ function loadShop() {
 }
 async function fillShop() {
   const items = await loadShop();
-  const h = $('#shopHome'); if (h) { const list = items.filter(x => x.home !== false); h.innerHTML = list.length ? `<h2 class="lathead">Shop</h2><div class="shoplist">${list.map(shopCard).join('')}</div>` : ''; h.hidden = !list.length; }
+  const h = $('#shopHome'); if (h) { const list = items.filter(x => x.home !== false); h.innerHTML = list.length ? `<h2 class="sh"><span><b>Shop</b></span></h2><div class="shoplist">${list.map(shopCard).join('')}</div>` : ''; h.hidden = !list.length; }
   const r = $('#shopRel'); if (r) { const list = items.filter(x => x.release_id && x.release_id === S.releaseId); r.innerHTML = list.length ? `<div class="shoplist">${list.map(shopCard).join('')}</div>` : ''; }
 }
 // Studio > Shop: add, change and remove items. Nothing is saved until you tap Save shop.

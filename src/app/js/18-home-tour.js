@@ -23,7 +23,7 @@ function roadCard(t) {
 async function fillRoad() {
   const box = $('#roadHome'); if (!box) return;
   const t = await loadTour(); const now = $('#roadHome'); if (!now) return;
-  now.innerHTML = t ? `<h2 class="lathead">On the road</h2>${roadCard(t)}` : ''; now.hidden = !t;
+  now.innerHTML = t ? `<h2 class="sh"><span><b>On the</b> road</span></h2>${roadCard(t)}` : ''; now.hidden = !t;
 }
 // Everything on Home that needs data after the page is drawn.
 function fillHomeExtras() {
