@@ -24,3 +24,5 @@
   .vsec.picks .picksgrid { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 12px -16px 0; padding: 6px 16px 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .vsec.picks .picksgrid::-webkit-scrollbar { display: none; }
   .vsec.picks .pickcard { flex: 0 0 min(64vw, 250px); scroll-snap-align: start; }
+  /* Lore photos: the section is a heading with the shelf UNDER it (the old two-column photo grid style no longer applies to it) */
+  .wrap.lore .lorephotos { display: block; grid-template-columns: none; }
