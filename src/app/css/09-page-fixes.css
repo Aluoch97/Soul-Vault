@@ -14,3 +14,9 @@
   .relbar::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: calc(52px + env(safe-area-inset-top)); background: rgba(10,10,11,.84); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,.08); opacity: 0; transition: opacity .15s; pointer-events: none; }
   .relbar.stuck::before { opacity: 1; } .relbar.stuck .back { opacity: 1; padding-top: 0; min-height: 52px; }
   .relbar ~ .wrap > .eranav { top: calc(52px + env(safe-area-inset-top)); }
+  /* Playlist page: the song list is a cover, a bold one-line title and the release underneath, with hairlines between rows */
+  .plsongs { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--line); }
+  .plsong { border-bottom: 1px solid var(--line); } .plsong > button { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; width: 100%; min-height: 84px; padding: 10px 2px; text-align: left; }
+  .plsong > button:active { background: rgba(255,255,255,.05); } .plsong .plart { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; background: #1a1a1c; } .plsong .plart:not([src]) { visibility: hidden; }
+  .plsong .plt { display: grid; gap: 3px; min-width: 0; } .plsong .plt b { font-weight: 800; font-size: 18px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plsong .plrel { font-size: 15px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .plsong.on .plt b { color: var(--brass, #f5c542); }
