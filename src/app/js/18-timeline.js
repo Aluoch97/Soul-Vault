@@ -29,7 +29,7 @@ function tlItems(L) {
   return out;
 }
 function tlItemHtml(it) {
-  const date = tlLabel(it.key), meta = `<span class="tlmeta"><i class="tlk ${it.kind}">${TL_KIND_LABEL[it.kind]}</i>${date ? `<span>${esc(date)}</span>` : ''}</span>`;
+  const date = (it.kind === 'show' && it.s.posted && tlLabel(it.key) ? 'Video posted ' : '') + tlLabel(it.key), meta = `<span class="tlmeta"><i class="tlk ${it.kind}">${TL_KIND_LABEL[it.kind]}</i>${date ? `<span>${esc(date)}</span>` : ''}</span>`;
   let body = '';
   if (it.kind === 'release') {
     const r = it.r;
@@ -44,7 +44,7 @@ function tlItemHtml(it) {
     body = `${safeHttps(p.url) ? `<a class="tltitle tla" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.title)}</a>` : `<b class="tltitle">${esc(p.title)}</b>`}<span class="cs">${esc([p.author, p.site].filter(Boolean).join(' · '))}</span>`;
   } else {
     const s = it.s;
-    body = `<b class="tltitle">${esc((s.n ? 'Show #' + s.n + ': ' : '') + (s.title || s.venue))}</b><span class="cs">${esc([s.title ? s.venue : '', [s.city, s.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</span>${s.note ? `<p class="mstext">${esc(s.note)}</p>` : ''}${s.clip && /^[\w-]{6,20}$/.test(s.clip) ? `<a class="tla cs" href="https://www.youtube.com/watch?v=${esc(s.clip)}" target="_blank" rel="noopener noreferrer">Watch the clip</a>` : ''}`;
+    body = `<b class="tltitle">${esc((s.n ? 'Show #' + s.n + ': ' : '') + (s.title || s.venue))}</b><span class="cs">${esc([s.title ? s.venue : '', [s.city, s.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</span>${s.note ? `<p class="mstext">${esc(s.note)}</p>` : ''}${s.clip && /^[\w-]{6,20}$/.test(s.clip) ? `<span class="tlwatch"><button type="button" class="pill soft tlplay" data-tl-vid="${esc(s.clip)}" data-tl-title="${esc(s.title || s.venue)}">${I.play}Watch here</button><a class="tla cs" href="https://www.youtube.com/watch?v=${esc(s.clip)}" target="_blank" rel="noopener noreferrer">Open on YouTube</a></span>` : ''}`;
   }
   return `<li class="tli ${it.kind}"><span class="tldot" aria-hidden="true"></span>${meta}${body}</li>`;
 }
@@ -77,3 +77,15 @@ function fillTimeline(L) {
   draw();
   Promise.all([loadMilestones(), loadTour()]).then(([ms]) => { if (Array.isArray(ms)) S.milestones = ms; draw(); }).catch(() => {});   // the milestones and the shows arrive a moment later: draw again with them
 }
+// "Watch here": the video plays in a sheet inside the app (youtube-nocookie, only after the tap; a song that is playing is paused first).
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-tl-vid]'); if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const id = b.dataset.tlVid; if (!/^[\w-]{6,20}$/.test(id)) return;
+  try { if (!audio.paused) audio.pause(); } catch (er) {}
+  const m = $('#modal'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet tlsheet" role="dialog" aria-modal="true" aria-label="${esc(b.dataset.tlTitle || 'Video')}"><h2>${esc(b.dataset.tlTitle || 'Video')}</h2>
+    <div class="tlplayer"><iframe src="https://www.youtube-nocookie.com/embed/${esc(id)}?autoplay=1&rel=0&playsinline=1" title="${esc(b.dataset.tlTitle || 'Video')}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+    <div class="end"><a class="pill soft" href="https://www.youtube.com/watch?v=${esc(id)}" target="_blank" rel="noopener noreferrer">Open on YouTube</a><button type="button" class="pill main" data-close>Close</button></div></div>`;
+  m.hidden = false;
+}, true);

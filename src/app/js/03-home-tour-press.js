@@ -50,7 +50,13 @@ const SITE = {
     { date: '2024-04-06', title: 'Renaissance Certified', city: 'Nashville', state: 'TN' },
     { date: '2022-10-13', title: 'Tapped In W/ HewG', city: 'Nashville', state: 'TN' },
     { date: '2022-09-17', title: 'The Hollistic Connection At Rivergate', city: 'East Nashville', state: 'TN' },
-    { date: '2019-04-19', title: 'Carnelian Aura: The Setlist', venue: 'The Birdhouse', city: 'Knoxville', state: 'TN', note: 'With Cash Keldry, Brazzy Brook, Not4Rent, ReggieBDaBoss, Mia Daydream, Dilly, Meraki and Prophet.' }
+    { date: '2019-04-19', title: 'Carnelian Aura: The Setlist', venue: 'The Birdhouse', city: 'Knoxville', state: 'TN', note: 'With Cash Keldry, Brazzy Brook, Not4Rent, ReggieBDaBoss, Mia Daydream, Dilly, Meraki and Prophet.' },
+    { date: '2018-09-07', title: 'Carnelian Aura', venue: 'The Birdhouse', city: 'Knoxville', state: 'TN' },
+    // Performance videos (YouTube playlist PERFORMANCES): `posted: true` means the date is the day the VIDEO went up, not necessarily the show date.
+    { date: '2025-07-12', title: 'RISE OF THE LOST SET | MOOD: Open Mic Night', posted: true, clip: 'F19HL1uvaBE' },
+    { date: '2025-07-11', title: 'UnderDogs Across Borders: The Concert Series Vol. 1 (UMC Worldwide)', posted: true, clip: 'BJlQ2CudYB4' },
+    { date: '2025-01-12', title: 'Certified Lounge (S1E1)', posted: true, clip: 'tSG2EnLFB9o' },
+    { date: '2018-02-16', title: 'NRN Live: The Birdhouse', venue: 'The Birdhouse', city: 'Knoxville', state: 'TN', posted: true, clip: 'E5ZUsIpNRmI' }
   ],
   videos: [
     ["Da' Healerz Circle Ep. 5 w/ Special Guest Nicólas Soul", 'fJkff8Er46Q'],

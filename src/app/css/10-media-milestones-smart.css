@@ -116,3 +116,7 @@
 .biopre summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--dim); font-size: 14px; }
 .lorestory h3.biohd, .biopre h3.biohd { margin: 18px 0 6px; font-size: 17px; font-weight: 800; color: var(--text, #f4eef2); letter-spacing: .01em; }
 .lorestory strong, .biopre strong { font-weight: 800; color: #fff; }
+  .tlwatch { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 2px; }
+  .tlplay { min-height: 44px; padding: 0 16px; }
+  .tlplayer { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; margin: 8px 0 12px; }
+  .tlplayer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
