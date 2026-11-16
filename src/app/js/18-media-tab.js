@@ -1,7 +1,7 @@
 /* ── Media tab: Videos | Photos. The photos that used to be on the Lore page live here now (Nick, Nov 2026). ──
    Videos are drawn by renderVideo (03-home-tour-press.js, 18-video-tab.js); Photos by renderMediaPhotos below. The tab is S.mediaTab ('videos' | 'photos'),
    the address is /media/videos... or /media/photos (the older /video/... still opens the Videos side).
-   Photos have the same View menu as the Music tab (VIEWS / VSVG in 04-library-shelves.js): Scrolling shelf, Large, Small, List; the choice is kept in `sv_photoview`. */
+   Photos have the same View menu as the Music tab (VIEWS / VSVG in 04-library-shelves.js): Scrolling shelf, Large, Small, List; the choice is kept in `sv_photoview2` (the default is the scrolling shelf; the key was renamed so an older saved choice does not hide that default). */
 function mediaSwitch() {
   return `<div class="mediasw" role="tablist" aria-label="Media">${[['videos', 'Videos'], ['photos', 'Photos']].map(([k, l]) => `<button type="button" role="tab" data-mtab="${k}" aria-selected="${S.mediaTab === k}">${l}</button>`).join('')}</div>`;
 }
@@ -14,7 +14,7 @@ function photoViewMenu(cur) {
 }
 function renderMediaPhotos() {
   clearPageBg(); S.view = 'video'; S.mediaTab = 'photos'; renderChrome();
-  const view = VIEWS.some(v => v[0] === S.photoView) ? S.photoView : (S.photoView = ls.get('sv_photoview', 'large') || 'large');
+  const view = VIEWS.some(v => v[0] === S.photoView) ? S.photoView : (S.photoView = ls.get('sv_photoview2', 'scroll') || 'scroll');
   const L = S.lib ? buildLore() : null;
   const phRels = L ? L.eras.map(e => ({ r: e.r, ph: extrasOf(e.r.release_id, 'photo').filter(x => x.file_id) })).filter(x => x.ph.length) : [];
   const soul = SITE.photos.map((f, i) => `<button type="button" role="listitem" class="mph1" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"><span class="mphlab">Photo ${i + 1}</span></button>`).join('');
@@ -28,7 +28,7 @@ function renderMediaPhotos() {
       <div class="mphgrid rel ${view}" role="list">${rels}</div></section>` : (S.lib ? '' : '<p class="cs">Loading photos…</p>')}
   </div>`;
   wireMediaSwitch();
-  $$('[data-phview]').forEach(b => b.addEventListener('click', () => { S.photoView = b.dataset.phview; ls.set('sv_photoview', S.photoView); renderMediaPhotos(); }));
+  $$('[data-phview]').forEach(b => b.addEventListener('click', () => { S.photoView = b.dataset.phview; ls.set('sv_photoview2', S.photoView); renderMediaPhotos(); }));
   $$('[data-lphoto]').forEach(b => b.addEventListener('click', () => openLorePhoto(+b.dataset.lphoto)));
   $$('[data-lore-phrel]').forEach(b => { ssThumb(b.querySelector('img')); b.addEventListener('click', () => { S.releaseId = b.dataset.lorePhrel; openSlideshow(0); }); });
   syncUrl(); window.scrollTo(0, 0);

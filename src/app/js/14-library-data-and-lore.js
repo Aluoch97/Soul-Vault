@@ -143,28 +143,21 @@ function indexList(map, label) {
 function renderLore() {
   clearPageBg(); S.view = 'lore'; renderChrome();
   const L = buildLore(), t = L.totals; t.toNow = Math.min(Number(t.to) || 0, new Date().getFullYear()) || t.to;   // a release sealed until next year does not count as active years yet
-  const top = m => [...m.values()].sort((x, y) => y.releases.size - x.releases.size || x.name.localeCompare(y.name))[0];
-  const hi = [['Most-used producer', top(L.idx.producers)], ['Most-featured artist', top(L.idx.features)], ['Most-used place', top(L.idx.places)]].filter(h => h[1]);
+  // The producer and featured-artist cards name the most-used person OTHER than Nicólas Soul himself (Nick's choice, Nov 16, 2026); the place card has no such rule.
+  const top = (m, skipHome) => [...m.values()].filter(e => !(skipHome && isHomeName(e.name))).sort((x, y) => y.releases.size - x.releases.size || x.name.localeCompare(y.name))[0];
+  const hi = [['Most-used producer', top(L.idx.producers, true)], ['Most-featured artist', top(L.idx.features, true)], ['Most-used place', top(L.idx.places)]].filter(h => h[1]);
   const cats = [['producers', 'Producers', L.idx.producers, 'producers'], ['engineers', 'Engineers', L.idx.engineers, 'engineers'], ['features', 'Featured', L.idx.features, 'features'],
     ['places', 'Places', L.idx.places, 'recording locations'], ['photographers', 'Photographers', L.idx.photographers, 'photo credits']];
   let cat = cats.some(c => c[0] === S.loreCat) ? S.loreCat : (cats.find(c => c[2].size) || cats[0])[0];
   $('#main').innerHTML = `<div class="wrap lore">
     ${homeHeader(true)}
     <div id="loreStory"></div>
-    <div id="loreMilestones"></div>
     <section class="lorenums" aria-label="By the numbers"><h2 class="sh"><span><b>By the</b> numbers</span></h2>
     <div class="lorestats">
       <button type="button" class="kpi tap" data-lore-types aria-expanded="false" aria-controls="loreTypes"><b>${t.releases}</b><span>Releases</span></button><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
       <div class="kpi"><b>${t.videos}</b><span>Videos</span></div><div class="kpi"><b>${t.from}${t.toNow && t.toNow !== t.from ? '–' + t.toNow : ''}</b><span>Years</span></div></div>
     <div id="loreTypes" class="loretypes" hidden></div>
     ${hi.length ? `<div class="lorehi">${hi.map(h => `<div class="hi"><span class="cs">${esc(h[0])}</span><b>${esc(h[1].name)}</b><span class="cs">${h[1].releases.size} ${h[1].releases.size === 1 ? 'release' : 'releases'}</span></div>`).join('')}</div>` : ''}</section>
-    <h2 class="sh"><span><b>Eras</b></span></h2>
-    <div class="loreeras" role="list">${L.eras.map(e => { const c = /^#[0-9a-f]{6}$/i.test(e.r.world_color || '') ? e.r.world_color : '', nv = Object.values(e.vcount).reduce((a, b) => a + b, 0);
-      return `<button type="button" role="listitem" class="loreera" data-rel="${esc(e.r.release_id)}"><span class="lc"${c ? ` style="background:${c}"` : ''}><img data-lcover="${esc(e.r.cover_file_id || '')}" alt="" loading="lazy"></span>
-        <b>${esc(e.r.title)}</b><span class="cs">${esc([e.r.year, isUnrel(e.r) ? 'Unreleased' : '', typeOf(e.r)].filter(Boolean).join(' · '))}</span>
-        <span class="cs">${e.songs} ${e.songs === 1 ? 'song' : 'songs'}${fmtRuntime(e.runtime) ? ' · ' + esc(fmtRuntime(e.runtime)) : ''}</span>
-        ${e.r.recorded_at ? `<span class="cs">${esc(e.r.recorded_at)}</span>` : ''}${e.ages.made ? `<span class="agechip">made at ${esc(e.ages.made)}</span>` : ''}
-        ${nv || e.photos ? `<span class="cs">${[nv ? nv + (nv === 1 ? ' video' : ' videos') : '', e.photos ? e.photos + (e.photos === 1 ? ' photo' : ' photos') : ''].filter(Boolean).join(' · ')}</span>` : ''}</button>`; }).join('')}</div>
     <div id="loreTimeline"></div>
     <h2 class="sh"><span><b>The people</b> behind it</span></h2>
     <label class="lorecatsel"><span class="sr-only">Credits</span><select class="field" data-lcatsel aria-label="Credits">${cats.map(c => `<option value="${c[0]}"${c[0] === cat ? ' selected' : ''}>${esc(c[1])} (${c[2].size})</option>`).join('')}</select></label>
@@ -177,7 +170,6 @@ function renderLore() {
     tyBox.innerHTML = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, n]) => `<div class="lty2"><b>${n}</b><span>${esc(plural[k] || k)}</span></div>`).join('');
     tyBtn.addEventListener('click', () => { const open = tyBox.hidden; tyBox.hidden = !open; tyBtn.setAttribute('aria-expanded', String(open)); });
   }
-  $$('[data-lcover]').forEach(img => setCover(img, img.dataset.lcover));
   // The people: one list at a time as name chips; tap a name to see which releases they are on.
   const drawPeople = () => {
     const c = cats.find(x => x[0] === cat), all = [...c[2].values()].sort((x, y) => y.releases.size - x.releases.size || x.name.localeCompare(y.name));

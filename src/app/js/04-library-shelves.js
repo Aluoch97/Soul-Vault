@@ -133,7 +133,7 @@ document.addEventListener('click', e => {
   const stb = e.target.closest && e.target.closest('[data-sectab]');
   if (stb) { const [id, k] = stb.dataset.sectab.split('|'); const q = secState(id); q.tab = k; q.chip = 'all'; redrawSection(id); return; }
   const o = e.target.closest && e.target.closest('[data-libview]');
-  if (o) { S.libView = o.dataset.libview; ls.set('sv_libview', S.libView); renderLibBody(); return; }
+  if (o) { S.libView = o.dataset.libview; ls.set('sv_libview2', S.libView); renderLibBody(); return; }
   $$('.viewmenu').forEach(x => { x.hidden = true; if (x.previousElementSibling) x.previousElementSibling.setAttribute('aria-expanded', 'false'); });   // a tap anywhere else closes it
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $$('.viewmenu').forEach(x => { x.hidden = true; }); });
@@ -243,7 +243,7 @@ function renderLibBody() {
     <ol class="tracks">${songHits.map(t => trackRow(t, true)).join('')}</ol>` : '';
   const chips = `<label class="libsel"><span class="sr-only">Type</span><select data-filtersel aria-label="Filter by type">${types.map(t => `<option value="${esc(t)}"${t === S.filter ? ' selected' : ''}>${t === 'All' ? 'All types' : esc(t)}</option>`).join('')}</select></label>`;
   const empty = `<p class="status" style="padding-left:0">${q ? `Nothing matches "${esc(S.q)}". Try part of a title, or a line from a song.` : 'Nothing matches this filter yet.'}</p>`;
-  const view = S.libView = S.libView || ls.get('sv_libview', 'scroll');
+  const view = S.libView = S.libView || ls.get('sv_libview2', 'scroll');
   const allMode = view !== 'scroll' && !q;
   const viewBtn = q ? '' : viewMenu(view);
   // Order on the Music tab: Discography, Extras (tabs: Unreleased, Features, Series, Soul's Picks), Playlists, coming attractions, then Recently played (last, Nick's choice Nov 15).

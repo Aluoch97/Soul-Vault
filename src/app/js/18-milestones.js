@@ -1,5 +1,5 @@
 /* ── Milestones: the big moments in the story (first time on the radio, first show in Nashville, first song to hit 100k streams...). ──
-   Shown on the Lore page under "The story" (`loreMilestonesHtml`, filled by `fillMilestones`). Each has a title, a date (a day, a month or a year), a few words,
+   Shown on the Lore page inside "Year by year" (18-timeline.js), next to releases, press and shows. Each has a title, a date (a day, a month or a year), a few words,
    an optional voice note (our own storage, `milestones/voice-<hex>.<ext>`, played with the browser's own audio controls) and an optional https link.
    Edited by the owner in Settings > Milestones (`renderMilestonesEditor`). Edge calls: getMilestones (public), saveMilestones / planMilestoneAudio (owner). */
 const MS_STARTERS = ['First time on the radio', 'First show in Nashville', 'First song to hit 100k streams', 'First music video', 'First headline show', 'First sold-out show'];
@@ -15,22 +15,7 @@ function loadMilestones() {
   if (!S.milestonesP) S.milestonesP = run('getMilestones').then(r => (S.milestones = Array.isArray(r) ? r : [])).catch(() => { S.milestonesP = null; return (S.milestones = S.milestones || []); });
   return S.milestonesP;
 }
-function loreMilestonesHtml(list) {
-  if (!list.length) return OWNER ? `<section class="msec" aria-label="Milestones"><h2 class="sh"><span><b>Milestones</b></span></h2><p class="cs">Your big moments will show here: first time on the radio, first show in Nashville, first song to hit 100k streams. <button type="button" class="linkish" data-nav="milestones">Add your first milestone</button></p></section>` : '';
-  return `<section class="msec" aria-label="Milestones"><h2 class="sh"><span><b>Milestones</b></span>${OWNER ? '<button type="button" class="linkish msedit" data-nav="milestones">Edit</button>' : ''}</h2>
-    <ol class="mslist">${msSorted(list).map(m => `<li class="ms"><span class="msdot" aria-hidden="true"></span>
-      ${msDate(m.date) ? `<span class="msdate">${esc(msDate(m.date))}</span>` : ''}<b class="mstitle">${esc(m.title)}</b>${m.text ? `<p class="mstext">${esc(m.text)}</p>` : ''}
-      ${m.audio ? `<div class="msvoice">${I.mic}<span>${esc(m.audio_label || 'Hear it')}</span><audio controls preload="none" src="${esc(msAudioUrl(m.audio))}" aria-label="${esc((m.audio_label || 'Voice note') + ': ' + m.title)}"></audio></div>` : ''}
-      ${m.url ? `<a class="pill soft mslink" href="${esc(m.url)}" target="_blank" rel="noopener noreferrer">${esc(m.url_label || 'See more')}</a>` : ''}</li>`).join('')}</ol></section>`;
-}
-async function fillMilestones() {
-  const list = await loadMilestones(), box = $('#loreMilestones'); if (!box) return;
-  box.innerHTML = loreMilestonesHtml(list);
-  $$('audio', box).forEach(a => a.addEventListener('play', () => {   // a voice note and a song never talk over each other
-    try { if (!audio.paused) audio.pause(); } catch (e) {}
-    $$('audio', box).forEach(o => { if (o !== a && !o.paused) o.pause(); });
-  }));
-}
+// (The milestones are shown on Lore inside "Year by year": see 18-timeline.js.)
 
 // Settings > Milestones: add, change and remove. Nothing is saved until you tap Save.
 const msForm = m => `<div class="shopitem msitem" data-ms-item data-id="${esc(m.id || '')}" data-audio="${esc(m.audio || '')}">
