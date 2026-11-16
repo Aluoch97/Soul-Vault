@@ -1336,6 +1336,23 @@ await step('Missing files > Where your songs play from: Upload file puts a song 
   assert.equal(await page.evaluate((id) => !!trk(id), gone.id), false, 'and from the app library');
   await noSideways('missing files upload remove'); await page.evaluate(() => closeModal());
 });
+await step('Release page: every song row has a Replace file button (owner only); picking a file saves it to Cloudflare and the song then plays from there', async () => {
+  const where = async () => (await w.call('missingWhere', [KEY])).result;
+  const w0 = await where(); const song = w0.songs.find((s) => s.where === 'drive' && s.versions >= 1 && !s.hidden) || w0.songs.find((s) => s.where === 'drive'); assert.ok(song, 'there is a song still on Drive to replace');
+  await page.evaluate((id) => { const t = trk(id); S.releaseId = t.release_id; renderRelease(t.release_id); }, song.id); await page.waitForSelector('.row[data-track="' + song.id + '"]');
+  const look = await page.evaluate((id) => { const row = document.querySelector('.row[data-track="' + id + '"]'), b = row.querySelector('[data-replace-song]'), m = row.querySelector('[data-more]'); const r = b.getBoundingClientRect(), q = m.getBoundingClientRect(); return { n: document.querySelectorAll('.row [data-replace-song]').length, rows: document.querySelectorAll('.row[data-track]').length, w: Math.round(r.width), h: Math.round(r.height), beside: r.right <= q.left + 1, label: b.getAttribute('aria-label'), page: document.documentElement.scrollWidth - innerWidth }; }, song.id);
+  assert.equal(look.n, look.rows, 'a button on every song row: ' + JSON.stringify(look)); assert.ok(look.w >= 40 && look.h >= 40 && look.beside && look.page <= 1, 'thumb-sized, beside the ⋯ button, no sideways scroll: ' + JSON.stringify(look)); assert.match(look.label, /^Replace the audio file of /);
+  const [fc] = await Promise.all([page.waitForEvent('filechooser', { timeout: 8000 }), page.click('.row[data-track="' + song.id + '"] [data-replace-song]')]);
+  assert.ok(await page.evaluate(() => document.querySelector('#replaceFile').accept.includes('.wav') && document.querySelector('#replaceFile').accept.includes('.mp3')), 'it takes MP3, WAV and the other usual files');
+  await fc.setFiles({ name: 'replacement.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('fake replacement mp3 bytes'.repeat(40)) });
+  await page.waitForFunction(() => /^Done\./.test((document.querySelector('#rpSt') || {}).textContent || ''), null, { timeout: 20000 });
+  const w1 = await where(); assert.equal(w1.songs.find((s) => s.id === song.id).where, 'cloudflare', 'the song now plays from Cloudflare'); assert.equal(w1.totals.cloudflare, w0.totals.cloudflare + 1, 'one more song on Cloudflare');
+  await page.click('#rpDone'); assert.equal(await page.evaluate(() => document.querySelector('#modal').hidden), true, 'Close closes the sheet');
+  const fctx = await phoneContext(), fan = await fctx.newPage(); fan.on('pageerror', (e) => problems.push('fan page error: ' + e.message));
+  await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });
+  await fan.evaluate(() => { const r = S.lib.releases[0]; renderRelease(r.release_id); }); await fan.waitForSelector('.row[data-track]');
+  assert.equal(await fan.evaluate(() => document.querySelectorAll('[data-replace-song]').length), 0, 'fans never get the button'); await fctx.close();
+});
 await step('Missing files > Where your songs play from: Select songs lets you tick several (or all) and remove them together; it asks first', async () => {
   await page.evaluate(() => { renderVault(); }); await page.waitForSelector('[data-missing], details.sset'); await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });
   await page.click('[data-missing]'); await page.waitForSelector('#msWhere [data-ws-selmode]', { timeout: 15000 });
