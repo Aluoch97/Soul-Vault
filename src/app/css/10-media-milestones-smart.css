@@ -53,3 +53,20 @@
   .mschips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; } .mschips:empty { display: none; }
   .msitem .msaudio { display: grid; gap: 8px; margin: 4px 0; }
   .sharechoice { display: grid; gap: 4px; } .sharechoice .cs { margin: 0 0 10px; } .sharechoice .pill { justify-content: center; }
+
+  /* Media > Photos views (same choices as the Music tab): large (2 across), small (3 across), list, scrolling shelf */
+  .mphlab { display: none; }
+  .mphgrid.small { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .mphgrid.small:not(.rel) .mph1 { aspect-ratio: 1; border-radius: 10px; }
+  .mphgrid.small .mphrel b { font-size: 12px; }
+  .mphgrid.list { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .mphgrid.list .mph1 { display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 6px 0; border-bottom: 1px solid var(--line); border-radius: 0; aspect-ratio: auto; overflow: visible; box-shadow: none; }
+  .mphgrid.list:not(.rel) .mph1 img { flex: none; width: 64px; height: 64px; border-radius: 10px; object-fit: cover; object-position: 50% 28%; }
+  .mphgrid.list .mphlab { display: block; font-weight: 700; }
+  .mphgrid.list .mphrel .mphimg { flex: none; width: 64px; margin: 0; border-radius: 10px; }
+  .mphgrid.list .mphtxt { min-width: 0; }
+  .mphgrid.scroll { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 16px; padding: 2px 0 8px; }
+  .mphgrid.scroll::-webkit-scrollbar { display: none; }
+  .mphgrid.scroll .mph1 { flex: 0 0 min(62vw, 240px); scroll-snap-align: start; }
+  .mphgrid.scroll:not(.rel) .mph1 { aspect-ratio: 4 / 5; }
+  .mphtxt { display: block; min-width: 0; } .mphtxt .cs { display: block; }
