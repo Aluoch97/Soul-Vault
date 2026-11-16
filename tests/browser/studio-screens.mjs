@@ -1243,6 +1243,8 @@ await step('Press coverage is newest first, with the date and the author / site 
   assert.ok(c.layout.every((l) => l.every(Boolean)), 'date and author/site directly under the picture, above the title: ' + JSON.stringify(c.layout));
   const dates = await page.evaluate(() => { const a = pressSorted([{ title: 'a', date: '2025' }, { title: 'b', date: 'Jan 14, 2026' }, { title: 'c', date: '' }, { title: 'd', date: 'Mar 3, 2025' }, { title: 'e', date: '2026' }]); return a.map((p) => p.title).join(''); });
   assert.equal(dates, 'bedac', 'full dates and bare years sort together; no date goes last');
+  const dated = await page.evaluate(() => SITE.press.filter((p) => /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.date)).length);
+  assert.equal(dated, await page.evaluate(() => SITE.press.length), 'every article carries an exact date (read from its page, or given by Nick): ' + dated);
   await noSideways('press coverage order');
 });
 await step('fans never see the hidden test release', async () => {
