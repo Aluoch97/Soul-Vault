@@ -109,13 +109,12 @@ test('owner login: five wrong tries lock that address for 15 minutes, other addr
 }));
 
 // ---------------------------------------------------------------- fan sign-ups and the fan list
-test('sign-up through the API: saved once, the old list is told only about new people, the fan list is owner-only', () => withWorld(async (w) => {
+test('sign-up through the API: saved once, nothing is sent to the old Google list any more, the fan list is owner-only', () => withWorld(async (w) => {
   const me = { firstName: 'Ana', email: 'ana@example.com', emailConsent: true };
   const a = await w.call('joinSubmit', [me], { ip: '5.5.5.5' });
   assert.deepEqual(a.result, { ok: true, added: true });
-  assert.equal(w.log.filter(x => x.url.startsWith('https://signup.test')).length, 1);
+  assert.equal(w.log.filter(x => /script\.google\.com|signup\.test/.test(x.url)).length, 0);   // the old soulMATES forward is gone
   assert.deepEqual((await w.call('joinSubmit', [me], { ip: '6.6.6.6' })).result, { duplicate: true });
-  assert.equal(w.log.filter(x => x.url.startsWith('https://signup.test')).length, 1);                     // a duplicate is not forwarded again
   assert.match((await w.call('joinSubmit', [{ ...me, email: 'bad' }])).error, /email/);
   assert.equal((await w.call('getFans', [])).ok, false); assert.equal((await w.call('getFans', ['wrong'])).ok, false);
   const fans = await w.owner('getFans');

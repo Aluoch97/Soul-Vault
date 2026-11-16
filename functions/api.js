@@ -29,7 +29,6 @@ const LIB_WRITES = new Set(['saveTracklist', 'uploadCover', 'saveTrackDetails', 
   'deleteRelease', 'addAudioNote', 'addYoutubePlaylistVideos', 'createReleaseFromYoutube', 'addCover', 'removeCover', 'setMainCover', 'updateExtra', 'refreshYoutubeTitles', 'setTrackCover', 'setReleaseBg']);
 const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json;charset=utf-8', 'cache-control': 'no-store' } });
 
-const SIGNUP_API = 'https://script.google.com/macros/s/AKfycbx22pIcJuFLQyN9VIvp4LDy9gcmXnaxxfsIc47JPKgI7D7Bq-SufKQWRk3nzX4TOqw6/exec';
 async function proxy(env, text, url) {
   const r = await fetch(url || appsUrl(env), { method: 'POST', body: text, headers: { 'content-type': 'text/plain;charset=utf-8' }, redirect: 'follow' });
   return new Response(await r.text(), { status: r.status, headers: { 'content-type': 'application/json;charset=utf-8', 'cache-control': 'no-store' } });
@@ -775,8 +774,6 @@ export async function onRequestPost(ctx) {
     } else if (env.DB && fn === 'joinSubmit') {
       try {
         const r = await FN.joinSubmit(env.DB, args[0], request.headers.get('cf-connecting-ip'));
-        // The old Google list still sends the newsletter, so a new sign-up is also passed to it (best effort, never blocks the fan).
-        if (r.added && ctx.waitUntil) ctx.waitUntil(proxy(env, JSON.stringify({ action: 'submit', data: args[0] }), env.SIGNUP_API || SIGNUP_API).catch(() => null));
         return json({ ok: true, result: r });
       } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (env.DB && (fn === 'getFans' || fn === 'updateFan' || fn === 'deleteFan')) {
