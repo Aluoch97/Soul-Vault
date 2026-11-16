@@ -242,8 +242,11 @@ function videosOf(k, sub) {
 function renderVideo() {
   clearPageBg(); S.view = 'video'; renderChrome();
   if (!VIDEO_SECTIONS.some(x => x[0] === S.videoTab)) S.videoTab = 'freestyles';
+  if (S.mediaTab !== 'photos') S.mediaTab = 'videos';
+  if (S.mediaTab === 'photos') return renderMediaPhotos();
   $('#main').innerHTML = `<div class="wrap sitepg presspg videopg">
-    <header class="vidhead"><h1 class="vidh1">Soul <span>Videos</span></h1><p class="cs">Freestyles, music videos and press, straight from the channel.</p></header>
+    <header class="vidhead"><h1 class="vidh1">Soul <span>Media</span></h1><p class="cs">Videos and photos.</p></header>
+    ${mediaSwitch()}
     <div class="vidtabs" role="tablist" aria-label="Video">${VIDEO_SECTIONS.map(x => `<button role="tab" data-vidtab="${x[0]}">${x[1]}</button>`).join('')}</div>
     <div class="vidfind"><label class="vidsearch">${I.search}<input id="vq" type="search" placeholder="Search videos" aria-label="Search videos" autocomplete="off" value="${esc(S.videoQ || '')}"></label>
       <label class="vidauto"><input type="checkbox" id="vauto"${S.videoAuto === false ? '' : ' checked'}><span>Autoplay next</span></label></div>
@@ -288,6 +291,7 @@ function renderVideo() {
     const more = $('[data-vidmore]', body); if (more) more.addEventListener('click', () => { const wall = $('.vidwall', body); wall.insertAdjacentHTML('beforeend', restAll.slice(VID_FIRST).join('')); $$('[data-vidpick]', wall).forEach(b => { if (!b.dataset.w) { b.dataset.w = '1'; wirePick(b); } }); more.remove(); });
   };
   const pick = k => { S.videoTab = k; syncUrl(); btns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.vidtab === k))); draw(k, 0); };
+  wireMediaSwitch();
   btns.forEach(b => b.addEventListener('click', () => { pick(b.dataset.vidtab); window.scrollTo(0, 0); }));
   $('#vq').addEventListener('input', e => { S.videoQ = e.target.value; draw(S.videoTab, 0); });
   $('#vauto').addEventListener('change', e => { S.videoAuto = e.target.checked; ls.set('sv_vidauto', S.videoAuto); draw(S.videoTab, S.videoCur || 0); });

@@ -29,5 +29,6 @@ function fillLoreExtras(L) {
   set('loreStory', loreStoryHtml()); set('loreTimeline', loreTimelineHtml(L));
   const drawStories = all => { set('loreStories', loreStoriesHtml(all)); const b = $('[data-lore-stories-all]'); if (b) b.addEventListener('click', () => drawStories(true)); };
   drawStories(false);
+  fillMilestones();
   const tl = $('[data-lore-tl]'); if (tl) tl.addEventListener('toggle', () => { S.loreTl = tl.open; });
 }

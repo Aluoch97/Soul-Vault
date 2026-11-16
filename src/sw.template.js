@@ -11,7 +11,7 @@ function kind(req, origin) {
   const u = new URL(req.url);
   if (u.origin === origin) {
     if (u.pathname === '/api' || u.pathname === '/sw.js' || u.pathname.indexOf('/upload') === 0 || u.pathname === '/news' || AUDIO_VIDEO.test(u.pathname)) return 'bypass';
-    if (req.mode === 'navigate') return /^\/(vault|video|tour|press|lore|admin)?(\/|$)/.test(u.pathname) && !/\.[a-z0-9]+$/i.test(u.pathname) ? 'page' : 'bypass';   // only the app's own pages; /join, /shows, /privacy-policy and the tracker are separate pages and go to the network
+    if (req.mode === 'navigate') return /^\/(vault|video|media|link|tour|press|lore|admin)?(\/|$)/.test(u.pathname) && !/\.[a-z0-9]+$/i.test(u.pathname) ? 'page' : 'bypass';   // only the app's own pages; /join, /shows, /privacy-policy and the tracker are separate pages and go to the network
     if (u.pathname === '/app.js' || u.pathname === '/lame.js') return 'shell';
     if (/^\/(fonts\/|icon|favicon|apple-touch|photos\/|press-img\/|home-covers\/|og-image)/.test(u.pathname) || u.pathname === '/manifest.webmanifest') return 'static';
     return 'bypass';

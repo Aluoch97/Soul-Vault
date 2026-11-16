@@ -312,7 +312,7 @@ document.addEventListener('click', e => {
   else if ('editSave' in d) saveEdits();
   else if ('coverChange' in d) $('#coverFile').click();
   else if (d.rel && !S.lib) { S.pendingRel = d.rel; toast('Opening…'); }
-  else if (d.rel) renderRelease(d.rel);
+  else if (d.rel) { rememberShelf(el); renderRelease(d.rel); }
   else if (d.play) { const pc = el.closest('[data-plctx]'); playFromTap(d.play, pc ? pc.dataset.plctx : ''); }
   else if (d.share) openShare(d.share, d.id);
   else if (d.nav) {
@@ -323,6 +323,7 @@ document.addEventListener('click', e => {
     else if (d.nav === 'siteinsights' && OWNER) renderSiteInsights();
     else if (d.nav === 'studio' && OWNER) renderStudio();
     else if (d.nav === 'shop' && OWNER) renderShop();
+    else if (d.nav === 'milestones' && OWNER) renderMilestonesEditor();
     else if (d.nav === 'home') renderHome();
     else if (d.nav === 'tour') renderTour();
     else if (d.nav === 'press') renderPress();

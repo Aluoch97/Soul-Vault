@@ -39,7 +39,7 @@ export async function recordView(db, lib, o) {
 
 /** A readable name for a page address. */
 export function pageName(path, lib) {
-  const p = String(path || '/').replace(/\/+$/, '') || '/', fixed = { '/': 'Home', '/vault': 'Music', '/tour': 'Tour', '/tour/road-to-100': 'Tour: Road to 100', '/press': 'Press', '/press/video': 'Press: Videos', '/lore': 'Lore', '/join': 'Join the Soul Tribe' };
+  const p = String(path || '/').replace(/\/+$/, '') || '/', fixed = { '/': 'Home', '/vault': 'Music', '/tour': 'Tour', '/tour/road-to-100': 'Tour: Road to 100', '/press': 'Press', '/press/video': 'Press: Videos', '/media/videos': 'Media: Videos', '/media/photos': 'Media: Photos', '/lore': 'Lore', '/join': 'Join the Soul Tribe' };
   if (fixed[p]) return fixed[p];
   const m = /^\/vault\/(.+)$/.exec(p);
   if (m) { const r = (lib.releases || []).find(x => String(x.release_id).replace(/^rel_/, '').replace(/_/g, '-') === m[1]); return r ? r.title : 'Release: ' + m[1]; }

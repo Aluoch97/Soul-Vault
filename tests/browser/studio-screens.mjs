@@ -221,17 +221,17 @@ await step('Video tab: Freestyles (originals + remixes together), Music Videos a
   const sortBtns = () => page.evaluate(() => [...document.querySelectorAll('[data-vidsortsel] option')].map((o) => o.textContent + (o.selected ? '*' : '')));
   let h = await hero();
   assert.deepEqual(await sortBtns(), ['Newest*', 'A–Z', 'Most viewed', 'Most liked'], 'one Sort dropdown, newest first by default');
-  assert.deepEqual([h.title, h.tag, h.wall, h.path], ['Zeta <i>Two</i>', 'Original', ['Original One', 'Remix One'], '/video'], 'originals and remixes in one list; the newest is featured; titles tidied and shown as plain text: ' + JSON.stringify(h));
+  assert.deepEqual([h.title, h.tag, h.wall, h.path], ['Zeta <i>Two</i>', 'Original', ['Original One', 'Remix One'], '/media/videos'], 'originals and remixes in one list; the newest is featured; titles tidied and shown as plain text: ' + JSON.stringify(h));
   assert.match(await page.textContent('.vidhero .vidstat'), /90 views · Jun 2025/, 'views and month uploaded');
   const subs = () => page.evaluate(() => [...document.querySelectorAll('[data-vidsub]')].map((b) => b.textContent.replace(/\s+/g, ' ').trim() + (b.getAttribute('aria-selected') === 'true' ? '*' : '')));
   const bar = await page.evaluate(() => { const q = (x) => document.querySelector(x).getBoundingClientRect(); return { sameRow: Math.abs((q('.vidsub').top + q('.vidsub').height / 2) - (q('.vidsort').top + q('.vidsort').height / 2)) < 12, noPills: getComputedStyle(document.querySelector('[data-vidsub]')).borderTopWidth === '0px', rows: document.querySelectorAll('.vidhead, .vidtabs, .vidbar').length, selectFont: parseFloat(getComputedStyle(document.querySelector('[data-vidsortsel]')).fontSize) }; });
   assert.deepEqual([bar.sameRow, bar.noPills, bar.rows], [true, true, 3], 'less clutter: section buttons, then one toolbar with All/Originals/Remixes and the Sort dropdown on the same row: ' + JSON.stringify(bar)); assert.ok(bar.selectFont >= 16, 'the dropdown text is 16px+ so iPhones do not zoom');
   assert.deepEqual(await subs(), ['All*', 'Originals', 'Remixes'], 'Freestyles has tabs to separate the originals from the remixes');
-  await page.click('[data-vidsub="remixes"]'); await page.waitForFunction(() => /Remix One/.test(document.querySelector('.vidhero .vidtitle').textContent) && location.pathname === '/video/remixes' && !document.querySelector('.vidwall'), null, { timeout: 5000 });
+  await page.click('[data-vidsub="remixes"]'); await page.waitForFunction(() => /Remix One/.test(document.querySelector('.vidhero .vidtitle').textContent) && location.pathname === '/media/videos/remixes' && !document.querySelector('.vidwall'), null, { timeout: 5000 });
   assert.deepEqual(await subs(), ['All', 'Originals', 'Remixes*']);
-  await page.click('[data-vidsub="originals"]'); await page.waitForFunction(() => document.querySelectorAll('.vidwall .vidcard').length === 1 && /Original One|Zeta/.test(document.querySelector('.vidhero .vidtitle').textContent) && location.pathname === '/video/originals', null, { timeout: 5000 });
+  await page.click('[data-vidsub="originals"]'); await page.waitForFunction(() => document.querySelectorAll('.vidwall .vidcard').length === 1 && /Original One|Zeta/.test(document.querySelector('.vidhero .vidtitle').textContent) && location.pathname === '/media/videos/originals', null, { timeout: 5000 });
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('.vidtag, .vidwall .vidname')].some((e) => /Remix One/.test(e.textContent))), false, 'no remixes among the originals');
-  await page.click('[data-vidsub="all"]'); await page.waitForFunction(() => document.querySelectorAll('.vidwall .vidcard').length === 2 && location.pathname === '/video', null, { timeout: 5000 });
+  await page.click('[data-vidsub="all"]'); await page.waitForFunction(() => document.querySelectorAll('.vidwall .vidcard').length === 2 && location.pathname === '/media/videos', null, { timeout: 5000 });
   for (const [btn, expect] of [['A–Z', 'Original One'], ['Most viewed', 'Original One'], ['Most liked', 'Zeta <i>Two</i>'], ['Newest', 'Zeta <i>Two</i>']]) {
     await page.selectOption('[data-vidsortsel]', { label: btn }); await page.waitForFunction((t) => document.querySelector('.vidhero .vidtitle').textContent === t, expect, { timeout: 5000 });
   }
@@ -240,12 +240,12 @@ await step('Video tab: Freestyles (originals + remixes together), Music Videos a
   await page.click('.vidwall .vidcard:has-text("Remix One")');                                                  // a poster loads into the featured spot and plays
   await page.waitForSelector('.vidhero iframe[src*="youtube-nocookie.com/embed/remx1111111"]', { timeout: 5000 });
   h = await hero(); assert.deepEqual([h.title, h.tag], ['Remix One', 'Remix'], 'a remix says so');
-  await page.click('[data-vidtab="music"]'); await page.waitForFunction(() => /Music Vid A/.test((document.querySelector('.vidhero .vidtitle') || {}).textContent || '') && location.pathname === '/video/music-videos', null, { timeout: 5000 });
+  await page.click('[data-vidtab="music"]'); await page.waitForFunction(() => /Music Vid A/.test((document.querySelector('.vidhero .vidtitle') || {}).textContent || '') && location.pathname === '/media/videos/music-videos', null, { timeout: 5000 });
   h = await hero(); assert.deepEqual([h.tag, h.wall], ['Music video', ['Music Vid B']]); await noSideways('music videos');
-  await page.click('[data-vidtab="press"]'); await page.waitForFunction(() => location.pathname === '/video/press' && /Press/.test((document.querySelector('.vidhero .vidtag') || {}).textContent || ''), null, { timeout: 5000 });
+  await page.click('[data-vidtab="press"]'); await page.waitForFunction(() => location.pathname === '/media/videos/press' && /Press/.test((document.querySelector('.vidhero .vidtag') || {}).textContent || ''), null, { timeout: 5000 });
   h = await hero(); assert.equal(h.wall.length, 3, 'the four press interviews: one featured, three below'); assert.deepEqual(await sortBtns(), [], 'no dates or counts for press videos, so no sort dropdown');
   await noSideways('press videos');
-  assert.deepEqual(await page.evaluate(() => { history.pushState(null, '', '/press/video'); const r = parseRoute(); history.pushState(null, '', '/video/press'); return r; }), { v: 'video', tab: 'press' }, 'the old /press/video address opens the Video tab');
+  assert.deepEqual(await page.evaluate(() => { history.pushState(null, '', '/press/video'); const r = parseRoute(); history.pushState(null, '', '/media/videos/press'); return r; }), { v: 'video', tab: 'press' }, 'the old /press/video address opens the Video tab');
   await page.click('#tabs [data-nav="press"]'); await page.waitForSelector('.presspg .pcards');
   assert.equal(await page.evaluate(() => document.querySelectorAll('[data-presstab]').length), 0, 'the Press page no longer has a Video tab');
   const tabs = await page.evaluate(() => [...document.querySelectorAll('#tabs button')].map((b) => { const r = b.getBoundingClientRect(); return [r.left >= 0 && r.right <= innerWidth, r.width >= 44, b.textContent.trim()]; }));
@@ -260,7 +260,7 @@ await step('Lore: only the new-release, share-links and Settings buttons are at 
   await noSideways('lore page'); await page.click('.wrap.lore .home-h [data-nav="vault"]');
   await seen('Check YouTube setup');                                                                         // the avatar opens Settings
   const fctx = await phoneContext(), fan = await fctx.newPage();
-  await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLore()); await fan.waitForSelector('.wrap.lore .lorephotos');
+  await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLore()); await fan.waitForSelector('.wrap.lore .lorenums');
   const f = await fan.evaluate(() => ({ header: !!document.querySelector('.wrap.lore .home-h'), buttons: document.querySelectorAll('.wrap.lore .round, .wrap.lore .avatar').length }));
   assert.ok(!f.header && f.buttons === 0, 'fans get no greeting and no owner buttons on Lore: ' + JSON.stringify(f));
   await fctx.close();
@@ -569,8 +569,10 @@ await step('Nick\'s round: NuRenaissance link under Support, Releases shows the 
   const ty = await page.evaluate(() => ({ shown: !document.querySelector('#loreTypes').hidden, expanded: document.querySelector('[data-lore-types]').getAttribute('aria-expanded'), items: [...document.querySelectorAll('#loreTypes .lty2')].map((e) => [e.querySelector('span').textContent, +e.querySelector('b').textContent]), total: +document.querySelector('[data-lore-types] b').textContent }));
   assert.ok(ty.shown && ty.expanded === 'true' && ty.items.length >= 1 && ty.items.reduce((n, x) => n + x[1], 0) === ty.total, 'the kinds add up to the number of releases: ' + JSON.stringify(ty));
   await page.click('[data-lore-types]'); assert.equal(await page.evaluate(() => document.querySelector('#loreTypes').hidden), true, 'tapping again hides them');
-  const ph = await page.evaluate(() => { const c = document.querySelector('.lphshelf .lph1'), b = c.getBoundingClientRect(), h = document.querySelector('.lorephotos > .sh').getBoundingClientRect(), sh = document.querySelector('.lphshelf').getBoundingClientRect(); return { w: Math.round(b.width), h: Math.round(b.height), gap: Math.round(sh.top - h.bottom), left: Math.round(c.getBoundingClientRect().left - h.left) }; });
-  assert.ok(ph.w >= 230 && ph.h > ph.w && ph.gap >= 0 && ph.gap < 40 && ph.left < 24, 'big photo cards, UNDER the Photos heading and starting at its left edge: ' + JSON.stringify(ph));
+  await page.evaluate(() => { S.mediaTab = 'photos'; renderVideo(); }); await page.waitForSelector('.mphgrid .mph1');
+  const ph = await page.evaluate(() => { const c = document.querySelector('.mphgrid:not(.rel) .mph1'), b = c.getBoundingClientRect(), h = document.querySelector('.mphsec > .sh').getBoundingClientRect(), g = document.querySelector('.mphgrid').getBoundingClientRect(); return { w: Math.round(b.width), h: Math.round(b.height), gap: Math.round(g.top - h.bottom), path: location.pathname, tab: document.querySelector('#tabs [data-nav="video"]').textContent.trim() }; });
+  assert.ok(ph.w >= 150 && ph.h > ph.w && ph.gap >= 0 && ph.gap < 40 && ph.path === '/media/photos' && /Media/.test(ph.tab), 'the photos are on the Media tab (a grid under its Photos heading, at /media/photos): ' + JSON.stringify(ph));
+  await noSideways('media photos'); await page.evaluate(() => { S.mediaTab = 'videos'; renderLore(); }); await page.waitForSelector('.wrap.lore .lorenums');
   // Tour and Press tab text is centred
   const centred = async (sel) => page.evaluate((q) => [...document.querySelectorAll(q)].map((b) => { const r = document.createRange(); r.selectNodeContents(b); const t = r.getBoundingClientRect(), bb = b.getBoundingClientRect(); return Math.abs((t.left + t.right) / 2 - (bb.left + bb.right) / 2) < 2; }), sel);
   await page.evaluate(() => renderTour()); await page.waitForSelector('.tourseg button');
@@ -614,10 +616,12 @@ await step('Lore is calmer: no bio editor in the middle of the page, credits in 
   assert.deepEqual(opts, ['Producers', 'Engineers', 'Featured', 'Places', 'Photographers'], 'one dropdown for the credits');
   await page.selectOption('[data-lcatsel]', await page.evaluate(() => [...document.querySelectorAll('[data-lcatsel] option')].find((o) => /^Featured/.test(o.textContent)).value));
   await page.waitForFunction(() => document.querySelectorAll('#lorePeople .lchip').length > 0 && /Aziza/.test(document.querySelector('#lorePeople').innerText), null, { timeout: 5000 });
-  const ph = await page.evaluate(() => { const sh = document.querySelector('.lphshelf'); return { n: document.querySelectorAll('.lphshelf [data-lphoto]').length, scrolls: sh ? sh.scrollWidth > sh.clientWidth + 4 : null, grid: sh ? getComputedStyle(sh).display : '', all: !!document.querySelector('[data-lore-all]'), oldGrid: !!document.querySelector('.lorephotos:not(section)'), heads: [...document.querySelectorAll('.wrap.lore h2, .wrap.lore summary.sh')].map((e) => e.textContent.trim().replace(/\s+/g, ' ')) }; });
-  assert.ok(ph.n >= 6 && ph.scrolls && ph.grid === 'flex', 'the Lore photos are one scrolling shelf: ' + JSON.stringify(ph)); assert.equal(ph.all, false, 'no "See all photos" button any more');
-  assert.ok(ph.heads.some((h) => /^Photos/.test(h)) && ph.heads.some((h) => /numbers/.test(h)) && ph.heads.some((h) => /^Year by year/.test(h)), 'section headings: ' + ph.heads.join(' | '));
-  await page.click('.lphshelf [data-lphoto="2"]'); await page.waitForSelector('#lbStage'); await page.evaluate(() => document.querySelector('#lbX').click());
+  const ph = await page.evaluate(() => ({ photoSections: document.querySelectorAll('.wrap.lore .lorephotos, .wrap.lore .lphshelf, .wrap.lore [data-lphoto], .wrap.lore [data-lore-phrel]').length, heads: [...document.querySelectorAll('.wrap.lore h2, .wrap.lore summary.sh')].map((e) => e.textContent.trim().replace(/\s+/g, ' ')) }));
+  assert.equal(ph.photoSections, 0, 'the photos moved to the Media tab: none on Lore: ' + JSON.stringify(ph));
+  assert.ok(!ph.heads.some((h) => /^Photos/.test(h)) && ph.heads.some((h) => /numbers/.test(h)) && ph.heads.some((h) => /^Year by year/.test(h)) && ph.heads.some((h) => /^Milestones/.test(h)), 'section headings: ' + ph.heads.join(' | '));
+  await page.evaluate(() => { S.mediaTab = 'photos'; renderVideo(); }); await page.waitForSelector('.mphgrid [data-lphoto="2"]'); await page.click('.mphgrid [data-lphoto="2"]'); await page.waitForSelector('#lbStage'); await page.evaluate(() => document.querySelector('#lbX').click());
+  if (await page.$('.mphrel')) { await page.click('.mphrel'); await page.waitForSelector('#ssImg', { timeout: 5000 }); await page.evaluate(() => closeModal && closeModal()); }   // a release's own photos open in the slideshow
+  await page.evaluate(() => { S.mediaTab = 'videos'; renderLore(); }); await page.waitForSelector('.wrap.lore .lorenums');
   await noSideways('lore calm');
   await page.evaluate(() => renderStudio()); await page.waitForSelector('#stuBio'); await page.evaluate(() => { document.querySelector('#stuBio').open = true; }); await page.waitForSelector('#loreBio', { state: 'visible' });
   assert.equal(await page.evaluate(() => !!document.querySelector('[data-lore-bio]') && !!document.querySelector('[data-lore-copy]')), true, 'Save bio and Copy lore are here now');
@@ -831,9 +835,10 @@ await step("Soul's Picks: a playlist marked as a pick gets its own section on th
   { const ad = await page.evaluate(() => run('adoptDomain', BOOT.key, 'playlists')); assert.ok(ad && ad.owned !== false, JSON.stringify(ad)); }
   await page.evaluate(() => { S.lib.playlists = (S.lib.playlists || []).filter(p => p && p.playlist_id); });
   await page.evaluate(async () => { const o = await run('savePlaylist', BOOT.key, { title: 'Hardest verses', description: 'My proudest bars.', tracks: ['trk_a1'], fans: true, pick: true }); (S.lib.playlists = S.lib.playlists || []).push(o); renderLibrary(); });
-  await page.waitForSelector('#picks .pickcard');
-  const r = await page.evaluate(() => ({ picks: [...document.querySelectorAll('#picks .pickcard .picktitle')].map(e => e.textContent), rest: [...document.querySelectorAll('#libBody .plcard:not(.new) .nm')].filter(e => e.textContent === 'Hardest verses').length, head: document.querySelector('#picks h2').textContent }));
-  assert.deepEqual([r.picks, r.head], [['Hardest verses'], "Soul's Picks"]);
+  await page.waitForSelector('[data-extab]'); await page.evaluate(() => { const b = document.querySelector('[data-extab="picks"]'); if (b) b.click(); }); await page.waitForSelector('#picks .pickcard');
+  const r = await page.evaluate(() => ({ inExtras: !!document.querySelector('#extras #picks'), tabs: [...document.querySelectorAll('[data-extab]')].map(b => b.textContent.trim()), picks: [...document.querySelectorAll('#picks .pickcard .picktitle')].map(e => e.textContent), rest: [...document.querySelectorAll('#libBody .plcard:not(.new) .nm')].filter(e => e.textContent === 'Hardest verses').length, head: (document.querySelector('[data-extab="picks"]') || {}).textContent }));
+  assert.deepEqual([r.picks, r.head, r.inExtras], [['Hardest verses'], "Soul's Picks", true], "Soul's Picks is a tab of the Extras area: " + JSON.stringify(r));
+  assert.equal(r.tabs[r.tabs.length - 1], "Soul's Picks", 'after Unreleased, Features and Series');
   const sh = await page.evaluate(() => { const row = document.querySelector('#picks .picksgrid'), cs = getComputedStyle(row), c = document.querySelector('#picks .pickcard').getBoundingClientRect(); return { flex: cs.display, ox: cs.overflowX, snap: cs.scrollSnapType, w: Math.round(c.width), wrapped: !!row.closest('.scrollwrap') }; });
   assert.ok(sh.flex === 'flex' && /auto|scroll/.test(sh.ox) && /x/.test(sh.snap) && sh.w >= 180 && sh.w <= 300, "Soul's Picks is a scrolling shelf of big cards: " + JSON.stringify(sh));
   assert.equal(r.rest, 0, 'a pick is not also in the Playlists row');
@@ -1122,6 +1127,107 @@ await step('Header buttons: Studio, Share links and a Settings gear (no "NS" let
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'NS')), false, 'no "NS" button left on the Settings page');
   await noSideways('settings header');
   if (process.env.SHOT_HDR) { await page.evaluate(() => renderLore()); await page.waitForSelector('.home-h-bar'); await page.locator('.home-h-bar').screenshot({ path: process.env.SHOT_HDR }); }
+});
+await step('Media tab: Videos and Photos (the photos moved here from Lore); /media addresses; the older /video address still opens Videos', async () => {
+  await page.evaluate(() => { S.mediaTab = 'videos'; renderVideo(); }); await page.waitForSelector('.mediasw');
+  const m = await page.evaluate(() => ({ tab: document.querySelector('#tabs [data-nav="video"]').textContent.trim(), sw: [...document.querySelectorAll('[data-mtab]')].map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), path: location.pathname, h1: document.querySelector('.vidh1').textContent }));
+  assert.deepEqual([m.tab, m.sw, m.path, m.h1], ['Media', ['Videos*', 'Photos'], '/media/videos', 'Soul Media'], JSON.stringify(m));
+  await page.click('[data-mtab="photos"]'); await page.waitForSelector('.mphgrid .mph1');
+  const p = await page.evaluate(() => ({ sw: [...document.querySelectorAll('[data-mtab]')].map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), path: location.pathname, n: document.querySelectorAll('.mphgrid:not(.rel) .mph1').length, title: document.title }));
+  assert.deepEqual([p.sw, p.path], [['Videos', 'Photos*'], '/media/photos'], JSON.stringify(p)); assert.ok(p.n >= 6, 'the six photos: ' + p.n); assert.match(p.title, /^Media \|/);
+  await noSideways('media photos grid');
+  await page.click('.mphgrid [data-lphoto="1"]'); await page.waitForSelector('#lbStage'); await page.evaluate(() => document.querySelector('#lbX').click());
+  await page.click('[data-mtab="videos"]'); await page.waitForSelector('.vidhero'); assert.equal(await page.evaluate(() => location.pathname), '/media/videos');
+  const routes = await page.evaluate(() => ['/video', '/video/music-videos', '/media', '/media/photos', '/media/videos/remixes'].map((u) => { history.pushState(null, '', u); const r = parseRoute(); return [u, r.v, r.mtab, r.tab, r.sub]; }));
+  assert.deepEqual(routes, [['/video', 'video', 'videos', 'freestyles', 'all'], ['/video/music-videos', 'video', 'videos', 'music', 'all'], ['/media', 'video', 'videos', 'freestyles', 'all'], ['/media/photos', 'video', 'photos', 'freestyles', 'all'], ['/media/videos/remixes', 'video', 'videos', 'freestyles', 'remixes']]);
+  await page.evaluate(() => history.pushState(null, '', '/media/videos'));
+});
+await step('Going back from a project returns to the same spot on the Discography shelf', async () => {
+  await page.evaluate(() => { S.libView = 'scroll'; renderLibrary(); }); await page.waitForSelector('#libBody .ctrack [data-rel]');
+  const before = await page.evaluate(() => {
+    const row = document.querySelector('#libBody .ctrack'), cards = [...row.querySelectorAll('[data-rel]')];
+    row.scrollLeft = row.scrollWidth;   // as far along as it goes
+    return { max: row.scrollWidth - row.clientWidth, x: row.scrollLeft, n: cards.length, last: cards[cards.length - 1].dataset.rel };
+  });
+  assert.ok(before.max > 60 && before.x > 60, 'the shelf scrolls sideways in this test: ' + JSON.stringify(before));
+  await page.evaluate((id) => document.querySelector('#libBody .ctrack [data-rel="' + id + '"]').click(), before.last);
+  const mem = await page.evaluate(() => JSON.stringify(S.libShelf));
+  await page.waitForSelector('#relbar [data-nav="library-back"], .relbar [data-nav="library-back"]'); await page.click('.relbar [data-nav="library-back"]'); await page.waitForSelector('#libBody .ctrack [data-rel]');
+  await page.waitForFunction((x) => Math.abs(document.querySelector('#libBody .ctrack').scrollLeft - x) <= 3, before.x, { timeout: 4000 }).catch(() => {});   // (it settles once the cards are laid out)
+  const after = await page.evaluate((id) => { const row = document.querySelector('#libBody .ctrack'), c = row.querySelector('[data-rel="' + id + '"]').getBoundingClientRect(), r = row.getBoundingClientRect(); return { x: row.scrollLeft, visible: c.right > r.left + 20 && c.left < r.right - 20 }; }, before.last);
+  assert.ok(Math.abs(after.x - before.x) <= 3 && after.visible, 'back to where the shelf was, with the project in view: ' + JSON.stringify([before, after, mem]));
+  await page.evaluate(() => { renderLibrary(); });   // a fresh visit to the tab starts at the beginning again
+  assert.equal(await page.evaluate(() => document.querySelector('#libBody .ctrack').scrollLeft), 0, 'a new visit starts at the first project');
+});
+await step('Milestones: add in Settings (suggestions, date, story, voice note), shown on Lore oldest first with the voice note playable; fans see them but have no edit button; all text is escaped', async () => {
+  await page.evaluate(() => { renderVault(); }); await page.waitForSelector('[data-nav="milestones"]'); await page.click('[data-nav="milestones"]');
+  await page.waitForSelector('#msItems'); await page.waitForFunction(() => /No milestones yet/.test(document.querySelector('#msItems').innerText), null, { timeout: 5000 });
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('[data-ms-starter]')].map((b) => b.dataset.msStarter).slice(0, 3)), ['First time on the radio', 'First show in Nashville', 'First song to hit 100k streams']);
+  await page.click('[data-ms-starter="First time on the radio"]'); await page.waitForSelector('[data-ms-item]');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('[data-ms-starter]').length), 5, 'a used suggestion goes away');
+  await page.fill('[data-ms-item] [data-ms="date"]', '2024-06-15'); await page.fill('[data-ms-item] [data-ms="text"]', 'Late night on air. <b>so loud</b>');
+  await page.setInputFiles('[data-ms-file]', { name: 'radio.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('fake radio clip bytes'.repeat(40)) });
+  await page.waitForFunction(() => /Voice note ready/.test(document.querySelector('[data-ms-audiostate]').textContent), null, { timeout: 15000 });
+  await page.fill('[data-ms-item] [data-ms="audio_label"]', 'Hear the first radio play');
+  await page.click('#msAdd'); const items = page.locator('[data-ms-item]'); await items.nth(1).locator('[data-ms="title"]').fill('First show <i>in</i> Nashville'); await items.nth(1).locator('[data-ms="date"]').fill('2023');
+  await page.click('#msSave'); await page.waitForFunction(() => document.querySelector('#msSt').textContent === 'Saved', null, { timeout: 8000 });
+  await noSideways('milestones editor');
+  const bad = await page.evaluate(async () => { try { await run('saveMilestones', BOOT.key, [{ title: 'x', date: 'June' }]); return 'saved'; } catch (e) { return e.message; } }); assert.match(bad, /date/);
+  await page.evaluate(() => renderLore()); await page.waitForSelector('.mslist .ms');
+  const r = await page.evaluate(() => ({ titles: [...document.querySelectorAll('.mstitle')].map((e) => e.textContent), dates: [...document.querySelectorAll('.msdate')].map((e) => e.textContent), text: document.querySelector('.mstext').textContent, injected: document.querySelectorAll('.ms b, .ms i').length > document.querySelectorAll('.ms b.mstitle').length, audio: document.querySelector('.msvoice audio').getAttribute('src'), label: document.querySelector('.msvoice span').textContent, edit: !!document.querySelector('.msedit') }));
+  assert.deepEqual(r.titles, ['First show <i>in</i> Nashville', 'First time on the radio'], 'oldest first, shown as plain text'); assert.deepEqual(r.dates, ['2023', 'Jun 15, 2024']);
+  assert.equal(r.text, 'Late night on air. <b>so loud</b>'); assert.equal(r.injected, false, 'no HTML from the text got into the page'); assert.match(r.audio, /^https:\/\/media\.soulnicolas\.com\/milestones\/voice-[0-9a-f]{12}\.mp3$/); assert.equal(r.label, 'Hear the first radio play'); assert.equal(r.edit, true, 'the owner sees Edit');
+  await noSideways('lore milestones');
+  const fctx = await phoneContext(), fan = await fctx.newPage(); fan.on('pageerror', (e) => problems.push('fan page error: ' + e.message));
+  await fan.goto('https://soulnicolas.com/?s=PUB'); await fan.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 }); await fan.evaluate(() => renderLore()); await fan.waitForSelector('.mslist .ms', { timeout: 10000 });
+  const f = await fan.evaluate(() => ({ n: document.querySelectorAll('.mslist .ms').length, edit: document.querySelectorAll('.msedit, [data-nav="milestones"]').length, audio: document.querySelectorAll('.msvoice audio').length }));
+  assert.deepEqual(f, { n: 2, edit: 0, audio: 1 }, 'fans see the milestones, not the editor: ' + JSON.stringify(f)); await fctx.close();
+  await page.evaluate(async () => { await run('saveMilestones', BOOT.key, []); S.milestones = []; S.milestonesP = Promise.resolve([]); });
+});
+await step('Smart links: a page per project and per song with a button for each service; the fan\'s choice is remembered and can skip the page next time; Studio saves one song\'s own links', async () => {
+  await page.evaluate(() => { S.stuRel = 'rel_pub'; S.stuTab = 'links'; renderStudio(); }); await page.click('[data-stutab="links"]'); await page.waitForSelector('#stuTlSong', { state: 'visible' });
+  await page.click('#stuAddLink'); await page.locator('#stuLinks .lrow').first().locator('input').nth(0).fill('Spotify'); await page.locator('#stuLinks .lrow').first().locator('input').nth(1).fill('https://open.spotify.com/album/rel');
+  await page.click('#stuSaveLinks'); await page.waitForFunction(() => /Saved/.test(document.querySelector('#stuLinksSt').textContent), null, { timeout: 8000 });
+  await page.click('#stuAddTl'); const tl = page.locator('#stuTl .lrow').first(); await tl.locator('input').nth(0).fill('Apple Music'); await tl.locator('input').nth(1).fill('javascript:alert(1)');
+  await page.click('#stuSaveTl'); await page.waitForFunction(() => /https/.test(document.querySelector('#stuTlSt').textContent), null, { timeout: 8000 });
+  await tl.locator('input').nth(1).fill('https://music.apple.com/song/a1'); await page.click('#stuSaveTl'); await page.waitForFunction(() => /Saved/.test(document.querySelector('#stuTlSt').textContent), null, { timeout: 8000 });
+  assert.match(await page.textContent('#stuTlSong option:checked'), /has links/);
+  const fctx = await phoneContext(), fan = await fctx.newPage(); fan.on('pageerror', (e) => problems.push('fan page error: ' + e.message));
+  const open = async (path) => { await fan.goto('https://soulnicolas.com' + path + '?s=PUB'); await fan.waitForSelector('.smartpg .smtitle', { timeout: 15000 }); };
+  await open('/link/pub');   // the project (release id rel_pub)
+  let s = await fan.evaluate(() => ({ title: document.querySelector('.smtitle').textContent, btns: [...document.querySelectorAll('.smbtn')].map((a) => [a.textContent.trim(), a.getAttribute('href'), a.target, a.rel]), play: !!document.querySelector('[data-sm-play]'), path: location.pathname, doc: document.title }));
+  assert.deepEqual([s.title, s.btns.map((b) => b[0]), s.btns[0][1], s.path], ['Open Album', ['Listen on Spotify'], 'https://open.spotify.com/album/rel', '/link/pub'], JSON.stringify(s)); assert.ok(/noopener/.test(s.btns[0][3]) && s.btns[0][2] === '_blank'); assert.match(s.doc, /^Listen: Open Album/);
+  await noSideways('smart link page');
+  await open('/link/pub/trk_a1');   // one song: its own links win over the release's
+  s = await fan.evaluate(() => ({ title: document.querySelector('.smtitle').textContent, btns: [...document.querySelectorAll('.smbtn')].map((a) => [a.textContent.trim(), a.getAttribute('href')]) }));
+  assert.deepEqual(s.btns, [['Listen on Apple Music', 'https://music.apple.com/song/a1']], 'the song\'s own link, not the album\'s: ' + JSON.stringify(s));
+  await fan.evaluate(() => { document.querySelectorAll('.smbtn').forEach((a) => a.addEventListener('click', (e) => e.preventDefault())); }); await fan.click('.smbtn');   // tapping remembers the service (the page is not left in this test)
+  assert.equal(await fan.evaluate(() => ls.get('sv_pref_platform', '')), 'Apple Music', 'the tapped service is remembered on this device');
+  await open('/link/pub'); s = await fan.evaluate(() => ({ first: document.querySelector('.smbtn').textContent.trim(), cls: document.querySelector('.smbtn').className, chk: document.querySelector('#smAutoChk').disabled }));   // the release has no Apple link: nothing is promoted
+  assert.equal(s.first, 'Listen on Spotify');
+  const bogus = await fan.evaluate(() => { renderSmartLink('nope', ''); return S.view; }); assert.equal(bogus, 'library', 'an unknown address falls back to the Music tab');
+  const hostile = await fan.evaluate(() => { S.links.tl = S.links.tl || {}; S.links.tl.trk_a1 = { links: [['<img src=x onerror=window.__x=1>', 'https://example.com/ok'], ['Bad', 'javascript:alert(1)'], ['Plain', 'http://example.com/no']] }; renderSmartLink('pub', 'trk_a1'); return { btns: [...document.querySelectorAll('.smbtn')].map((a) => a.getAttribute('href')), html: document.querySelector('.smlist').innerHTML.includes('<img'), x: window.__x }; });
+  assert.deepEqual(hostile.btns, ['https://example.com/ok'], 'only https links become buttons'); assert.equal(hostile.html, false); assert.equal(hostile.x, undefined);
+  await fctx.close();
+});
+await step('Smart links: the release page and Now Playing have a Smart link button that shares /link/ addresses', async () => {
+  await page.evaluate(() => { window.__shared = []; Object.defineProperty(navigator, 'share', { value: (o) => { window.__shared.push(o); return Promise.resolve(); }, configurable: true }); renderRelease('rel_pub'); });
+  await page.waitForSelector('[data-share-out="release"]'); await page.click('[data-share-out="release"]'); await page.waitForSelector('.sharechoice [data-smart-link="release"]'); await page.click('.sharechoice [data-smart-link="release"]');
+  await page.waitForFunction(() => window.__shared.length === 1);
+  assert.match(await page.evaluate(() => window.__shared[0].url), /\/link\/pub$/);
+  await page.click('[data-share-out="release"]'); await page.click('.sharechoice [data-share-page]'); await page.waitForFunction(() => window.__shared.length === 2);
+  assert.match(await page.evaluate(() => window.__shared[1].url), /\/vault\/pub$/, 'the other choice shares the release page');
+  const u = await page.evaluate(() => { const t = trk('trk_a1'), r = rel('rel_pub'); return smartUrl(r, t); }); assert.match(u, /\/link\/pub\/trk_a1$/);
+});
+await step('Press coverage is newest first, with the date and the author / site right under the thumbnail', async () => {
+  await page.evaluate(() => { S.pressTab = 'coverage'; renderPress(); }); await page.waitForSelector('#pressBody .pcard');
+  const c = await page.evaluate(() => ({ order: SITE.press.slice().map((p) => pressTime(p)).sort((a, b) => b - a), shown: [...document.querySelectorAll('#pressBody .pcard .ptitle')].map((e) => e.textContent), want: pressSorted(SITE.press).map((p) => p.title), years: [...document.querySelectorAll('.pyr')].map((e) => e.textContent),
+    layout: [...document.querySelectorAll('#pressBody .pcard')].slice(0, 3).map((c) => { const i = c.querySelector('.pimg').getBoundingClientRect(), m = c.querySelector('.pmeta').getBoundingClientRect(), t = c.querySelector('.ptitle').getBoundingClientRect(); return [m.top >= i.bottom - 1 && m.top - i.bottom < 30, t.top >= m.bottom - 1, c.querySelector('.pdate').textContent.length > 0]; }) }));
+  assert.deepEqual(c.shown, c.want, 'newest first'); assert.deepEqual(c.years.filter((y) => /^\d{4}$/.test(y)), c.years.filter((y) => /^\d{4}$/.test(y)).sort().reverse(), 'the newest year is at the top: ' + c.years.join());
+  assert.ok(c.layout.every((l) => l.every(Boolean)), 'date and author/site directly under the picture, above the title: ' + JSON.stringify(c.layout));
+  const dates = await page.evaluate(() => { const a = pressSorted([{ title: 'a', date: '2025' }, { title: 'b', date: 'Jan 14, 2026' }, { title: 'c', date: '' }, { title: 'd', date: 'Mar 3, 2025' }, { title: 'e', date: '2026' }]); return a.map((p) => p.title).join(''); });
+  assert.equal(dates, 'bedac', 'full dates and bare years sort together; no date goes last');
+  await noSideways('press coverage order');
 });
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;

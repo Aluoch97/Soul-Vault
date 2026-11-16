@@ -67,7 +67,12 @@ function parseRoute() {
   if (p[0] === 'tour') return { v: 'tour', tab: p[1] === 'road-to-100' ? 'road' : p[1] === 'shows' ? 'shows' : 'overview' };
   if (p[0] === 'press' && p[1] === 'video') return { v: 'video', tab: 'press' };   // the press videos moved to the Video tab
   if (p[0] === 'press') return { v: 'press', tab: 'articles' };
-  if (p[0] === 'video') return { v: 'video', tab: p[1] === 'music-videos' ? 'music' : p[1] === 'press' ? 'press' : 'freestyles', sub: p[1] === 'originals' || p[1] === 'remixes' ? p[1] : 'all' };   // (/video/originals and /video/remixes are the one Freestyles list now)
+  if (p[0] === 'media' && p[1] === 'photos') return { v: 'video', mtab: 'photos', tab: 'freestyles', sub: 'all' };
+  if (p[0] === 'media' || p[0] === 'video') {   // the Media tab: Videos and Photos (/video/... is the older address and still works)
+    const q = p[0] === 'media' && p[1] === 'videos' ? p.slice(2) : p.slice(1);
+    return { v: 'video', mtab: 'videos', tab: q[0] === 'music-videos' ? 'music' : q[0] === 'press' ? 'press' : 'freestyles', sub: q[0] === 'originals' || q[0] === 'remixes' ? q[0] : 'all' };   // (originals and remixes are the one Freestyles list now)
+  }
+  if (p[0] === 'link' && p[1]) return { v: 'link', slug: p[1], track: p[2] || '' };   // a smart link: /link/<release> or /link/<release>/<song id>
   if (p[0] === 'lore') return { v: 'lore' };
   return { v: 'home', unknown: p.length > 0 };   // an address nobody made: show Home, but tell search engines not to index it
 }
@@ -78,8 +83,12 @@ function pathFor() {
   if (v === 'release' && S.releaseId) return '/vault/' + relSlug(S.releaseId);
   if (v === 'tour') return S.tourTab === 'road' ? '/tour/road-to-100' : S.tourTab === 'shows' ? '/tour/shows' : '/tour';
   if (v === 'press') return '/press';
-  if (v === 'video') return S.videoTab === 'music' ? '/video/music-videos' : S.videoTab === 'press' ? '/video/press' : S.videoSub === 'originals' || S.videoSub === 'remixes' ? '/video/' + S.videoSub : '/video';
+  if (v === 'video') {
+    if (S.mediaTab === 'photos') return '/media/photos';
+    return '/media/videos' + (S.videoTab === 'music' ? '/music-videos' : S.videoTab === 'press' ? '/press' : S.videoSub === 'originals' || S.videoSub === 'remixes' ? '/' + S.videoSub : '');
+  }
   if (v === 'lore') return '/lore';
+  if (v === 'link' && S.releaseId) return '/link/' + relSlug(S.releaseId) + (S.linkTrack ? '/' + encodeURIComponent(String(S.linkTrack).toLowerCase()) : '');
   return null;   // owner screens (settings, share links, insights) have no address
 }
 // Search engines: unknown addresses get "noindex"; every page names its own address as canonical.
@@ -100,9 +109,10 @@ function syncUrl() {
   if (S.urlInit && location.pathname !== p) setRobots(false);   // the visitor moved on from an unknown address
   setCanonical(p);
   const r = S.lib && S.view === 'release' ? rel(S.releaseId) : null;
-  const names = { home: '', library: 'Music', tour: 'Tour', press: 'Press', video: 'Video', lore: 'Lore' };
+  const names = { home: '', library: 'Music', tour: 'Tour', press: 'Press', video: 'Media', lore: 'Lore' };
   S.siteName = S.siteName || document.title.split(' | ')[0] || 'Nicólas Soul';
-  const t = S.view === 'release' ? (r ? r.title : 'Release') : names[S.view];
+  const lr = S.lib && S.view === 'link' ? rel(S.releaseId) : null, lt = lr && S.linkTrack ? trk(S.linkTrack) : null;
+  const t = S.view === 'release' ? (r ? r.title : 'Release') : S.view === 'link' ? 'Listen: ' + (lt ? lt.title : lr ? lr.title : '') : names[S.view];
   document.title = t ? t + ' | ' + S.siteName : S.siteName;
   if (location.pathname !== p) { try { history[S.fromPop || !S.urlInit ? 'replaceState' : 'pushState'](null, '', p + location.search); } catch (e) {} }
   S.urlInit = true;
@@ -113,8 +123,9 @@ function routeTo(r) {
   try {
     if (r.v === 'tour') { S.tourTab = r.tab; renderTour(); }
     else if (r.v === 'press') { S.pressTab = r.tab; renderPress(); }
-    else if (r.v === 'video') { S.videoTab = r.tab; S.videoSub = r.sub || 'all'; renderVideo(); }
+    else if (r.v === 'video') { S.mediaTab = r.mtab || 'videos'; S.videoTab = r.tab; S.videoSub = r.sub || 'all'; renderVideo(); }
     else if (r.v === 'lore' && (OWNER || CLUB())) renderLore();
+    else if (r.v === 'link' && S.lib) renderSmartLink(r.slug, r.track);
     else if (r.v === 'library' && S.lib) renderLibrary();
     else if (r.v === 'release' && S.lib) {
       const x = S.lib.releases.find(q => relSlug(q.release_id) === r.slug);
@@ -143,7 +154,7 @@ function renderChrome(noUrl) {
   const years = [...new Set(((S.lib && S.lib.releases) || []).map(r => r.year))].sort((a, b) => b - a);
   const cc = n => n === cur ? 'aria-current="page"' : '';
   const club = !OWNER;
-  const main = [['home', I.home, 'Home'], ['library', I.note, 'Music'], ['video', I.play, 'Video'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['lore', I.layers, 'Lore']];
+  const main = [['home', I.home, 'Home'], ['library', I.note, 'Music'], ['video', I.play, 'Media'], ['tour', I.pin, 'Tour'], ['press', I.text, 'Press'], ['lore', I.layers, 'Lore']];
   $('#side').innerHTML = `
     <div class="brand">Soul <span>Vault</span><i class="flagband" aria-hidden="true"></i></div>
     <nav>

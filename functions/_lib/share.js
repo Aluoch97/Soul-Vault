@@ -116,8 +116,8 @@ export function shareBlock(s) {
 
 // The Studio-only extras (listen links, slowed + reverb videos, unreleased flags) for the releases and songs a link can see.
 export function overlayFor(body, ov) {
-  const rel = {}, sr = {}, ids = {}, tr = {};
+  const rel = {}, sr = {}, ids = {}, tr = {}, tl = {};
   body.releases.forEach(r => { ids[r.release_id] = 1; if (ov.releases[r.release_id]) rel[r.release_id] = ov.releases[r.release_id]; });
-  body.tracks.forEach(t => { tr[t.track_id] = 1; if (ov.sr[t.track_id]) sr[t.track_id] = ov.sr[t.track_id]; });
-  return { releases: rel, sr };
+  body.tracks.forEach(t => { tr[t.track_id] = 1; if (ov.sr[t.track_id]) sr[t.track_id] = ov.sr[t.track_id]; if (ov.tl && ov.tl[t.track_id]) tl[t.track_id] = ov.tl[t.track_id]; });
+  return { releases: rel, sr, tl };
 }
