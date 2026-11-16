@@ -46,7 +46,7 @@ const SITE = {
   // Shows played before the Road to 100 tracker (they sit in the Lore timeline beside the tracker's shows). `date` is YYYY-MM-DD; `title` is the show's name, `venue` and `note` are optional.
   // To add one, add a line here (text is escaped; keep them in any order, the timeline sorts them).
   shows: [
-    { date: '2025-04-26', title: 'Renaissance Certified 2025', city: 'Nashville', state: 'TN' },
+    { date: '2025-04-26', title: 'Renaissance Certified 2025', city: 'Nashville', state: 'TN', clip: 'QrfxjHG3_us' },   // the "Certified Live! | Spring 2025" video
     { date: '2024-04-06', title: 'Renaissance Certified', city: 'Nashville', state: 'TN' },
     { date: '2022-10-13', title: 'Tapped In W/ HewG', city: 'Nashville', state: 'TN' },
     { date: '2022-09-17', title: 'The Hollistic Connection At Rivergate', city: 'East Nashville', state: 'TN' },

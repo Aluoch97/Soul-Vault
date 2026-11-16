@@ -1508,7 +1508,7 @@ await step('Year by year also lists the shows from before the tracker (SITE.show
   assert.deepEqual(r.years, ['2025', '2024', '2022', '2019'], 'newest year first: ' + r.years);
   assert.deepEqual(r.titles, ['Renaissance Certified 2025', 'Renaissance Certified', 'Tapped In W/ HewG', 'The Hollistic Connection At Rivergate', 'Carnelian Aura: The Setlist'], r.titles.join(' | '));
   assert.deepEqual(r.subs, ['Nashville, TN', 'Nashville, TN', 'Nashville, TN', 'East Nashville, TN', 'The Birdhouse'], r.subs.join(' | ')); assert.deepEqual(r.dates, ['Apr 26, 2025', 'Apr 6, 2024', 'Oct 13, 2022', 'Sep 17, 2022', 'Apr 19, 2019']);
-  assert.match(r.note, /Cash Keldry, Brazzy Brook, Not4Rent, ReggieBDaBoss, Mia Daydream, Dilly, Meraki and Prophet/); assert.ok(r.page, 'no sideways scroll');
+  assert.equal(await page.evaluate(() => (document.querySelector('.tlyear[data-y="2025"] .tli.show a') || {}).href), 'https://www.youtube.com/watch?v=QrfxjHG3_us', 'the Spring 2025 show links to its video'); assert.match(r.note, /Cash Keldry, Brazzy Brook, Not4Rent, ReggieBDaBoss, Mia Daydream, Dilly, Meraki and Prophet/); assert.ok(r.page, 'no sideways scroll');
   await page.evaluate(() => { S.tour = { available: true, shows: [{ n: 7, date: '2024-04-06', venue: 'Tracker Venue', city: 'Nashville', state: 'TN', done: true }] }; S.tourP = Promise.resolve(S.tour); renderLore(); });
   await page.waitForFunction(() => /Tracker Venue/.test(document.querySelector('.loretime').textContent), null, { timeout: 5000 });
   assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.tlyear[data-y="2024"] .tli.show .tltitle')].map((e) => e.textContent)), ['Show #7: Tracker Venue'], 'a date the tracker has is not listed twice');
