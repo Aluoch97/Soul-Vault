@@ -41,7 +41,7 @@ const SITE = {
     { url: "https://indiebandguru.com/nurenaissance-redd-bluu/", image: "ibg", site: "Indie Band Guru", date: "Aug 4, 2020", title: "Decide to go with REDD or bluu in the NuRenaissance", desc: "Coverage of REDD and bluu from the NuRenaissance." },
     { url: "https://stereostickman.com/music/nurenaissance-redd-bluu/", image: "ss", site: "Stereo Stickman", date: "Aug 4, 2020", title: "NuRenaissance: REDD & bluu", desc: "Coverage of REDD and bluu from the NuRenaissance." },
     { url: "https://maxedhiphop.com/the-heart-and-sound-of-nicolas-soul/", image: "maxed", site: "Maxed Hip Hop", date: "Jul 7, 2025", title: "The Heart and Sound of Nicólas Soul", desc: "A feature on Nicólas Soul." },
-    { url: "https://utdailybeacon.com/109514/arts-and-culture/review-the-connect-playlist-brings-together-campus-musicians/", image: "utdb", site: "The Daily Beacon (University of Tennessee)", date: "", title: "Review: The Connect playlist brings together campus musicians", desc: "A review of a campus playlist that includes Nicólas Soul." },
+    { url: "https://utdailybeacon.com/109514/arts-and-culture/review-the-connect-playlist-brings-together-campus-musicians/", image: "utdb", site: "The Daily Beacon (University of Tennessee)", date: "Oct 1, 2019", title: "Review: The Connect playlist brings together campus musicians", desc: "A review of a campus playlist that includes Nicólas Soul." },
   ],
   videos: [
     ["Da' Healerz Circle Ep. 5 w/ Special Guest Nicólas Soul", 'fJkff8Er46Q'],
