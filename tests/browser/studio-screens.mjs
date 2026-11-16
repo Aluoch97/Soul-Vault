@@ -623,9 +623,10 @@ await step('Lore is calmer: no bio editor in the middle of the page, credits in 
   if (await page.$('.mphrel')) { await page.click('.mphrel'); await page.waitForSelector('#ssImg', { timeout: 5000 }); await page.evaluate(() => closeModal && closeModal()); }   // a release's own photos open in the slideshow
   await page.evaluate(() => { S.mediaTab = 'videos'; renderLore(); }); await page.waitForSelector('.wrap.lore .lorenums');
   await noSideways('lore calm');
-  await page.evaluate(() => renderStudio()); await page.waitForSelector('#stuBio'); await page.evaluate(() => { document.querySelector('#stuBio').open = true; }); await page.waitForSelector('#loreBio', { state: 'visible' });
+  await page.evaluate(() => renderStudio()); await page.waitForSelector('#stuBio'); await page.evaluate(() => { document.querySelector('#stuBio').open = true; }); await page.waitForSelector('#bioShort', { state: 'visible' });
   assert.equal(await page.evaluate(() => !!document.querySelector('[data-lore-bio]') && !!document.querySelector('[data-lore-copy]')), true, 'Save bio and Copy lore are here now');
-  await page.fill('#loreBio', 'A short test bio.'); await page.click('[data-lore-bio]'); await seen('Bio saved');
+  await page.fill('#bioShort', 'A short test bio.'); await page.fill('#bioFull', 'The longer story.'); await page.click('[data-lore-bio]'); await seen('Bio saved');
+  assert.equal(await page.evaluate(() => S.lib.artist_bio), 'A short test bio.\n\n[[more]]\n\nThe longer story.', 'short and full bio are saved together, split by the marker');
   await page.evaluate(() => closeModal());
 });
 await step('Unreleased is not in the type lists (filters, new release, Studio); unreleased work can still be marked and labelled Single, Album, ...', async () => {
@@ -1376,6 +1377,32 @@ await step('Missing files > Where your songs play from: Select songs lets you ti
   assert.equal(await page.evaluate((ids) => ids.some((id) => !!trk(id)), three.map((x) => x.id)), false, 'and from the app library');
   s = await st(); assert.deepEqual([s.bar, s.ticked], [false, 0], 'back to the ordinary view after removing: ' + JSON.stringify(s));
   await noSideways('missing files select'); await page.evaluate(() => closeModal());
+});
+await step('Bio: short bio on Lore, longer one behind Keep reading, **bold** and ## headings (escaped), and the Bold / Heading buttons in Studio write the marks', async () => {
+  await page.evaluate(() => { S.lib.artist_bio = 'Short **bold** <i>x</i> line.\n\n[[more]]\n\n## Where it started\n\nLong text with **strong** words & an <b>tag</b>.\n\n## Now\n\nStill going.'; renderLore(); });
+  await page.waitForSelector('#loreStory .lorestory');
+  const r = await page.evaluate(() => { const d = document.querySelector('#loreStory details'), s = document.querySelector('#loreStory .lorestory'); return { short: s.querySelector(':scope > p').innerHTML, open: d.open, heads: [...d.querySelectorAll('h3.biohd')].map((h) => h.textContent), strong: d.querySelectorAll('strong').length, more: d.innerHTML, marker: s.innerText.includes('[[more]]'), page: document.documentElement.scrollWidth <= innerWidth + 1, headFont: getComputedStyle(d.querySelector('h3.biohd')).fontWeight }; });
+  assert.equal(r.short, 'Short <strong>bold</strong> &lt;i&gt;x&lt;/i&gt; line.'); assert.equal(r.open, false, 'the long bio starts folded away');
+  assert.deepEqual(r.heads, ['Where it started', 'Now']); assert.equal(r.strong, 1); assert.ok(r.more.includes('&lt;b&gt;tag&lt;/b&gt;') && !r.more.includes('<b>tag'), 'typed HTML is shown as text: ' + r.more);
+  assert.equal(r.marker, false, 'the [[more]] marker never shows'); assert.ok(r.page, 'no sideways scroll'); assert.ok(Number(r.headFont) >= 700, 'headings are bold');
+  await page.evaluate(() => { S.lib.artist_bio = 'Only a short bio.\n\n[[more]]\n\n'; renderLore(); });
+  assert.equal(await page.evaluate(() => !!document.querySelector('#loreStory details')), false, 'no Keep reading when there is no long bio');
+  await page.evaluate(() => { S.lib.artist_bio = 'Old style first paragraph.\n\nOld style second paragraph.'; renderLore(); });
+  assert.equal(await page.evaluate(() => document.querySelector('#loreStory details').textContent.includes('Old style second') && document.querySelector('#loreStory .lorestory > p').textContent), 'Old style first paragraph.', 'bios saved before this still split into first paragraph + the rest');
+  // the editor
+  await page.evaluate(() => { S.lib.artist_bio = ''; renderStudio(); }); await page.waitForSelector('#stuBio'); await page.evaluate(() => { document.querySelector('#stuBio').open = true; }); await page.waitForSelector('#bioFull', { state: 'visible' });
+  const sizes = await page.evaluate(() => [...document.querySelectorAll('.biotools .pill, #bioShort, #bioFull')].map((e) => [Math.round(e.getBoundingClientRect().height), parseFloat(getComputedStyle(e).fontSize)]));
+  assert.ok(sizes.filter((x, i) => [0, 1, 3, 4].includes(i)).every(([h, f]) => h >= 44 && f >= 14), 'buttons are thumb-sized: ' + JSON.stringify(sizes));
+  await page.fill('#bioFull', 'hello world'); await page.evaluate(() => { const t = document.querySelector('#bioFull'); t.focus(); t.setSelectionRange(6, 11); });
+  await page.evaluate(() => document.querySelector('[data-bio-fmt="bold"][data-bio-for="bioFull"]').click());
+  assert.equal(await page.evaluate(() => document.querySelector('#bioFull').value), 'hello **world**', 'Bold wraps the selected words');
+  await page.evaluate(() => { const t = document.querySelector('#bioFull'); t.setSelectionRange(2, 2); document.querySelector('[data-bio-fmt="head"][data-bio-for="bioFull"]').click(); });
+  assert.equal(await page.evaluate(() => document.querySelector('#bioFull').value), '## hello **world**', 'Heading puts ## at the start of the line');
+  await page.evaluate(() => { document.querySelector('.biopre').open = true; });
+  assert.deepEqual(await page.evaluate(() => [document.querySelector('#bioPre h3.biohd').textContent, document.querySelector('#bioPre h3 strong').textContent]), ['hello world', 'world'], 'the preview shows it');
+  await page.evaluate(() => { document.querySelector('[data-bio-fmt="head"][data-bio-for="bioFull"]').click(); });
+  assert.equal(await page.evaluate(() => document.querySelector('#bioFull').value), 'hello **world**', 'Heading again takes it off');
+  await page.evaluate(() => { S.lib.artist_bio = ''; });
 });
 await step('Now Playing > Suggest timings: Cloudflare AI listens, the suggestion opens in the usual save screen with a note, and saving stores synced lyrics (no real audio or AI here: both are stubbed)', async () => {
   const W = (word, start) => ({ word, start, end: start + 0.4 });

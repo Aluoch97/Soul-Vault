@@ -233,7 +233,7 @@ function openLorePhoto(i) {
 }
 function loreText() {
   const L = buildLore(), t = L.totals, lines = [];
-  lines.push('NICÓLAS SOUL: LORE', '', (S.lib.artist_bio || '').trim(), '', `${t.releases} releases · ${t.songs} songs · ${t.videos} videos · ${t.from}–${t.to}`);
+  lines.push('NICÓLAS SOUL: LORE', '', bioPlain(S.lib.artist_bio), '', `${t.releases} releases · ${t.songs} songs · ${t.videos} videos · ${t.from}–${t.to}`);
   if (t.names.length > 1) lines.push('Names: ' + t.names.join(' → '));
   lines.push('', 'ERAS');
   L.eras.forEach(e => lines.push(`${e.r.year} · ${e.r.title} (${typeOf(e.r)})${isHomeName(e.as) ? '' : ' as ' + e.as}` +

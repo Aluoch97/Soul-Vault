@@ -210,8 +210,8 @@ document.addEventListener('click', e => {
   else if (d.plAdd) plAddTo(d.plAdd, d.tid, el);
   else if (d.plCreate) { const nm = ($('#plNewName').value || '').trim(); if (!nm) { const er = $('#plErr'); er.hidden = false; er.textContent = 'Give the playlist a name.'; return; }
     el.disabled = true; plCreate(nm, [d.plCreate]).then(p => { closeModal(); toast(`Added to ${p.title}`); refreshPlaylistViews(); }).catch(e2 => { el.disabled = false; toast(e2.message || 'Could not create it'); }); }
-  else if ('loreBio' in d) { el.disabled = true; run('saveBio', BOOT.key, $('#loreBio').value).then(t => { S.lib.artist_bio = t; toast('Bio saved'); }).catch(e2 => toast(e2.message || 'Could not save the bio')).finally(() => (el.disabled = false)); }
-  else if ('loreCopy' in d) { const txt = loreText(); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('Lore copied')).catch(() => { $('#loreBio').value = $('#loreBio').value; prompt('Copy your lore:', txt); }); }
+  else if ('loreBio' in d) { el.disabled = true; { const txt = bioJoin($('#bioShort').value, $('#bioFull').value); run('saveBio', BOOT.key, txt).then(t => { S.lib.artist_bio = typeof t === 'string' ? t : txt; toast('Bio saved'); }).catch(e2 => toast(e2.message || 'Could not save the bio')).finally(() => (el.disabled = false)); } }
+  else if ('loreCopy' in d) { const txt = loreText(); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('Lore copied')).catch(() => { prompt('Copy your lore:', txt); }); }
   else if ('alAdd' in d) { S.aldraft.push({ name: '', url: '' }); alRender(); const n = $(`[data-al-name="${S.aldraft.length - 1}"]`); if (n) n.focus(); }
   else if (d.alDel != null) { S.aldraft.splice(+d.alDel, 1); alRender(); }
   else if (d.lylink != null) lyLinkToggle(+d.lylink);
