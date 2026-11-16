@@ -1247,6 +1247,30 @@ await step('Press coverage is newest first, with the date and the author / site 
   assert.equal(dated, await page.evaluate(() => SITE.press.length), 'every article carries an exact date (read from its page, or given by Nick): ' + dated);
   await noSideways('press coverage order');
 });
+await step('Studio > Songs: Select songs lets you tick several (or all), then remove them together; it asks first and renumbers the rest', async () => {
+  w.youtube.playlists.PLbulkremove0123456789abcdefghijkl = { title: 'Bulk Test EP', videos: ['One', 'Two', 'Three', 'Four'].map((n, i) => ({ id: 'vidCCCCCCC' + (i + 1), title: n + ' Bulk Song' })) };
+  const mk = await w.call('createReleaseFromYoutube', [KEY, { url: 'https://www.youtube.com/playlist?list=PLbulkremove0123456789abcdefghijkl' }]); assert.equal(mk.ok, true, JSON.stringify(mk).slice(0, 300));
+  const rid = mk.result.release.release_id;
+  await page.evaluate((id) => { S.stuRel = id; S.stuTab = 'songs'; renderStudio(); }, rid); await page.waitForSelector('[data-stu-selmode]');
+  const state = () => page.evaluate(() => ({ picks: document.querySelectorAll('[data-stu-pick]').length, shown: [...document.querySelectorAll('[data-stu-pick]')].filter((c) => c.offsetParent !== null).length, ticked: document.querySelectorAll('[data-stu-pick]:checked').length, bar: !document.querySelector('#stuSelBar').hidden, n: document.querySelector('#stuSelN').textContent, del: document.querySelector('[data-stu-delsel]').disabled, allText: document.querySelector('[data-stu-selall]').textContent, open: document.querySelectorAll('.studio details.scard[open]').length }));
+  let s = await state(); assert.deepEqual([s.picks, s.shown, s.bar], [4, 0, false], 'ordinary view: no checkboxes, no bar: ' + JSON.stringify(s));
+  await page.click('[data-stu-selmode]'); s = await state(); assert.deepEqual([s.shown, s.bar, s.del], [4, true, true], 'select mode: a checkbox on each song, the bar, Remove off until something is ticked: ' + JSON.stringify(s));
+  await page.click('[data-stu-selall]'); s = await state(); assert.deepEqual([s.ticked, s.n, s.del, s.allText], [4, '4', false, 'Select none'], 'Select all: ' + JSON.stringify(s));
+  await page.click('[data-stu-selall]'); s = await state(); assert.deepEqual([s.ticked, s.del, s.allText], [0, true, 'Select all'], 'Select none: ' + JSON.stringify(s));
+  const ids = await page.evaluate(() => [...document.querySelectorAll('[data-stu-pick]')].map((c) => c.dataset.stuPick));
+  await page.click('[data-stu-pick="' + ids[1] + '"]'); await page.click('[data-stu-pick="' + ids[2] + '"]'); s = await state();
+  assert.deepEqual([s.ticked, s.n, s.open], [2, '2', 0], 'two ticked, and ticking does not open the song cards: ' + JSON.stringify(s));
+  const tap = (sel) => { const box = page.locator(sel).first(); return box.boundingBox().then((b) => b && b.width >= 40 && b.height >= 40); };
+  assert.ok(await tap('label.stupick'), 'the checkbox has a thumb-sized tap area');
+  let asked = ''; page.once('dialog', (d) => { asked = d.message(); d.dismiss(); });
+  await page.click('[data-stu-delsel]'); await page.waitForTimeout(300);
+  assert.ok(/Remove 2 songs/.test(asked) && /Two Bulk Song/.test(asked) && /Three Bulk Song/.test(asked) && /not deleted/.test(asked), 'it lists what goes and says the audio files stay: ' + asked); assert.equal((await state()).picks, 4, 'Cancel changes nothing');
+  page.once('dialog', (d) => d.accept());
+  await page.click('[data-stu-delsel]'); await page.waitForFunction(() => document.querySelectorAll('[data-stu-pick]').length === 2, null, { timeout: 10000 });
+  const after = await page.evaluate(async (id) => { const g = await run('studioGet', BOOT.key); const ts = g.tracks.filter((t) => t.release_id === id).sort((a, b) => a.track_no - b.track_no); return { titles: ts.map((t) => t.title), nos: ts.map((t) => Number(t.track_no)), tab: S.stuTab, bar: !document.querySelector('#stuSelBar').hidden }; }, rid);
+  assert.deepEqual(after.titles, ['One Bulk Song', 'Four Bulk Song'], 'the two ticked songs are gone on the server: ' + JSON.stringify(after)); assert.deepEqual(after.nos, [1, 2], 'renumbered'); assert.equal(after.tab, 'songs'); assert.equal(after.bar, false, 'back to the ordinary view');
+  await noSideways('studio select songs');
+});
 await step('Studio > Songs can remove a song: it asks first (Cancel changes nothing), then the song goes and the others are renumbered', async () => {
   const rid = await page.evaluate(() => S.lib.releases.find((r) => r.title === 'Browser Test EP').release_id);
   await page.evaluate((id) => { S.stuRel = id; S.stuTab = 'songs'; renderStudio(); }, rid); await page.waitForSelector('[data-stu-delsong]', { state: 'attached' }); await page.evaluate(() => document.querySelectorAll('.studio details.scard').forEach((d) => { d.open = true; }));   // (the song cards start collapsed)

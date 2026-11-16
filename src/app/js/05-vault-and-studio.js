@@ -233,7 +233,7 @@ function drawStudio() {
     const hasSR = g.versions.some(v => v.track_id === t.track_id && isSR(v)), tu = t.track_id in fl.tracks ? fl.tracks[t.track_id] : (t.unreleased === true || String(t.unreleased) === 'true');
     const tags = [tu ? 'Unreleased' : '', t.feature_role === 'mine' ? 'Guest spot' : '', t.artist ? 'by ' + t.artist : ''].filter(Boolean).map(x => `<span class="tag">${esc(x)}</span>`).join('');
     return `<details class="stu scard" data-stu-song="${esc(t.track_id)}">
-      <summary><h3><span>${esc(t.number_label || t.track_no)}</span>${esc(t.title)}</h3><span class="stutags">${tags}</span></summary>
+      <summary><h3><label class="stupick"><input type="checkbox" data-stu-pick="${esc(t.track_id)}" aria-label="Select ${esc(t.title)}"></label><span>${esc(t.number_label || t.track_no)}</span>${esc(t.title)}</h3><span class="stutags">${tags}</span></summary>
       <div class="stubody">
         <div class="sf2">${f('', 'Title', t.title, 'data-k="title"')}${f('', 'Artist', t.artist, 'data-k="artist"')}</div>
         <div class="sf2">${f('', 'Features', t.features, 'data-k="features"')}${f('', 'Producer', t.producer, 'data-k="producer"')}</div>
@@ -281,7 +281,9 @@ function drawStudio() {
       </div></details>
       <div class="save stusticky"><button type="button" class="pill main" id="stuSaveInfo">Save release info</button><span class="st" id="stuInfoSt" role="status"></span></div>
     </section>
-    <section data-stupanel="songs">${songs ? `<div class="stulist">${songs}</div>` : '<p class="cs">No songs on this release yet.</p>'}<p class="cs">Lyrics, covers and audio files are still edited on the release page.</p></section>
+    <section data-stupanel="songs" id="stuSongs">${tracks.length > 1 ? `<div class="stusel"><button type="button" class="pill soft" data-stu-selmode>Select songs</button><span class="cs">Tick several to remove them at once.</span></div>` : ''}${songs ? `<div class="stulist">${songs}</div>` : '<p class="cs">No songs on this release yet.</p>'}
+      <div class="save stusticky stuselbar" id="stuSelBar" hidden><span><b id="stuSelN">0</b> selected</span><button type="button" class="pill soft" data-stu-selall>Select all</button><button type="button" class="pill soft danger" data-stu-delsel disabled>${I.trash}Remove selected…</button><button type="button" class="pill soft" data-stu-seldone>Done</button><span class="st" id="stuSelSt" role="status"></span></div>
+      <p class="cs">Lyrics, covers and audio files are still edited on the release page.</p></section>
     <section data-stupanel="links"><div class="stu stubox"><div class="stubody">
       <p class="cs" style="margin:0">Shown as “Listen on” buttons under the release name. Use the full link.</p>
       <div id="stuLinks" style="display:grid;gap:8px">${(lk.links || []).map(linkRow).join('')}</div>
@@ -394,20 +396,51 @@ function drawStudio() {
     S.links = Object.assign({}, S.links || {}, { releases: Object.assign({}, g.overlay.releases) });
   }));
   // Remove a song from the release (Studio > Songs). Same deletion as Edit on the release page: the song, its versions, its share links and its place in playlists go; the audio files stay where they are.
+  const dropOne = tid => {
+    const t = g.tracks.find(x => x.track_id === tid); if (!t) return;
+    if (S.lib && trk(tid)) dropSongLocal(tid);
+    g.versions = g.versions.filter(v => v.track_id !== tid); g.tracks = g.tracks.filter(x => x.track_id !== tid);
+    g.tracks.filter(x => x.release_id === t.release_id).sort((a, b) => (Number(a.track_no) || 0) - (Number(b.track_no) || 0)).forEach((x, k) => { x.track_no = k + 1; });
+    if (g.overlay) { delete (g.overlay.sr || {})[tid]; delete (g.overlay.tl || {})[tid]; delete ((g.overlay.flags || {}).tracks || {})[tid]; }
+  };
+  const dropSongs = async (ids, say) => {   // one after another; stops at the first problem and says how far it got
+    const gone = []; let err = '';
+    for (const tid of ids) {
+      say(ids.length > 1 ? `Removing ${gone.length + 1} of ${ids.length}…` : 'Removing…');
+      try { await run('deleteTrack', BOOT.key, tid); dropOne(tid); gone.push(tid); } catch (er) { err = (er && er.message) || 'Could not remove a song.'; break; }
+    }
+    return { gone, err };
+  };
   $$('[data-stu-delsong]').forEach(btn => btn.addEventListener('click', async () => {
     const tid = btn.dataset.stuDelsong, t = g.tracks.find(x => x.track_id === tid); if (!t) return;
     const nv = g.versions.filter(v => v.track_id === tid).length;
     if (!confirm(`Remove “${t.title}” from ${r.title} for good?\n\nThis deletes the song${nv > 1 ? ' and its ' + nv + ' versions' : ''}, its share links and its place in playlists. The audio files themselves are not deleted. The other songs are renumbered.`)) return;
-    const st = btn.parentNode.querySelector('.st'); btn.disabled = true; if (st) st.textContent = 'Removing…';
-    try {
-      await run('deleteTrack', BOOT.key, tid);
-      if (S.lib && trk(tid)) dropSongLocal(tid);
-      const rid2 = t.release_id; g.versions = g.versions.filter(v => v.track_id !== tid); g.tracks = g.tracks.filter(x => x.track_id !== tid);
-      g.tracks.filter(x => x.release_id === rid2).sort((a, b) => (Number(a.track_no) || 0) - (Number(b.track_no) || 0)).forEach((x, k) => { x.track_no = k + 1; });
-      if (g.overlay) { delete (g.overlay.sr || {})[tid]; delete (g.overlay.tl || {})[tid]; delete ((g.overlay.flags || {}).tracks || {})[tid]; }
-      S.stuTab = 'songs'; drawStudio(); toast('Song removed');
-    } catch (er) { btn.disabled = false; if (st) st.textContent = (er && er.message) || 'Could not remove the song.'; }
+    const st = btn.parentNode.querySelector('.st'); btn.disabled = true;
+    const out = await dropSongs([tid], t2 => { if (st) st.textContent = t2; });
+    if (out.err) { btn.disabled = false; if (st) st.textContent = out.err; return; }
+    S.stuTab = 'songs'; drawStudio(); toast('Song removed');
   }));
+  // Select songs: tick several, then delete them all in one go.
+  const selBar = $('#stuSelBar'), songsPanel = $('#stuSongs');
+  if (selBar && songsPanel && $('[data-stu-selmode]')) {   // (a release with one song or none has nothing to select)
+    const picks = () => [...$$('[data-stu-pick]')], ticked = () => picks().filter(c => c.checked).map(c => c.dataset.stuPick);
+    const refresh = () => { const n = ticked().length; $('#stuSelN').textContent = n; $('[data-stu-delsel]').disabled = !n; $('[data-stu-selall]').textContent = n && n === picks().length ? 'Select none' : 'Select all'; };
+    const setMode = on => { songsPanel.classList.toggle('selmode', on); selBar.hidden = !on; $('[data-stu-selmode]').hidden = on; if (!on) picks().forEach(c => { c.checked = false; }); $('#stuSelSt').textContent = ''; refresh(); };
+    $('[data-stu-selmode]').addEventListener('click', () => setMode(true));
+    $('[data-stu-seldone]').addEventListener('click', () => setMode(false));
+    $('[data-stu-selall]').addEventListener('click', () => { const all = ticked().length !== picks().length; picks().forEach(c => { c.checked = all; }); refresh(); });
+    picks().forEach(c => { c.addEventListener('change', refresh); c.closest('label').addEventListener('click', e => e.stopPropagation()); });
+    $('[data-stu-delsel]').addEventListener('click', async e => {
+      const ids = ticked(), btn = e.currentTarget; if (!ids.length) return;
+      const names = ids.map(id => (g.tracks.find(x => x.track_id === id) || {}).title).filter(Boolean);
+      if (!confirm(`Remove ${ids.length} ${ids.length === 1 ? 'song' : 'songs'} from ${r.title} for good?\n\n${names.slice(0, 6).map(n => '• ' + n).join('\n')}${names.length > 6 ? '\n• and ' + (names.length - 6) + ' more' : ''}\n\nThis deletes the songs, their versions, their share links and their place in playlists. The audio files themselves are not deleted. The other songs are renumbered.`)) return;
+      btn.disabled = true;
+      const out = await dropSongs(ids, t2 => { $('#stuSelSt').textContent = t2; });
+      S.stuTab = 'songs'; drawStudio();
+      if (out.err) toast(`Removed ${out.gone.length} of ${ids.length}. Stopped: ${out.err}`);
+      else toast(ids.length === 1 ? 'Song removed' : ids.length + ' songs removed');
+    });
+  }
   $$('[data-stu-savesong]').forEach(btn => btn.addEventListener('click', e => {
     const card = e.currentTarget.closest('[data-stu-song]'), tid = card.dataset.stuSong, t = g.tracks.find(x => x.track_id === tid);
     guard(e.currentTarget, card.querySelector('.st'), async () => {

@@ -70,3 +70,10 @@
   .mphgrid.scroll .mph1 { flex: 0 0 min(62vw, 240px); scroll-snap-align: start; }
   .mphgrid.scroll:not(.rel) .mph1 { aspect-ratio: 4 / 5; }
   .mphtxt { display: block; min-width: 0; } .mphtxt .cs { display: block; }
+
+  /* Studio > Songs: Select songs (tick several, remove them together) */
+  .stusel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; } .stusel .cs { margin: 0; } .stusel[hidden] { display: none; }
+  .studio label.stupick { display: none; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -12px 2px -12px -10px; cursor: pointer; vertical-align: middle; }
+  .stupick input { width: 22px; height: 22px; }
+  .studio #stuSongs.selmode label.stupick { display: inline-flex; }
+  .stuselbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } .stuselbar[hidden] { display: none; } .stuselbar .st { flex-basis: 100%; }
