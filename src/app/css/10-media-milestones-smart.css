@@ -87,4 +87,6 @@
   .mswgroup > summary { cursor: pointer; padding: 12px 0; min-height: 44px; display: flex; align-items: center; gap: 8px; } .mswgroup .mswn { margin-left: auto; font-weight: 800; }
   .mswgroup > .cs { margin: 0 0 8px; } .mswrel { padding: 8px 0; border-top: 1px solid var(--line); }
   .mswrelh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; } .mswrelh .linkish { margin-left: auto; min-height: 44px; }
-  .mswsongs { margin: 4px 0 2px; padding-left: 18px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+  .mswsongs { margin: 4px 0 2px; padding: 0; list-style: none; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+  .mswsong { padding: 8px 0; border-top: 1px solid var(--line); } .mswsong:first-child { border-top: 0; }
+  .mswsongt { font-weight: 600; } .mswsong .msst { margin: 2px 0; } .mswsong .msbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }

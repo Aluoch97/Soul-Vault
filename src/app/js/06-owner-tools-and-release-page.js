@@ -61,43 +61,18 @@ function openInstall() {
   });
 }
 // Missing files: the to-do list of songs and versions that need their audio. Pick a file next to one and it goes live right away.
-// Settings > Missing files > "Where your songs play from": every song sorted by where its first-playing version really comes from (edge call missingWhere).
-const WHERE_GROUPS = [
-  ['drive', 'Still on Google Drive', 'Only the old Drive copy exists. They play, a little slower, and cannot be saved offline. Move them by replacing the audio in Studio.'],
-  ['none', 'Nothing plays', 'No working file at all.'],
-  ['link', 'YouTube / SoundCloud links', 'No audio file, just a link. They disappear if the link is taken down. Add your own file to keep a copy.'],
-  ['cloudflare', 'On Cloudflare', 'Our own storage has the file. Drive is only a spare.']];
-function whereHtml(res) {
-  const t = res.totals, n = res.songs.length, mine = k => res.songs.filter(s => s.where === k);
-  const chip = (k, label) => `<span class="mswchip ${k}"><b>${t[k]}</b> ${label}</span>`;
-  const group = ([k, title, note]) => {
-    const list = mine(k); if (!list.length) return '';
-    const rels = {}; list.forEach(s => { (rels[s.release_id] = rels[s.release_id] || { title: s.release, songs: [] }).songs.push(s); });
-    const body = Object.keys(rels).map(id => { const r = rels[id];
-      return `<div class="mswrel"><div class="mswrelh"><b>${esc(r.title)}</b> <span class="cs">${r.songs.length} ${r.songs.length === 1 ? 'song' : 'songs'}</span>${k !== 'cloudflare' ? `<button type="button" class="linkish" data-ms-studio="${esc(id)}">Open in Studio</button>` : ''}</div>
-        ${k === 'cloudflare' ? '' : `<ul class="mswsongs">${r.songs.map(s => `<li>${s.no ? '#' + esc(s.no) + ' ' : ''}${esc(s.title)}${s.hidden ? ' <span class="cs">(hidden)</span>' : ''}${s.others.drive ? ` <span class="cs">+ ${s.others.drive} other ${s.others.drive === 1 ? 'version' : 'versions'} on Drive</span>` : ''}</li>`).join('')}</ul>`}</div>`; }).join('');
-    return `<details class="mswgroup ${k}"${k === 'drive' || k === 'none' ? ' open' : ''}><summary><b>${esc(title)}</b> <span class="mswn">${list.length}</span></summary><p class="cs">${esc(note)}</p>${body}</details>`;
-  };
-  const sub = t.drive + t.none === 0 ? 'Every song with a file plays from Cloudflare.' : `${t.drive + t.none} ${t.drive + t.none === 1 ? 'song needs' : 'songs need'} attention.`;
-  return `<h3>Where your songs play from</h3><p class="cs">${n} songs checked just now. ${sub}</p>
-    <div class="mswchips">${chip('cloudflare', 'on Cloudflare')}${chip('drive', 'on Google Drive')}${chip('link', 'links only')}${t.none ? chip('none', 'no file') : ''}</div>
-    ${WHERE_GROUPS.map(group).join('')}`;
-}
-async function loadWhere() {
-  const box = () => $('#msWhere'); if (!box()) return;
-  try { const res = await run('missingWhere', BOOT.key); if (box()) box().innerHTML = whereHtml(res); }
-  catch (e) { if (box()) box().innerHTML = `<h3>Where your songs play from</h3><p class="cs">${esc((e && e.message) || 'Could not check the songs.')}</p>`; }
-}
-document.addEventListener('click', e => {   // "Open in Studio" next to a release in that list
-  const b = e.target.closest && e.target.closest('[data-ms-studio]'); if (!b) return;
-  e.preventDefault(); closeModal(); S.stuRel = b.dataset.msStudio; S.stuTab = 'songs'; renderStudio();
-});
 async function openMissing() {
   const m = $('#modal'); m.className = 'modal';
   m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Missing files"><h2>Missing files</h2><p class="cs" id="msSt">Loading…</p>
     <div id="msList" class="mslistbox"></div>
-    <section class="mswhere" id="msWhere" aria-label="Where your songs play from"><h3>Where your songs play from</h3><p class="cs">Checking every song…</p></section><input type="file" id="msFile" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" tabindex="-1"><div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
+    <section class="mswhere" id="msWhere" aria-label="Where your songs play from"><h3>Where your songs play from</h3><p class="cs">Checking every song…</p></section><input type="file" id="wsFile" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" tabindex="-1"><input type="file" id="msFile" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" tabindex="-1"><div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
   m.hidden = false;
+  let wsFor = null;   // the song a file is being picked for (Where your songs play from > Upload file)
+  $('#msWhere').addEventListener('click', e => {
+    const up = e.target.closest('[data-ws-up]'); if (up) { wsFor = up.dataset.wsUp; $('#wsFile').value = ''; $('#wsFile').click(); return; }
+    const rm = e.target.closest('[data-ws-rm]'); if (rm) dropWhereSong(rm.dataset.wsRm);
+  });
+  $('#wsFile').addEventListener('change', e => { const f = e.target.files[0], tid = wsFor; if (f && tid) putWhereFile(f, tid); });
   let items = [];
   const draw = () => {
     $('#msSt').textContent = items.length ? items.length + ' still to fix. Tap Upload file and pick the audio, or, if you already added the song with New release (from a YouTube link or a file), tap Link an added song to use that one. It goes live for everyone as soon as it is done. A WAV or AIFF is turned into a 256 kbps MP3 first; your master stays on your computer.' : 'Nothing is missing.';
