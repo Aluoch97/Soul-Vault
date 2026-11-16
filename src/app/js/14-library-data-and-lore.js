@@ -166,7 +166,6 @@ function renderLore() {
         ${e.r.recorded_at ? `<span class="cs">${esc(e.r.recorded_at)}</span>` : ''}${e.ages.made ? `<span class="agechip">made at ${esc(e.ages.made)}</span>` : ''}
         ${nv || e.photos ? `<span class="cs">${[nv ? nv + (nv === 1 ? ' video' : ' videos') : '', e.photos ? e.photos + (e.photos === 1 ? ' photo' : ' photos') : ''].filter(Boolean).join(' · ')}</span>` : ''}</button>`; }).join('')}</div>
     <div id="loreTimeline"></div>
-    <div id="loreStories"></div>
     <h2 class="sh"><span><b>The people</b> behind it</span></h2>
     <label class="lorecatsel"><span class="sr-only">Credits</span><select class="field" data-lcatsel aria-label="Credits">${cats.map(c => `<option value="${c[0]}"${c[0] === cat ? ' selected' : ''}>${esc(c[1])} (${c[2].size})</option>`).join('')}</select></label>
     <div id="lorePeople"></div>
