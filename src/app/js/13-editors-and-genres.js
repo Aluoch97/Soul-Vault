@@ -415,12 +415,6 @@ document.head.appendChild(Object.assign(document.createElement('style'), { textC
   .lorehi { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; margin: 0 0 8px; }
   .lorehi .hi { padding: 10px; border-radius: 14px; background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.02)); border: 1px solid var(--line); display: grid; gap: 2px; align-content: start; min-width: 0; }
   .lorehi .hi b { font: 800 15px/1.2 var(--serif); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.4em; } .lorehi .hi .cs { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
-  .loreeras { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 16px; padding: 4px 16px 14px; margin: 0 -16px; scrollbar-width: none; }
-  .loreeras::-webkit-scrollbar { display: none; }
-  .loreera { flex: 0 0 148px; align-content: start; grid-auto-rows: min-content; scroll-snap-align: start; display: grid; gap: 3px; align-content: start; text-align: left; padding: 0; background: none; border: 0; color: inherit; cursor: pointer; }
-  .loreera .lc { display: block; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #1a1a1c; margin-bottom: 4px; }
-  .loreera .lc img { display: block; width: 100%; height: 100%; object-fit: cover; } .loreera .lc img:not([src]) { visibility: hidden; }
-  .loreera b { font: 700 14px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; } .loreera .cs { font-size: 12px; }
   .agechip { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--raise); color: var(--dim); }
   .lchips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
   @media (min-width: 761px) { .lchips { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

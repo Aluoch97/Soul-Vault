@@ -29,6 +29,7 @@ function renderVault() {
         ${edge ? folder('songs', I.up2, 'Fix songs', 'Missing audio, link-only songs, lengths and dates', [
           row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio'),
           row('data-fillfacts', I.clock, 'Fill in link song details', 'Length and release date from YouTube, for songs added earlier'),
+          row('data-lyricbatch', I.clock, 'Sync all lyrics', 'Cloudflare AI times the lyrics of every song that has them'),
           row('data-linkonly', I.link, 'Songs on links only', nLink ? nLink + ' depend on a YouTube or SoundCloud link' : 'All songs have their own file'),
         ], nLink ? nLink : null) : ''}
       </div>
@@ -68,6 +69,7 @@ function renderVault() {
   if ($('[data-missing]')) $('[data-missing]').addEventListener('click', openMissing);
   if ($('[data-linkonly]')) $('[data-linkonly]').addEventListener('click', openLinkOnly);
   if ($('[data-fillfacts]')) $('[data-fillfacts]').addEventListener('click', openFillFacts);
+  if ($('[data-lyricbatch]')) $('[data-lyricbatch]').addEventListener('click', openLyricBatch);
   if ($('[data-backups]')) $('[data-backups]').addEventListener('click', openBackups);
   $('[data-signout]').addEventListener('click', () => { try { localStorage.removeItem('sv_owner_key'); } catch (e) {} location.replace('/'); });
   const ok = $('[data-ownerkey]');
