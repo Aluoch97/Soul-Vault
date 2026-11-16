@@ -17,6 +17,7 @@ import * as BK from './_lib/backup.js';
 import * as SH from './_lib/shop.js';
 import * as MILE from './_lib/milestones.js';
 import * as WHERE from './_lib/where.js';
+import * as LSYNC from './_lib/lyricsync.js';
 import * as TOUR from './_lib/tour.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanWorldPart, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
@@ -177,6 +178,19 @@ async function studio(ctx, fn, a) {
   }
   // ───── missing files: the owner's to-do list of songs/versions that still need their audio uploaded ─────
   if (fn === 'missingList') return await MS.loadMissing(env.DB);
+  // ───── suggested lyric timings: Workers AI (Whisper) listens, lyricsync.js lines the heard words up with the saved lyrics. Nothing is saved here: the page shows the result and the owner decides ─────
+  if (fn === 'lyricTimes') {
+    const t = all.tracks.find(x => x.track_id === String(a[1] || '')); if (!t) throw new Error('Song not found.');
+    const lines = LSYNC.lyricLines(t.lyrics); if (lines.length < 2) throw new Error('Add the lyrics (at least two lines) first: the timings are worked out from them.');
+    if (!env.AI) throw new Error('Cloudflare AI is not connected yet. In Cloudflare: soul-vault > Settings > Bindings > Add > Workers AI, variable name AI, then retry the deployment.');
+    const audio = String(a[2] || ''); if (audio.length < 2000) throw new Error('The audio did not arrive. Try again.'); if (audio.length > 18e6) throw new Error('That song is too long to send. Try again, or sync it by hand.');
+    const MODEL = '@cf/openai/whisper-large-v3-turbo'; let out;
+    try { out = await env.AI.run(MODEL, { audio, language: 'en', task: 'transcribe', vad_filter: false, condition_on_previous_text: false, initial_prompt: lines.slice(0, 6).join(' ').slice(0, 200) }); }
+    catch (e1) { try { out = await env.AI.run(MODEL, { audio }); } catch (e2) { throw new Error('Cloudflare AI could not listen to the song: ' + String((e2 && e2.message) || e2).slice(0, 200)); } }
+    const heard = LSYNC.heardWords(out), al = LSYNC.alignLyrics(lines, heard);
+    if (!al) throw new Error(heard.length ? 'It heard the song but could not match enough of your lyrics to it, so no timings were suggested. Sync it by hand.' : 'It did not hear any words in this song.');
+    return { times: al.times, lines, matched: al.matched, total: al.total, heard: heard.length };
+  }
   if (fn === 'missingWhere') return await WHERE.whereSongs(all, env.MEDIA);   // which songs play from Cloudflare, which only from Google Drive, which are links
   if (fn === 'missingRemove') { const id = String(a[1] || ''); await MS.saveMissing(env.DB, (await MS.loadMissing(env.DB)).filter(x => x.id !== id)); return true; }
   if (fn === 'missingAdd') {   // put a version (or a whole song with no file) on the list
@@ -797,7 +811,7 @@ export async function onRequestPost(ctx) {
     } else if (env.DB && /^(addYoutubeSong|createReleaseFromYoutube|addYoutubePlaylistVideos|refreshYoutubeTitles|youtubeTitleStatus|checkYoutube)$/.test(fn) && await youtubeOnEdge(env)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveTrackLinks|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Where|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong|createReleaseFromSoundcloud|fillYoutubeFacts)$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveTrackLinks|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Where|Resolve|Link|Hide|Remove|Add)|lyricTimes|addSoundcloudSong|createReleaseFromSoundcloud|fillYoutubeFacts)$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {

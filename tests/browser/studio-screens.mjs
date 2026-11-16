@@ -1377,6 +1377,23 @@ await step('Missing files > Where your songs play from: Select songs lets you ti
   s = await st(); assert.deepEqual([s.bar, s.ticked], [false, 0], 'back to the ordinary view after removing: ' + JSON.stringify(s));
   await noSideways('missing files select'); await page.evaluate(() => closeModal());
 });
+await step('Now Playing > Suggest timings: Cloudflare AI listens, the suggestion opens in the usual save screen with a note, and saving stores synced lyrics (no real audio or AI here: both are stubbed)', async () => {
+  const W = (word, start) => ({ word, start, end: start + 0.4 });
+  w.env.AI = { run: async () => ({ segments: [{ words: [W('we', 2), W('ride', 2.4), W('all', 2.8), W('night', 3.2), W('never', 9), W('coming', 9.4), W('down', 9.9)] }] }) };
+  const LY = 'we ride all night\nunder the neon sky\nnever coming down', relOfA1 = await page.evaluate(() => trk('trk_a1').release_id);
+  assert.equal((await w.call('saveLyrics', [KEY, relOfA1, [{ track_id: 'trk_a1', lyrics: LY }]])).ok, true, 'the lyrics are saved on the server, where the timings are worked out');
+  await page.evaluate((ly) => { trk('trk_a1').lyrics = ly; S.queue = ['ver_a1']; S.qi = 0; S.videoMode = false; play('ver_a1'); }, LY);
+  await page.waitForFunction(() => S.now && S.now.v.version_id === 'ver_a1', null, { timeout: 8000 });
+  await page.evaluate(() => { if (!npOpen()) openNp(); updateNowUI(); renderLyr(); });
+  assert.equal(await page.evaluate(() => !!document.querySelector('#lyNote [data-sync-suggest]') && !!document.querySelector('#lyNote [data-sync-start]')), true, 'the owner sees Sync lyrics and Suggest timings side by side');
+  await page.evaluate(() => { S.now.v.url = 'https://media.soulnicolas.com/rise/01-song.m4a'; suggestAudio = async () => 'A'.repeat(5000); });
+  await page.evaluate(() => document.querySelector('[data-sync-suggest]').click());
+  await page.waitForFunction(() => S.sync && /All 3 lines timed/.test(document.querySelector('#npLyr').innerText), null, { timeout: 10000 }).catch(async (e) => { throw new Error('no suggestion: ' + JSON.stringify(await page.evaluate(async () => ({ toast: document.querySelector('#toast').textContent, sync: !!S.sync, note: (document.querySelector('#lyNote') || {}).innerText, url: S.now && S.now.v.url, run: await run('lyricTimes', BOOT.key, 'trk_a1', 'A'.repeat(5000)).then(r => JSON.stringify(r).slice(0, 200), e => 'ERR ' + e.message) })))); });
+  const look = await page.evaluate(() => ({ note: (document.querySelector('#syNote') || {}).textContent, times: S.sync.times, page: document.documentElement.scrollWidth <= innerWidth + 1 }));
+  assert.match(look.note, /words matched/); assert.equal(look.times[0], 2); assert.equal(look.times[2], 9); assert.ok(look.page, 'no sideways scroll');
+  await page.evaluate(() => document.querySelector('[data-sync-save]').click()); await page.waitForFunction(() => /^\[00:02/.test(trk('trk_a1').lyrics), null, { timeout: 8000 });
+  await page.evaluate(() => { trk('trk_a1').lyrics = 'la la trk_a1'; S.sync = null; renderLyr(); });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

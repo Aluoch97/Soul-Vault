@@ -8,7 +8,7 @@ import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpe
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
 const OWNER_ONLY = ['fillYoutubeFacts', 'saveShop', 'saveMilestones', 'planMilestoneAudio', 'mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioSaveTrackLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
-  'missingList', 'missingWhere', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
+  'lyricTimes', 'missingList', 'missingWhere', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
 
 // ---------------------------------------------------------------- the owner gate
@@ -1140,3 +1140,25 @@ test('tour feed: Road to 100 numbers, shows so far, next show from a planned row
   w.tracker = null; _resetTourCache();
   assert.deepEqual((await w.call('getTourFeed', [])).result, { available: false });
 }));
+
+test('lyricTimes: Cloudflare AI listens, the words it heard are lined up with the saved lyrics, nothing is saved, and the owner gate and clear errors hold', () => {
+  const lib = fixtureLib(); lib.tracks.find((t) => t.track_id === 'trk_a1').lyrics = 'we ride all night\nunder the neon sky\nnever coming down';
+  return withWorld({ lib }, async (w) => {
+    const audio = 'A'.repeat(5000), W = (word, start) => ({ word, start, end: start + 0.4 });
+    assert.equal((await w.call('lyricTimes', ['wrong', 'trk_a1', audio])).ok, false);
+    let r = await w.call('lyricTimes', [OWNER_KEY, 'trk_a1', audio]); assert.equal(r.ok, false); assert.match(r.error, /Workers AI/);          // binding not added yet: says how
+    const calls = []; w.env.AI = { run: async (model, input) => { calls.push({ model, input }); return { text: 'x', segments: [{ words: [W('we', 2), W('ride', 2.4), W('all', 2.8), W('night', 3.2), W('never', 9), W('coming', 9.4), W('down', 9.9)] }] }; } };
+    r = await w.call('lyricTimes', [OWNER_KEY, 'trk_a1', audio]); assert.equal(r.ok, true, r.error);
+    assert.deepEqual(r.result.lines, ['we ride all night', 'under the neon sky', 'never coming down']);
+    assert.equal(r.result.times[0], 2); assert.equal(r.result.times[2], 9); assert.ok(r.result.times[1] > 3 && r.result.times[1] < 9);
+    assert.equal(calls[0].model, '@cf/openai/whisper-large-v3-turbo'); assert.equal(calls[0].input.audio, audio);
+    assert.equal((await w.call('lyricTimes', [OWNER_KEY, 'trk_nope', audio])).ok, false);
+    assert.equal((await w.call('lyricTimes', [OWNER_KEY, 'trk_a1', 'tiny'])).ok, false);
+    w.env.AI = { run: async () => ({ text: 'la la', segments: [{ words: [W('banana', 1)] }] }) };
+    r = await w.call('lyricTimes', [OWNER_KEY, 'trk_a1', audio]); assert.equal(r.ok, false); assert.match(r.error, /could not match/);
+    w.env.AI = { run: async (m, i) => { if (i.language) throw new Error('bad option'); return { segments: [{ words: [W('we', 1), W('ride', 2), W('all', 3), W('night', 4)] }] }; } };
+    assert.equal((await w.call('lyricTimes', [OWNER_KEY, 'trk_a1', audio])).ok, true, 'retries with just the audio when the extra options are refused');
+    const one = fixtureLib(); void one;
+    assert.deepEqual(w.appsCalls(), [], 'nothing went to Apps Script');
+  });
+});
