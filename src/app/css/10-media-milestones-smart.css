@@ -94,3 +94,10 @@
   .mswhere label.mswpick { display: none; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -10px 4px -10px -10px; cursor: pointer; vertical-align: middle; } .mswpick input { width: 22px; height: 22px; }
   .mswhere.selmode label.mswpick { display: inline-flex; }
   .mswsongt { font-weight: 600; } .mswsong .msst { margin: 2px 0; } .mswsong .msbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+/* ── Bio: formatting buttons, headings and bold text (Nov 2026) ── */
+.biotools { display: flex; gap: 8px; margin: 6px 0; }
+.biotools .pill { min-height: 44px; padding: 0 16px; font-size: 14px; }
+.biopre summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--dim); font-size: 14px; }
+.lorestory h3.biohd, .biopre h3.biohd { margin: 18px 0 6px; font-size: 17px; font-weight: 800; color: var(--text, #f4eef2); letter-spacing: .01em; }
+.lorestory strong, .biopre strong { font-weight: 800; color: #fff; }
