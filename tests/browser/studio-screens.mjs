@@ -1501,6 +1501,19 @@ await step('Settings > Fix songs > Sync all lyrics: skips synced, lyric-less and
   assert.equal(await page.evaluate(() => trk('trk_a1').lyrics), 'line one of trk_a1\nline two of trk_a1\nline three of trk_a1', 'Undo put the lyrics back');
   await page.evaluate((orig) => { orig.forEach(([id, ly]) => { const t = trk(id); if (t) t.lyrics = ly; }); closeModal(); }, orig);
 });
+await step('Year by year also lists the shows from before the tracker (SITE.shows): the 2022 to 2025 Nashville shows and Carnelian Aura at The Birdhouse (2019), newest first, escaped, not twice when the tracker has the date', async () => {
+  await page.evaluate(() => { S.loreYears = new Set(['2025', '2024', '2022', '2019']); S.loreTlF = 'show'; S.tour = null; S.tourP = Promise.resolve(null); S.milestones = []; S.milestonesP = Promise.resolve([]); renderLore(); });
+  await page.waitForSelector('.tlyear[data-y="2019"] .tli.show');
+  const r = await page.evaluate(() => ({ years: [...document.querySelectorAll('.tlyear')].map((d) => d.dataset.y), titles: [...document.querySelectorAll('.tli.show .tltitle')].map((e) => e.textContent), subs: [...document.querySelectorAll('.tli.show')].map((l) => (l.querySelector('.cs') || {}).textContent), note: document.querySelector('.tlyear[data-y="2019"] .mstext').textContent, dates: [...document.querySelectorAll('.tli.show .tlmeta span:not(.tlk)')].map((e) => e.textContent), page: document.documentElement.scrollWidth <= innerWidth + 1 }));
+  assert.deepEqual(r.years, ['2025', '2024', '2022', '2019'], 'newest year first: ' + r.years);
+  assert.deepEqual(r.titles, ['Renaissance Certified 2025', 'Renaissance Certified', 'Tapped In W/ HewG', 'The Hollistic Connection At Rivergate', 'Carnelian Aura: The Setlist'], r.titles.join(' | '));
+  assert.deepEqual(r.subs, ['Nashville, TN', 'Nashville, TN', 'Nashville, TN', 'East Nashville, TN', 'The Birdhouse'], r.subs.join(' | ')); assert.deepEqual(r.dates, ['Apr 26, 2025', 'Apr 6, 2024', 'Oct 13, 2022', 'Sep 17, 2022', 'Apr 19, 2019']);
+  assert.match(r.note, /Cash Keldry, Brazzy Brook, Not4Rent, ReggieBDaBoss, Mia Daydream, Dilly, Meraki and Prophet/); assert.ok(r.page, 'no sideways scroll');
+  await page.evaluate(() => { S.tour = { available: true, shows: [{ n: 7, date: '2024-04-06', venue: 'Tracker Venue', city: 'Nashville', state: 'TN', done: true }] }; S.tourP = Promise.resolve(S.tour); renderLore(); });
+  await page.waitForFunction(() => /Tracker Venue/.test(document.querySelector('.loretime').textContent), null, { timeout: 5000 });
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.tlyear[data-y="2024"] .tli.show .tltitle')].map((e) => e.textContent)), ['Show #7: Tracker Venue'], 'a date the tracker has is not listed twice');
+  await page.evaluate(() => { S.tour = null; S.tourP = null; S.loreTlF = 'all'; S.loreYears = null; });
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');

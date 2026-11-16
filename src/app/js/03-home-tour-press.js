@@ -43,6 +43,15 @@ const SITE = {
     { url: "https://maxedhiphop.com/the-heart-and-sound-of-nicolas-soul/", image: "maxed", site: "Maxed Hip Hop", date: "Jul 7, 2025", title: "The Heart and Sound of Nicólas Soul", desc: "A feature on Nicólas Soul." },
     { url: "https://utdailybeacon.com/109514/arts-and-culture/review-the-connect-playlist-brings-together-campus-musicians/", image: "utdb", site: "The Daily Beacon (University of Tennessee)", date: "Oct 1, 2019", title: "Review: The Connect playlist brings together campus musicians", desc: "A review of a campus playlist that includes Nicólas Soul." },
   ],
+  // Shows played before the Road to 100 tracker (they sit in the Lore timeline beside the tracker's shows). `date` is YYYY-MM-DD; `title` is the show's name, `venue` and `note` are optional.
+  // To add one, add a line here (text is escaped; keep them in any order, the timeline sorts them).
+  shows: [
+    { date: '2025-04-26', title: 'Renaissance Certified 2025', city: 'Nashville', state: 'TN' },
+    { date: '2024-04-06', title: 'Renaissance Certified', city: 'Nashville', state: 'TN' },
+    { date: '2022-10-13', title: 'Tapped In W/ HewG', city: 'Nashville', state: 'TN' },
+    { date: '2022-09-17', title: 'The Hollistic Connection At Rivergate', city: 'East Nashville', state: 'TN' },
+    { date: '2019-04-19', title: 'Carnelian Aura: The Setlist', venue: 'The Birdhouse', note: 'With Cash Keldry, Brazzy Brook, Not4Rent, ReggieBDaBoss, Mia Daydream, Dilly, Meraki and Prophet.' }
+  ],
   videos: [
     ["Da' Healerz Circle Ep. 5 w/ Special Guest Nicólas Soul", 'fJkff8Er46Q'],
     ['WXNA 101.5 Interview: Spring 2025 Showcase', 'pI-8wc_kuhs'],

@@ -22,7 +22,10 @@ function tlItems(L) {
     const d = isNaN(t) ? null : new Date(t);
     out.push({ kind: 'press', key: d ? tlPad(d.getFullYear(), d.getMonth() + 1, d.getDate()) : (y ? tlPad(y) : ''), p });
   });
-  ((S.tour && S.tour.shows) || []).filter(s => s.done && /^\d{4}-\d{2}-\d{2}$/.test(s.date || '')).forEach(s => out.push({ kind: 'show', key: s.date, s }));
+  const tracker = ((S.tour && S.tour.shows) || []).filter(s => s.done && /^\d{4}-\d{2}-\d{2}$/.test(s.date || ''));
+  tracker.forEach(s => out.push({ kind: 'show', key: s.date, s }));
+  // Shows from before the tracker (`SITE.shows`, 03-home-tour-press.js). A date the tracker already has is not listed twice.
+  ((typeof SITE !== 'undefined' && SITE.shows) || []).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s.date || '') && !tracker.some(t => t.date === s.date)).forEach(s => out.push({ kind: 'show', key: s.date, s }));
   return out;
 }
 function tlItemHtml(it) {
@@ -41,7 +44,7 @@ function tlItemHtml(it) {
     body = `${safeHttps(p.url) ? `<a class="tltitle tla" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.title)}</a>` : `<b class="tltitle">${esc(p.title)}</b>`}<span class="cs">${esc([p.author, p.site].filter(Boolean).join(' · '))}</span>`;
   } else {
     const s = it.s;
-    body = `<b class="tltitle">${esc((s.n ? 'Show #' + s.n + ': ' : '') + s.venue)}</b><span class="cs">${esc([s.city, s.state].filter(Boolean).join(', '))}</span>${s.clip && /^[\w-]{6,20}$/.test(s.clip) ? `<a class="tla cs" href="https://www.youtube.com/watch?v=${esc(s.clip)}" target="_blank" rel="noopener noreferrer">Watch the clip</a>` : ''}`;
+    body = `<b class="tltitle">${esc((s.n ? 'Show #' + s.n + ': ' : '') + (s.title || s.venue))}</b><span class="cs">${esc([s.title ? s.venue : '', [s.city, s.state].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</span>${s.note ? `<p class="mstext">${esc(s.note)}</p>` : ''}${s.clip && /^[\w-]{6,20}$/.test(s.clip) ? `<a class="tla cs" href="https://www.youtube.com/watch?v=${esc(s.clip)}" target="_blank" rel="noopener noreferrer">Watch the clip</a>` : ''}`;
   }
   return `<li class="tli ${it.kind}"><span class="tldot" aria-hidden="true"></span>${meta}${body}</li>`;
 }
