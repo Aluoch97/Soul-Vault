@@ -55,7 +55,7 @@ function trackRow(t, withRelease, xkind) {
       ${vs.length > 1 ? `<div class="chips">${vs.map(v => `<button class="chip${isExclusive(v) ? ' excl' : ''}" data-play="${esc(v.version_id)}"${isExclusive(v) ? ' title="Vault exclusive"' : ''}>${isExclusive(v) ? I.star : ''}${esc(v.label)}</button>`).join('')}</div>` : ''}
     </div>
     <span class="dur">${esc(p.duration || '')}</span>
-    <div class="rowact"><button class="ib" data-more="${esc(t.track_id)}" aria-label="More options for ${esc(t.title)}">${I.more}</button></div>
+    <div class="rowact">${OWNER ? `<button class="ib" data-replace-song="${esc(t.track_id)}" aria-label="Replace the audio file of ${esc(t.title)}" title="Replace the audio file">${I.up2}</button>` : ''}<button class="ib" data-more="${esc(t.track_id)}" aria-label="More options for ${esc(t.title)}">${I.more}</button></div>
   </li>`;
 }
 

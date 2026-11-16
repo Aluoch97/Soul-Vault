@@ -89,4 +89,5 @@
   .mswrelh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; } .mswrelh .linkish { margin-left: auto; min-height: 44px; }
   .mswsongs { margin: 4px 0 2px; padding: 0; list-style: none; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
   .mswsong { padding: 8px 0; border-top: 1px solid var(--line); } .mswsong:first-child { border-top: 0; }
+  .rowact .ib[data-replace-song] { min-width: 40px; display: inline-flex; align-items: center; justify-content: center; }   /* the owner's Replace file button on each song row: a thumb-sized target */
   .mswsongt { font-weight: 600; } .mswsong .msst { margin: 2px 0; } .mswsong .msbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
