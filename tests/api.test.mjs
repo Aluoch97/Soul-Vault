@@ -8,7 +8,7 @@ import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpe
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
 const OWNER_ONLY = ['fillYoutubeFacts', 'saveShop', 'saveMilestones', 'planMilestoneAudio', 'mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
   'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioSaveTrackLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
-  'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
+  'missingList', 'missingWhere', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
 
 // ---------------------------------------------------------------- the owner gate
@@ -1094,6 +1094,31 @@ test('Studio: one song can have its own streaming links, checked, shown to visit
   assert.deepEqual((await w.owner('getOverlay')).result.tl.trk_a1.links.length, 2);
   await w.owner('studioSaveTrackLinks', 'trk_a1', { links: [] });
   assert.equal((await w.call('getShare', ['PUB'])).result.overlay, undefined, 'nothing saved, nothing sent');
+}));
+
+test('Missing files > where songs play from: Cloudflare only when our storage really has the file; otherwise Google Drive, a link, or nothing', () => {
+  const lib = fixtureLib(), M = 'https://media.soulnicolas.com/', by = (id) => lib.versions.find((v) => v.version_id === id);
+  Object.assign(by('ver_a1'), { audio: 'drive:old-a1', url: M + 'rise/01-song.m4a' });                  // stored: Cloudflare (Drive is only the spare)
+  Object.assign(by('ver_a1b'), { audio: 'drive:old-a1b', url: '' });                                   // an extra hidden version, only on Drive
+  Object.assign(by('ver_a2'), { audio: 'drive:old-a2', url: M + 'rise/02-gone.m4a' });                  // has an address but the file is not there: Drive
+  Object.assign(by('ver_h1'), { audio: '', url: '', format: 'YOUTUBE' });                              // a link
+  Object.assign(by('ver_s1'), { audio: 'r2:rise/04-lost.m4a', url: M + 'rise/04-lost.m4a' });          // ours, but gone, and no Drive copy: nothing plays
+  Object.assign(by('ver_sg'), { audio: 'drive:old-sg', url: '' });                                     // never moved: Drive
+  return withWorld({ lib }, async (w) => {
+    await w.media.put('rise/01-song.m4a', Buffer.from('AAAA'));
+    assert.equal((await w.call('missingWhere', ['wrong'])).ok, false); assert.equal((await w.call('missingWhere', [])).ok, false);
+    const r = (await w.owner('missingWhere')).result;
+    assert.deepEqual(r.totals, { cloudflare: 1, drive: 2, link: 1, none: 1 });
+    const at = (id) => r.songs.find((x) => x.id === id);
+    assert.deepEqual([at('trk_a1').where, at('trk_a2').where, at('trk_h1').where, at('trk_s1').where, at('trk_sg').where], ['cloudflare', 'drive', 'link', 'none', 'drive']);
+    assert.deepEqual([at('trk_a1').versions, at('trk_a1').others.drive], [2, 1], 'the other versions are counted too');
+    assert.equal(at('trk_a2').hidden, true, 'a hidden song is flagged'); assert.equal(at('trk_h1').hidden, true, 'and so is a song on a hidden release');
+    assert.equal(r.songs.length, 5); assert.ok(Date.parse(r.checked_at) > 0);
+  });
+});
+
+test('Missing files > where songs play from: without the storage connected it says so instead of guessing', () => withWorld({ bucket: false }, async (w) => {
+  const r = await w.owner('missingWhere'); assert.equal(r.ok, false); assert.match(r.error, /not connected/);
 }));
 
 test('tour feed: Road to 100 numbers, shows so far, next show from a planned row; public; unreadable sheet hides itself', () => withWorld(async (w) => {
