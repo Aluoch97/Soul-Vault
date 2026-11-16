@@ -1302,6 +1302,40 @@ await step('Studio > Songs can remove a song: it asks first (Cancel changes noth
   assert.equal(after.n, n0 - 1, 'gone on the server too: ' + JSON.stringify(after)); assert.deepEqual(after.nos, after.nos.map((_, i) => i + 1), 'the rest are renumbered 1, 2, 3...'); assert.ok(!after.titles.includes(name), 'the removed song is not in the list');
   assert.equal(after.lib, n0 - 1, 'the app library dropped it too'); assert.equal(after.tab, 'songs', 'you stay on the Songs tab'); await noSideways('studio songs');
 });
+await step('Missing files > Where your songs play from: Upload file puts a song on Cloudflare (replacing a Drive song in place, adding to a link song) and Remove deletes a song you have no file for', async () => {
+  await page.evaluate(() => { renderVault(); }); await page.waitForSelector('[data-missing], details.sset'); await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });
+  await page.click('[data-missing]'); await page.waitForSelector('#msWhere .mswchips', { timeout: 15000 });
+  const where = async () => (await w.call('missingWhere', [KEY])).result; const chips = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.mswchip')].map((c) => [c.className.replace('mswchip ', ''), Number(c.querySelector('b').textContent)])));
+  const pick = async (sel, name) => { const [fc] = await Promise.all([page.waitForEvent('filechooser', { timeout: 8000 }), page.click(sel, { timeout: 8000 })]).catch((e) => { throw new Error('picking a file with ' + sel + ': ' + e.message.split('\n')[0]); }); await fc.setFiles({ name, mimeType: 'audio/mpeg', buffer: Buffer.from('fake mp3 bytes for a song'.repeat(40)) }); };
+  const b0 = await where(), c0 = await chips();
+  assert.ok(await page.evaluate(() => document.querySelectorAll('[data-ws-up]').length > 0 && document.querySelectorAll('[data-ws-rm]').length > 0), 'every song that is not on Cloudflare has Upload file and Remove');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.mswgroup.cloudflare [data-ws-up]').length), 0, 'songs already on Cloudflare have no buttons');
+  assert.equal(await page.evaluate(() => document.querySelector('#wsFile').accept.includes('.wav') && document.querySelector('#wsFile').accept.includes('.mp3')), true, 'it takes MP3, WAV and the other usual audio files');
+  // 1) a song that only has its Google Drive copy: the file replaces it in place and the song moves to Cloudflare
+  const a1 = b0.songs.find((s) => s.id === 'trk_a1'); assert.equal(a1.where, 'drive', 'trk_a1 starts on Drive');
+  await pick('[data-ws-up="trk_a1"]', 'trouble-song.mp3');
+  await page.waitForFunction((n) => { const c = document.querySelector('.mswchip.cloudflare b'); return c && Number(c.textContent) === n + 1; }, c0.cloudflare, { timeout: 20000 });
+  let b1 = await where(); const a1b = b1.songs.find((s) => s.id === 'trk_a1');
+  assert.deepEqual([a1b.where, a1b.versions], ['cloudflare', a1.versions], 'now on Cloudflare, replaced in place (same number of versions): ' + JSON.stringify(a1b));
+  const key = await page.evaluate(() => { const v = S.lib.versions.find((x) => x.version_id === 'ver_a1'); return v && v.audio; }); assert.match(String(key), /^r2:/, 'the library holds the Cloudflare copy: ' + key);
+  // 2) a link-only song: the file is added as its first-playing version (the link stays as another version)
+  const link = b1.songs.find((s) => s.where === 'link'); assert.ok(link, 'there is a link song to try');
+  await page.evaluate(() => document.querySelectorAll('.mswgroup').forEach((d) => { d.open = true; }));   // (the links group starts closed)
+  await pick('[data-ws="' + link.id + '"] [data-ws-up]', 'my-own-file.mp3');
+  await page.waitForFunction((id) => !document.querySelector('[data-ws="' + id + '"]'), link.id, { timeout: 20000 });
+  b1 = await where(); const lk = b1.songs.find((s) => s.id === link.id);
+  assert.deepEqual([lk.where, lk.versions, lk.others.link], ['cloudflare', link.versions + 1, 1], 'link song now plays from Cloudflare, the link stays as another version: ' + JSON.stringify(lk));
+  // 3) a song with no file you have: Remove (asks first)
+  const gone = b1.songs.find((s) => s.where === 'link' || s.where === 'drive'); assert.ok(gone, 'there is another song to remove');
+  let asked = ''; page.once('dialog', (d) => { asked = d.message(); d.dismiss(); });
+  await page.click('[data-ws="' + gone.id + '"] [data-ws-rm]'); await page.waitForTimeout(300);
+  assert.ok(/for good/.test(asked) && /not deleted/.test(asked), 'it asks first: ' + asked); assert.equal((await where()).songs.length, b1.songs.length, 'Cancel changes nothing');
+  page.once('dialog', (d) => d.accept()); await page.click('[data-ws="' + gone.id + '"] [data-ws-rm]');
+  await page.waitForFunction((id) => !document.querySelector('[data-ws="' + id + '"]'), gone.id, { timeout: 15000 });
+  const b2 = await where(); assert.equal(b2.songs.length, b1.songs.length - 1, 'the song is gone on the server'); assert.ok(!b2.songs.some((s) => s.id === gone.id));
+  assert.equal(await page.evaluate((id) => !!trk(id), gone.id), false, 'and from the app library');
+  await noSideways('missing files upload remove'); await page.evaluate(() => closeModal());
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
