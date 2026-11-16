@@ -1247,6 +1247,22 @@ await step('Press coverage is newest first, with the date and the author / site 
   assert.equal(dated, await page.evaluate(() => SITE.press.length), 'every article carries an exact date (read from its page, or given by Nick): ' + dated);
   await noSideways('press coverage order');
 });
+await step('Settings > Missing files shows where every song plays from: Cloudflare, Google Drive, links; Drive and no-file songs are listed and open in Studio', async () => {
+  await page.evaluate(() => { renderVault(); }); await page.waitForSelector('[data-missing], details.sset'); await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });
+  await page.click('[data-missing]'); await page.waitForSelector('#msWhere .mswchips', { timeout: 15000 });
+  const truth = (await w.call('missingWhere', [KEY])).result;
+  const ui = await page.evaluate(() => ({ chips: Object.fromEntries([...document.querySelectorAll('.mswchip')].map((c) => [c.className.replace('mswchip ', ''), Number(c.querySelector('b').textContent)])), head: document.querySelector('#msWhere h3').textContent, sub: document.querySelector('#msWhere > p').textContent, groups: [...document.querySelectorAll('.mswgroup')].map((g) => [g.className.replace('mswgroup ', ''), g.open, Number(g.querySelector('.mswn').textContent)]), rows: document.querySelectorAll('.mswsongs li').length, drive: document.querySelectorAll('.mswgroup.drive .mswsongs li').length }));
+  assert.equal(ui.head, 'Where your songs play from'); assert.match(ui.sub, new RegExp('^' + truth.songs.length + ' songs checked'));
+  for (const k of ['cloudflare', 'drive', 'link']) assert.equal(ui.chips[k], truth.totals[k], k + ' count matches the server: ' + JSON.stringify([ui.chips, truth.totals]));
+  assert.equal(ui.chips.cloudflare + ui.chips.drive + ui.chips.link + (ui.chips.none || 0), truth.songs.length, 'every song is in exactly one group');
+  assert.ok(truth.totals.drive > 0 && truth.totals.link > 0, 'the test library has songs on Drive and link songs: ' + JSON.stringify(truth.totals));
+  const g = Object.fromEntries(ui.groups.map(([k, open, n]) => [k, [open, n]])); assert.deepEqual(g.drive, [true, truth.totals.drive], 'the Drive group is open and lists its songs'); assert.equal(ui.drive, truth.totals.drive);
+  if (g.cloudflare) assert.equal(g.cloudflare[0], false, 'the long Cloudflare group starts closed');
+  await noSideways('missing files where');
+  const rel = await page.evaluate(() => document.querySelector('.mswgroup.drive [data-ms-studio]').dataset.msStudio);
+  await page.click('.mswgroup.drive [data-ms-studio]'); await page.waitForSelector('[data-stutab]'); await page.waitForSelector('#stuSongs', { state: 'attached' });
+  assert.deepEqual(await page.evaluate(() => [S.stuRel, S.stuTab, document.querySelector('#modal').hidden]), [rel, 'songs', true], '"Open in Studio" goes to that release\'s Songs tab and closes the list');
+});
 await step('Studio > Songs: Select songs lets you tick several (or all), then remove them together; it asks first and renumbers the rest', async () => {
   w.youtube.playlists.PLbulkremove0123456789abcdefghijkl = { title: 'Bulk Test EP', videos: ['One', 'Two', 'Three', 'Four'].map((n, i) => ({ id: 'vidCCCCCCC' + (i + 1), title: n + ' Bulk Song' })) };
   const mk = await w.call('createReleaseFromYoutube', [KEY, { url: 'https://www.youtube.com/playlist?list=PLbulkremove0123456789abcdefghijkl' }]); assert.equal(mk.ok, true, JSON.stringify(mk).slice(0, 300));

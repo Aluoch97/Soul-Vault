@@ -16,6 +16,7 @@ import * as MS from './_lib/missing.js';
 import * as BK from './_lib/backup.js';
 import * as SH from './_lib/shop.js';
 import * as MILE from './_lib/milestones.js';
+import * as WHERE from './_lib/where.js';
 import * as TOUR from './_lib/tour.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanWorldPart, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
@@ -177,6 +178,7 @@ async function studio(ctx, fn, a) {
   }
   // ───── missing files: the owner's to-do list of songs/versions that still need their audio uploaded ─────
   if (fn === 'missingList') return await MS.loadMissing(env.DB);
+  if (fn === 'missingWhere') return await WHERE.whereSongs(all, env.MEDIA);   // which songs play from Cloudflare, which only from Google Drive, which are links
   if (fn === 'missingRemove') { const id = String(a[1] || ''); await MS.saveMissing(env.DB, (await MS.loadMissing(env.DB)).filter(x => x.id !== id)); return true; }
   if (fn === 'missingAdd') {   // put a version (or a whole song with no file) on the list
     const o = a[1] || {}, v = o.versionId ? all.versions.find(x => x.version_id === o.versionId) : null;
@@ -798,7 +800,7 @@ export async function onRequestPost(ctx) {
     } else if (env.DB && /^(addYoutubeSong|createReleaseFromYoutube|addYoutubePlaylistVideos|refreshYoutubeTitles|youtubeTitleStatus|checkYoutube)$/.test(fn) && await youtubeOnEdge(env)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveTrackLinks|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong|createReleaseFromSoundcloud|fillYoutubeFacts)$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveTrackLinks|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Where|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong|createReleaseFromSoundcloud|fillYoutubeFacts)$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {

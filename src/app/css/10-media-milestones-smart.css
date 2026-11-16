@@ -77,3 +77,14 @@
   .stupick input { width: 22px; height: 22px; }
   .studio #stuSongs.selmode label.stupick { display: inline-flex; }
   .stuselbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } .stuselbar[hidden] { display: none; } .stuselbar .st { flex-basis: 100%; }
+
+  /* Settings > Missing files > Where your songs play from */
+  .mswhere { margin: 18px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); } .mswhere h3 { margin: 0 0 4px; font: 800 17px/1.2 var(--sans); }
+  .mswchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .mswchip { display: inline-flex; align-items: baseline; gap: 6px; padding: 8px 12px; border-radius: 999px; font-size: 14px; background: rgba(255,255,255,.07); border: 1px solid var(--line); }
+  .mswchip b { font: 800 18px/1 var(--sans); } .mswchip.cloudflare { border-color: rgba(120,210,140,.5); } .mswchip.drive { border-color: rgba(245,197,66,.6); } .mswchip.none { border-color: rgba(255,107,107,.7); }
+  .mswgroup { margin: 8px 0; border: 1px solid var(--line); border-radius: 14px; padding: 0 12px; background: rgba(255,255,255,.04); }
+  .mswgroup > summary { cursor: pointer; padding: 12px 0; min-height: 44px; display: flex; align-items: center; gap: 8px; } .mswgroup .mswn { margin-left: auto; font-weight: 800; }
+  .mswgroup > .cs { margin: 0 0 8px; } .mswrel { padding: 8px 0; border-top: 1px solid var(--line); }
+  .mswrelh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; } .mswrelh .linkish { margin-left: auto; min-height: 44px; }
+  .mswsongs { margin: 4px 0 2px; padding-left: 18px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
