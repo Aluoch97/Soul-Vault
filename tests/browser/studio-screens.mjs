@@ -1142,6 +1142,22 @@ await step('Media tab: Videos and Photos (the photos moved here from Lore); /med
   assert.deepEqual(routes, [['/video', 'video', 'videos', 'freestyles', 'all'], ['/video/music-videos', 'video', 'videos', 'music', 'all'], ['/media', 'video', 'videos', 'freestyles', 'all'], ['/media/photos', 'video', 'photos', 'freestyles', 'all'], ['/media/videos/remixes', 'video', 'videos', 'freestyles', 'remixes']]);
   await page.evaluate(() => history.pushState(null, '', '/media/videos'));
 });
+await step('Media > Photos has the same View menu as the Music tab: scrolling shelf, large, small and list; the choice is kept', async () => {
+  await page.evaluate(() => { S.mediaTab = 'photos'; S.photoView = 'large'; localStorage.removeItem('sv_photoview'); renderVideo(); }); await page.waitForSelector('.mphgrid .mph1');
+  await page.click('.viewbtn'); assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('[data-phview]')].map((b) => b.textContent.replace(/^•/, '').trim() +(b.getAttribute('aria-checked') === 'true' ? '*' : ''))), ['Scrolling shelf', 'Large photos*', 'Small photos', 'List'], 'the same four choices');
+  const look = () => page.evaluate(() => { const g = document.querySelector('.mphgrid:not(.rel)'), c = g.querySelector('.mph1'), b = c.getBoundingClientRect(), cs = getComputedStyle(g), tops = new Set([...g.querySelectorAll('.mph1')].map((x) => Math.round(x.getBoundingClientRect().top))); return { cls: g.className, w: Math.round(b.width), h: Math.round(b.height), display: cs.display, ox: cs.overflowX, rows: tops.size, n: g.querySelectorAll('.mph1').length, lab: getComputedStyle(c.querySelector('.mphlab')).display, wrapped: !!g.closest('.scrollwrap'), page: document.documentElement.scrollWidth - innerWidth }; });
+  let l = await look(); assert.ok(l.w > 150 && l.h > l.w, 'large: two across, tall: ' + JSON.stringify(l));
+  await page.click('[data-phview="small"]'); await page.waitForSelector('.mphgrid.small'); l = await look(); assert.ok(l.w < 140 && Math.abs(l.w - l.h) <= 2 && l.page <= 1, 'small: three across, square: ' + JSON.stringify(l));
+  await page.click('.viewbtn'); await page.click('[data-phview="list"]'); await page.waitForSelector('.mphgrid.list'); l = await look(); assert.ok(l.rows === l.n && l.lab === 'block' && l.page <= 1, 'list: one photo per row with a label: ' + JSON.stringify(l));
+  await page.click('.viewbtn'); await page.click('[data-phview="scroll"]'); await page.waitForSelector('.mphgrid.scroll'); await page.waitForSelector('.mphgrid.scroll', { state: 'attached' });
+  await page.waitForFunction(() => document.querySelector('.mphgrid.scroll').closest('.scrollwrap'), null, { timeout: 4000 });
+  l = await look(); assert.ok(l.display === 'flex' && /auto|scroll/.test(l.ox) && l.rows === 1 && l.page <= 1 && l.wrapped, 'scrolling shelf: one row you swipe, with the arrows: ' + JSON.stringify(l));
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('sv_photoview'))), 'scroll', 'the choice is remembered on this device');
+  await page.evaluate(() => { S.photoView = ''; renderVideo(); }); await page.waitForSelector('.mphgrid.scroll'); assert.ok(await page.evaluate(() => !!document.querySelector('.mphgrid.scroll')), 'and used again next time');
+  await page.click('.mphgrid.scroll [data-lphoto="2"]'); await page.waitForSelector('#lbStage'); await page.evaluate(() => document.querySelector('#lbX').click());   // photos still open in the viewer
+  await page.click('.viewbtn'); await page.click('[data-phview="large"]'); await page.waitForSelector('.mphgrid.large'); await noSideways('media photos views');
+  await page.evaluate(() => { S.mediaTab = 'videos'; renderVideo(); });
+});
 await step('Going back from a project returns to the same spot on the Discography shelf', async () => {
   await page.evaluate(() => { S.libView = 'scroll'; renderLibrary(); }); await page.waitForSelector('#libBody .ctrack [data-rel]');
   const before = await page.evaluate(() => {

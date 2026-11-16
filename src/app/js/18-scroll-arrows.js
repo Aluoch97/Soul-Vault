@@ -1,6 +1,6 @@
 /* ── arrows on every row that scrolls sideways (shelves on the Music tab, Unreleased, Features, playlists, eras and photos on Lore) ──
    so people can see there is more to the right. A row gets a small wrapper with a left and a right arrow; an arrow only shows when there is more to scroll in that direction. */
-const SCROLL_ROWS = '.hrow, .ctrack:not(.homeone), .loreeras';
+const SCROLL_ROWS = '.hrow, .ctrack:not(.homeone), .loreeras, .mphgrid.scroll';
 function arrowsFor(row) {
   if (row.dataset.arrows) return;
   row.dataset.arrows = '1';
