@@ -298,9 +298,7 @@ function drawStudio() {
         <div class="save"><button type="button" class="pill soft" id="stuAddTl">${I.plus}Add a link</button></div>
         <div class="save"><button type="button" class="pill main" id="stuSaveTl">Save this song's links</button><span class="st" id="stuTlSt" role="status"></span></div></div></div>` : ''}</section>
     ${EDGE_UPLOADS() ? `<section data-stupanel="add">${stuAddSection(rid)}</section>` : ''}
-    <details class="stu" id="stuBio"><summary>Your bio</summary><div class="stubody"><p class="cs" style="margin:0">The story fans read on the Lore page.</p>
-      <textarea class="field" id="loreBio" maxlength="8000" rows="8" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
-      <div class="save"><button class="pill soft" type="button" data-lore-copy>Copy all lore as text</button><button class="pill main" type="button" data-lore-bio>Save bio</button></div></div></details>
+    <details class="stu" id="stuBio"><summary>Your bio</summary><div class="stubody">${bioEditorHtml()}</div></details>
     <details class="stu" id="stuBulk"><summary>Edit several releases at once</summary><div class="stubody">
       <p class="cs" style="margin:0">Tick the releases, tick each field you want to change and type the new value, then Apply. Anything you leave unticked stays exactly as it is.</p>
       <div class="save"><button type="button" class="pill soft" data-bk-all>Select all</button><button type="button" class="pill soft" data-bk-none>None</button><span class="st" id="bkCount">0 selected</span></div>

@@ -1,9 +1,9 @@
 /* ── Lore: the story (bio), year by year, and the stories behind the songs (voice notes) ──
    Built from what the library already holds: `artist_bio`, each release's year and each song's `voice_note_id`. All text is escaped. */
 function loreStoryHtml() {
-  const paras = String(S.lib.artist_bio || '').trim().split(/\n\s*\n/).filter(Boolean); if (!paras.length) return '';
-  return `<section class="lorestory" aria-label="The story"><h2 class="sh"><span><b>The</b> story</span></h2><p>${esc(paras[0])}</p>
-    ${paras.length > 1 ? `<details><summary>Keep reading</summary>${paras.slice(1).map(p => `<p>${esc(p)}</p>`).join('')}</details>` : ''}</section>`;
+  const b = bioParts(S.lib.artist_bio); if (!b.short && !b.full) return '';
+  return `<section class="lorestory" aria-label="The story"><h2 class="sh"><span><b>The</b> story</span></h2>${bioHtml(b.short || b.full)}
+    ${b.short && b.full ? `<details><summary>Keep reading</summary>${bioHtml(b.full)}</details>` : ''}</section>`;
 }
 function loreTimelineHtml(L) {
   const years = new Map();
