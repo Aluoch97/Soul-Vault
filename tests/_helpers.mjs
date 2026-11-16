@@ -108,7 +108,7 @@ export const APPS_URL = 'https://apps.test/exec';
 export async function harness({ lib = fixtureLib(), seed = true, bucket = true, failApps = [] } = {}) {
   const t = await freshBackend();
   const db = makeD1(), media = bucket ? makeBucket() : null;
-  const env = { DB: db, OWNER_KEY, APPS_URL, SIGNUP_API: 'https://signup.test/exec', RESEND_API_KEY: 're_test', NEWSLETTER_SECRET: 'news-secret-for-tests', NEWSLETTER_CRON_TOKEN: 'cron-token-for-tests', BANDSINTOWN_APP_ID: 'bit-test' };
+  const env = { DB: db, OWNER_KEY, APPS_URL, RESEND_API_KEY: 're_test', NEWSLETTER_SECRET: 'news-secret-for-tests', NEWSLETTER_CRON_TOKEN: 'cron-token-for-tests', BANDSINTOWN_APP_ID: 'bit-test' };
   if (media) env.MEDIA = media;
   const log = [];                    // every call that would have gone to Apps Script (or anywhere else)
   const saved = { fetch: globalThis.fetch, caches: globalThis.caches };
@@ -123,7 +123,6 @@ export async function harness({ lib = fixtureLib(), seed = true, bucket = true, 
       if (body && failApps.includes(body.fn)) return reply({ ok: false, error: 'Apps Script said no' });
       return reply({ ok: true, result: true });
     }
-    if (u.startsWith('https://signup.test')) return reply({ ok: true });
     if (u.startsWith('https://api.resend.com/emails')) {                  // a fake Resend: h.mail = every message accepted; h.mailFail = addresses it refuses; h.mailDown = it is down
       const m = JSON.parse(init.body);
       if (h.mailDown || h.mailFail.includes(m.to[0])) return new Response('refused', { status: h.mailDown ? 500 : 422 });
