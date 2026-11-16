@@ -50,7 +50,7 @@ const SITE = {
     { date: '2024-04-06', title: 'Renaissance Certified', city: 'Nashville', state: 'TN' },
     { date: '2022-10-13', title: 'Tapped In W/ HewG', city: 'Nashville', state: 'TN' },
     { date: '2022-09-17', title: 'The Hollistic Connection At Rivergate', city: 'East Nashville', state: 'TN' },
-    { date: '2019-04-19', title: 'Carnelian Aura: The Setlist', venue: 'The Birdhouse', note: 'With Cash Keldry, Brazzy Brook, Not4Rent, ReggieBDaBoss, Mia Daydream, Dilly, Meraki and Prophet.' }
+    { date: '2019-04-19', title: 'Carnelian Aura: The Setlist', venue: 'The Birdhouse', city: 'Knoxville', state: 'TN', note: 'With Cash Keldry, Brazzy Brook, Not4Rent, ReggieBDaBoss, Mia Daydream, Dilly, Meraki and Prophet.' }
   ],
   videos: [
     ["Da' Healerz Circle Ep. 5 w/ Special Guest Nicólas Soul", 'fJkff8Er46Q'],
