@@ -298,7 +298,7 @@ audio.addEventListener('timeupdate', () => {
   $('.mprog').style.setProperty('--p', (pct * 100) + '%');
 });
 audio.addEventListener('loadedmetadata', renderMarks);
-audio.addEventListener('timeupdate', () => { updateLyr(false); saveResume(false); listenTick(); });
+audio.addEventListener('timeupdate', () => { updateLyr(false); listenTick(); });
 audio.addEventListener('playing', () => { if (!S.lt || !S.now || S.lt.v !== S.now.v.version_id) listenStart(); else S.lt.last = audio.currentTime; });
 audio.addEventListener('seeking', () => { if (S.lt) S.lt.last = null; });
 audio.addEventListener('waiting', () => {
@@ -312,8 +312,7 @@ audio.addEventListener('waiting', () => {
 });
 audio.addEventListener('playing', () => clearTimeout(S.stallT));
 audio.addEventListener('seeked', () => { if (S.lt) S.lt.last = null; });
-audio.addEventListener('pause', () => saveResume(true));
-window.addEventListener('pagehide', () => { saveResume(true); flushOnLeave(); });
+window.addEventListener('pagehide', () => { flushOnLeave(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushListens(); });
 audio.addEventListener('loadedmetadata', () => {
   const ra = S.resumeAt; if (!ra || !S.now || S.now.v.version_id !== ra.vid) return;

@@ -939,7 +939,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   const day = (add) => { const d = new Date(Date.now() + add * 864e5); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear(); };
   w.tracker = '#,Date,Venue,City,Show Type / Setlist Notes,Completed,Show Length (min),Reflection,State,Story,Clip\n1,7/9/2026,Rosemary <b>Room</b>,"Nashville, TN",Showcase,TRUE,4 songs,,TN,,\n2,7/24/2026,Open Chord,"Knoxville, TN",Open Mic,TRUE,2 songs,,TN,,\n3,' + day(8) + ',The Planned Room,"Atlanta, GA",Festival,FALSE,,,GA,,\n';
   globalThis.__svTour = null;
-  await page.evaluate(() => { S.tourP = null; S.tour = null; ls.set(resumeKey(), { q: ['ver_a1'], qi: 0, t: 42, vid: 'ver_a1', at: Date.now() }); S.now = null; renderHome(); });
+  await page.evaluate(() => { S.tourP = null; S.tour = null; S.now = null; renderHome(); });
   await page.waitForSelector('#roadHome .roadcard', { timeout: 8000 });
   const r = await page.evaluate(() => ({ txt: document.querySelector('#roadHome').innerText, ring: document.querySelector('#roadHome .roadring text').textContent, html: document.querySelector('#roadHome').innerHTML, resume: !!document.querySelector('#homeResume .resume'), picks: !!document.querySelector('#picksHome .pickcard') }));
   assert.match(r.txt, /2 of 100 shows played/); assert.match(r.txt, /The Planned Room, Atlanta, GA/); assert.equal(r.ring, '2');
@@ -960,7 +960,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   if (process.env.SHOT_HOME) await page.screenshot({ path: process.env.SHOT_HOME, fullPage: true });
   await page.click('#roadHome .roadmain'); await page.waitForFunction(() => S.view === 'tour', null, { timeout: 5000 });
   w.tracker = null; globalThis.__svTour = null;
-  await page.evaluate(() => { S.tourP = null; S.tour = null; ls.set(resumeKey(), null); renderHome(); }); await page.waitForTimeout(800);
+  await page.evaluate(() => { S.tourP = null; S.tour = null; renderHome(); }); await page.waitForTimeout(800);
   assert.equal(await page.evaluate(() => document.querySelector('#roadHome').hidden), true, 'no sheet: the card hides itself');
 });
 await step('Settings > Fill in link song details opens, checks YouTube and says what it would fill in (or why it cannot)', async () => {
@@ -1393,6 +1393,16 @@ await step('Now Playing > Suggest timings: Cloudflare AI listens, the suggestion
   assert.match(look.note, /words matched/); assert.equal(look.times[0], 2); assert.equal(look.times[2], 9); assert.ok(look.page, 'no sideways scroll');
   await page.evaluate(() => document.querySelector('[data-sync-save]').click()); await page.waitForFunction(() => /^\[00:02/.test(trk('trk_a1').lyrics), null, { timeout: 8000 });
   await page.evaluate(() => { trk('trk_a1').lyrics = 'la la trk_a1'; S.sync = null; renderLyr(); });
+});
+await step('Music tab: no Continue listening card (even with a saved position); the "as <name>" label ignores how the accent in Nicólas is stored, and still shows for other artists', async () => {
+  await page.evaluate(() => { ls.set(recentKey() + ':resume', { q: ['ver_a1'], qi: 0, t: 42, vid: 'ver_a1', at: Date.now() }); S.now = null; S.q = ''; renderLibrary(); });
+  await page.waitForSelector('#libBody #discography');
+  assert.equal(await page.evaluate(() => [!!document.querySelector('.resume'), /Continue listening/.test(document.querySelector('#libBody').innerText)].join()), 'false,false', 'there is no Continue listening card on the Music tab');
+  const r = await page.evaluate(() => {
+    const base = S.lib.releases[0], mk = (name) => Object.assign({}, base, { release_id: 'x_' + name.length, artist_name: name }), cap = (name) => { const d = document.createElement('div'); d.innerHTML = shelf([mk(name)]); return [...d.querySelectorAll('.cap .as')].map((e) => e.textContent); };
+    return { composed: cap('Nic\u00f3las Soul'), combining: cap('Nico\u0301las Soul'), plain: cap('Nicolas Soul'), other: cap('LyriCal'), is: [isHomeName('Nico\u0301las Soul'), isHomeName('Nic\u00f3las Soul'), isHomeName('LyriCal'), isHomeName('')] };
+  });
+  assert.deepEqual([r.composed, r.combining, r.plain], [[], [], []], 'Nicólas Soul in any spelling shows no "as" label: ' + JSON.stringify(r)); assert.deepEqual(r.other, ['as LyriCal'], 'another artist still shows'); assert.deepEqual(r.is, [true, true, false, false]);
 });
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;

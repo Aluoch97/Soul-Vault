@@ -207,7 +207,8 @@ function primeThumbs() {
 }
 // The name a release came out under ("Released as"): set in Release page, otherwise read from the song file names.
 const HOME_NAME = 'Nicólas Soul';
-const isHomeName = n => /nic[oó]las\s*soul/i.test(String(n || ''));
+// Accent-proof: "Nicólas" is often typed with the accent as a separate mark (o + U+0301), which looks the same but is not the single "ó" character.
+const isHomeName = n => /nicolas\s*soul/i.test(String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
 function relArtist(r) {
   if (!r) return HOME_NAME;
   if (String(r.artist_name || '').trim()) return String(r.artist_name).trim();

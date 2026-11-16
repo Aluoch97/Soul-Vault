@@ -193,22 +193,8 @@ document.addEventListener('click', e => {
 }, true);
 
 
-/* ═════════ Round 1: backups button, continue listening, lyric search ═════════ */
+/* ═════════ Round 1: backups button, lyric search ═════════ */
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: `
-  .resume { display: grid; grid-template-columns: 56px minmax(0,1fr) auto; gap: 12px; align-items: center; margin: 4px 0 14px; padding: 10px 12px;
-            border-radius: 16px; border: 1px solid rgba(52,194,122,.35); background: linear-gradient(90deg, rgba(8,122,59,.18), rgba(0,0,0,.15)); }
-  .resume .art { width: 56px; height: 56px; border-radius: 10px; }
-  .resume .k { font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--green-hi); }
-  .resume .t { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .resume .bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.15); margin-top: 6px; overflow: hidden; }
-  .resume .bar i { display: block; height: 100%; background: var(--green-hi); }
-  .resume .x { width: 40px; height: 40px; }
-  .resume .go2 { display: flex; gap: 6px; align-items: center; }
-  @media (min-width: 0px) {
-    .resume { grid-template-columns: 56px minmax(0,1fr); }
-    .resume .go2 { grid-column: 1 / -1; }
-    .resume .go2 .pill { flex: 1; justify-content: center; }
-  }
   .lysnip { margin-top: 4px; font-size: 13px; color: var(--dim); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lysnip mark { background: rgba(240,48,79,.3); color: #fff; border-radius: 3px; padding: 0 2px; font-style: normal; }
 ` }));
@@ -226,48 +212,6 @@ async function doBackup(btn) {
     toast(`Backed up: ${b.name}`);
   } catch (e) { toast(e.message || 'The backup did not finish'); }
   btn.disabled = false; if (cs) cs.textContent = backupLine();
-}
-
-/* ── continue where you left off (saved on this device) ── */
-const resumeKey = () => recentKey() + ':resume';
-function saveResume(force) {
-  const n = S.now; if (!n || audio.src === SILENT || !audio.duration) return;
-  if (!force && Date.now() - (S.resumeSaved || 0) < 5000) return;
-  S.resumeSaved = Date.now();
-  const t = audio.currentTime, left = audio.duration - t;
-  const last = S.qi >= S.queue.length - 1;
-  if (last && left < 15) { ls.set(resumeKey(), null); return; }   // finished everything: nothing to resume
-  // nearly done with this song: resume at the start of the next one instead of replaying the ending
-  const qi = left < 15 ? S.qi + 1 : S.qi;
-  ls.set(resumeKey(), { q: S.queue.slice(0, 200), qi, t: left < 15 ? 0 : Math.max(0, t - 2), vid: S.queue[qi], at: Date.now() });
-}
-function resumeState() {
-  const r = ls.get(resumeKey(), null);
-  if (!r || !r.q || !r.q.length) return null;
-  const v = ver(r.q[r.qi]); if (!v) return null;
-  const t = trk(v.track_id); if (!t || hidden(t)) return null;
-  if (Date.now() - (r.at || 0) > 60 * 864e5) return null;   // older than 60 days: let it go
-  return Object.assign(r, { v, tr: t, rl: rel(t.release_id) });
-}
-function resumeCard() {
-  const r = resumeState(); if (!r || (S.now && S.now.v.version_id === r.v.version_id)) return '';
-  const total = durSecs(r.v.duration), pct = total ? Math.min(100, Math.round(r.t / total * 100)) : 0;
-  return `<section class="resume" aria-label="Continue listening">
-    <img class="art" data-cover="${esc(artFor(r.tr))}" alt="">
-    <div style="min-width:0"><div class="k">Continue listening</div><div class="t">${esc(r.tr.title)}</div>
-      <div class="cs">${esc(fmt(r.t))}${r.v.duration ? ' of ' + esc(r.v.duration) : ''} · ${esc((r.rl || {}).title || '')}</div>
-      ${pct ? `<div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>` : ''}</div>
-    <div class="go2"><button class="pill main" data-resume>${I.play}Resume</button>
-      <button class="ib x" data-resume-x aria-label="Dismiss continue listening">${I.x || '✕'}</button></div>
-  </section>`;
-}
-function doResume() {
-  const r = resumeState(); if (!r) return;
-  const q = r.q.filter(ver);
-  const qi = Math.max(0, q.indexOf(r.q[r.qi]));
-  S.resumeAt = { vid: r.q[r.qi], t: r.t };
-  playQueue(q, qi);
-  const card = $('.resume'); if (card) card.remove();
 }
 
 /* ── search inside lyrics ── */
