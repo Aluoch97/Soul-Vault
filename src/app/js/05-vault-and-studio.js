@@ -242,7 +242,7 @@ function drawStudio() {
         <div class="stuvis"><label class="chk"><input type="checkbox" data-unrel ${tu ? 'checked' : ''}> Unreleased song</label></div>
         <div class="sf2"><label class="stf">In the Features area <select class="field" data-k="feature_role"><option value="">Not a guest spot</option><option value="mine"${t.feature_role === 'mine' ? ' selected' : ''}>My guest spot on someone else's song</option></select><span class="cs">For a guest spot, put the main artist in Artist above.</span></label>
         <label class="stf">If unreleased, it counts as <select class="field" data-k="unrel_kind"><option value="">Same as its release</option>${UNREL_KINDS.map(k => `<option${t.unrel_kind === k ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select></label></div>
-        <div class="save"><button type="button" class="pill main" data-stu-savesong>Save song</button>${EDGE_UPLOADS() ? `<button type="button" class="pill soft" data-stu-songcover="${esc(t.track_id)}">${I.img}Song cover</button>` : ''}<span class="st" role="status"></span></div>
+        <div class="save"><button type="button" class="pill main" data-stu-savesong>Save song</button>${EDGE_UPLOADS() ? `<button type="button" class="pill soft" data-stu-songcover="${esc(t.track_id)}">${I.img}Song cover</button>` : ''}<button type="button" class="pill soft danger" data-stu-delsong="${esc(t.track_id)}">${I.trash}Remove song…</button><span class="st" role="status"></span></div>
       </div></details>`;
   }).join('');
   const tab = ['info', 'songs', 'links', 'add'].indexOf(S.stuTab) > -1 && (S.stuTab !== 'add' || EDGE_UPLOADS()) ? S.stuTab : 'info';
@@ -392,6 +392,21 @@ function drawStudio() {
     const clean = links.filter(l => l[0].trim() && l[1].trim()), first = $('#stFirst').value.trim();
     if (clean.length || first) g.overlay.releases[rid] = { first, links: clean }; else delete g.overlay.releases[rid];
     S.links = Object.assign({}, S.links || {}, { releases: Object.assign({}, g.overlay.releases) });
+  }));
+  // Remove a song from the release (Studio > Songs). Same deletion as Edit on the release page: the song, its versions, its share links and its place in playlists go; the audio files stay where they are.
+  $$('[data-stu-delsong]').forEach(btn => btn.addEventListener('click', async () => {
+    const tid = btn.dataset.stuDelsong, t = g.tracks.find(x => x.track_id === tid); if (!t) return;
+    const nv = g.versions.filter(v => v.track_id === tid).length;
+    if (!confirm(`Remove “${t.title}” from ${r.title} for good?\n\nThis deletes the song${nv > 1 ? ' and its ' + nv + ' versions' : ''}, its share links and its place in playlists. The audio files themselves are not deleted. The other songs are renumbered.`)) return;
+    const st = btn.parentNode.querySelector('.st'); btn.disabled = true; if (st) st.textContent = 'Removing…';
+    try {
+      await run('deleteTrack', BOOT.key, tid);
+      if (S.lib && trk(tid)) dropSongLocal(tid);
+      const rid2 = t.release_id; g.versions = g.versions.filter(v => v.track_id !== tid); g.tracks = g.tracks.filter(x => x.track_id !== tid);
+      g.tracks.filter(x => x.release_id === rid2).sort((a, b) => (Number(a.track_no) || 0) - (Number(b.track_no) || 0)).forEach((x, k) => { x.track_no = k + 1; });
+      if (g.overlay) { delete (g.overlay.sr || {})[tid]; delete (g.overlay.tl || {})[tid]; delete ((g.overlay.flags || {}).tracks || {})[tid]; }
+      S.stuTab = 'songs'; drawStudio(); toast('Song removed');
+    } catch (er) { btn.disabled = false; if (st) st.textContent = (er && er.message) || 'Could not remove the song.'; }
   }));
   $$('[data-stu-savesong]').forEach(btn => btn.addEventListener('click', e => {
     const card = e.currentTarget.closest('[data-stu-song]'), tid = card.dataset.stuSong, t = g.tracks.find(x => x.track_id === tid);
