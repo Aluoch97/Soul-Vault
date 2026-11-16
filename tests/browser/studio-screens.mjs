@@ -1247,6 +1247,21 @@ await step('Press coverage is newest first, with the date and the author / site 
   assert.equal(dated, await page.evaluate(() => SITE.press.length), 'every article carries an exact date (read from its page, or given by Nick): ' + dated);
   await noSideways('press coverage order');
 });
+await step('Studio > Songs can remove a song: it asks first (Cancel changes nothing), then the song goes and the others are renumbered', async () => {
+  const rid = await page.evaluate(() => S.lib.releases.find((r) => r.title === 'Browser Test EP').release_id);
+  await page.evaluate((id) => { S.stuRel = id; S.stuTab = 'songs'; renderStudio(); }, rid); await page.waitForSelector('[data-stu-delsong]', { state: 'attached' }); await page.evaluate(() => document.querySelectorAll('.studio details.scard').forEach((d) => { d.open = true; }));   // (the song cards start collapsed)
+  const count = () => page.evaluate(() => document.querySelectorAll('[data-stu-delsong]').length);
+  const n0 = await count(); assert.ok(n0 >= 2, 'the test release has songs: ' + n0);
+  const name = await page.evaluate(() => document.querySelector('[data-stu-song] h3').textContent.replace(/^\s*\S+\s*/, '').trim());
+  let asked = ''; page.once('dialog', (d) => { asked = d.message(); d.dismiss(); });
+  await page.click('[data-stu-delsong]'); await page.waitForTimeout(300);
+  assert.ok(/for good/.test(asked) && /not deleted/.test(asked), 'it asks first, and says the audio files stay: ' + asked); assert.equal(await count(), n0, 'Cancel changes nothing');
+  page.once('dialog', (d) => d.accept());
+  await page.click('[data-stu-delsong]'); await page.waitForFunction((n) => document.querySelectorAll('[data-stu-delsong]').length === n - 1, n0, { timeout: 8000 });
+  const after = await page.evaluate(async (id) => { const g = await run('studioGet', BOOT.key); const ts = g.tracks.filter((t) => t.release_id === id).sort((a, b) => a.track_no - b.track_no); return { n: ts.length, nos: ts.map((t) => Number(t.track_no)), titles: ts.map((t) => t.title), lib: S.lib.tracks.filter((t) => t.release_id === id).length, tab: S.stuTab }; }, rid);
+  assert.equal(after.n, n0 - 1, 'gone on the server too: ' + JSON.stringify(after)); assert.deepEqual(after.nos, after.nos.map((_, i) => i + 1), 'the rest are renumbered 1, 2, 3...'); assert.ok(!after.titles.includes(name), 'the removed song is not in the list');
+  assert.equal(after.lib, n0 - 1, 'the app library dropped it too'); assert.equal(after.tab, 'songs', 'you stay on the Songs tab'); await noSideways('studio songs');
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
