@@ -31,6 +31,25 @@ function renderLibrary(keepScroll) {
   $('#q').addEventListener('input', e => { S.q = e.target.value; renderLibBody(); });
   renderLibBody();
   window.scrollTo(0, keepScroll ? S.libScroll : 0);
+  if (keepScroll && S.libShelf) S.libShelf.until = Date.now() + 2500; else S.libShelf = null;   // (renderLibBody puts the shelf back, also if the page is redrawn in the next moments)
+  restoreShelf();
+}
+// Going into a project and coming back: the shelf you were scrolling sideways (Discography, Extras...) goes back to the same spot, with that project in view.
+function rememberShelf(el) {
+  S.libShelf = null;
+  const row = S.view === 'library' && el && el.closest ? el.closest('#libBody .ctrack, #libBody .hrow') : null;
+  if (!row) return;
+  S.libShelf = { i: [...$$('#libBody .ctrack, #libBody .hrow')].indexOf(row), id: el.dataset.rel, x: row.scrollLeft };
+}
+function restoreShelf(tries) {
+  const m = S.libShelf; if (!m || m.i < 0 || !m.until || Date.now() > m.until) return;
+  const row = [...$$('#libBody .ctrack, #libBody .hrow')][m.i]; if (!row) return;
+  // Wait until the cards are laid out AND the row has been put inside its arrows wrapper (18-scroll-arrows.js does that a frame after drawing, and moving a row resets its scroll to 0).
+  if ((row.scrollWidth - row.clientWidth < m.x - 2 || !(row.parentNode && row.parentNode.classList.contains('scrollwrap'))) && (tries || 0) < 40) { requestAnimationFrame(() => { if (S.view === 'library' && S.libShelf === m) restoreShelf((tries || 0) + 1); }); return; }
+  const to = x => row.scrollTo({ left: x, behavior: 'instant' });   // (not the shelf's smooth scrolling: it should simply be there)
+  to(m.x);   // the same place as before
+  const card = [...row.querySelectorAll('[data-rel]')].find(c => c.dataset.rel === m.id), host = card && (card.closest('.card, .hcard, li') || card);
+  if (host) { const a = host.getBoundingClientRect(), b = row.getBoundingClientRect(); if (a.left < b.left || a.right > b.right) to(row.scrollLeft + a.left - b.left - (b.width - a.width) / 2); }   // and that project is on screen
 }
 
 /* ── Listen links under each release header, and slowed + reverb videos: both come from /links.json ──
@@ -143,7 +162,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest && e.target.closest('[data-share-out]'); if (!b) return;
   e.preventDefault(); e.stopPropagation();
   const k = b.dataset.shareOut;
-  if (k === 'release') { const r = rel(S.releaseId); if (r) shareOut({ title: r.title, text: 'Listen to ' + r.title + ' by ' + relArtist(r), url: relShareUrl(r.release_id) }); }
+  if (k === 'release') openShareChoice();   // a small sheet: the smart link or the release page (18-smartlink.js)
   else if (k === 'video') shareOut({ title: b.dataset.title || 'Video', text: b.dataset.title || 'Watch', url: 'https://www.youtube.com/watch?v=' + b.dataset.vid });
   else if (k === 'photo') {
     const r = rel(S.releaseId), url = r ? relShareUrl(r.release_id) : siteBase(), o = { title: r ? r.title + ' (photo)' : 'Photo', text: r ? 'A photo from ' + r.title : 'A photo', url };
@@ -227,14 +246,15 @@ function renderLibBody() {
   const view = S.libView = S.libView || ls.get('sv_libview', 'scroll');
   const allMode = view !== 'scroll' && !q;
   const viewBtn = q ? '' : viewMenu(view);
-  // Order on the Music tab: Discography, Extras (tabs: Unreleased, Features, Series), Playlists, coming attractions, then Recently played (last, Nick's choice Nov 15).
+  // Order on the Music tab: Discography, Extras (tabs: Unreleased, Features, Series, Soul's Picks), Playlists, coming attractions, then Recently played (last, Nick's choice Nov 15).
   $('#libBody').innerHTML = (!q ? resumeCard() : '') + (!q ? '<h2 class="sh" id="discography"><span><b>Discography</b></span></h2>' : '') + `<div class="libbar">${chips}${viewBtn}</div>` + (rs.length ? (allMode ? allGrid(rs, view) : shelf(rs)) : (songList || lyList ? '' : empty)) + songList + lyList +
-    (!q ? extrasSection() : '') + (!q && !allMode ? picksRow() + playlistsRow() + dropsRow() + recentRow() : '') +
+    (!q ? extrasSection() : '') + (!q && !allMode ? playlistsRow() + dropsRow() + recentRow() : '') +
     (!q && !OWNER ? '<p class="cs privnote">Plays are counted per device, without names, so Nick can see which songs fans love.</p>' : '');
   loadCovers(); markPlaying();
   wireShelf();
   wireRows($('#libBody'));
   tick();
+  restoreShelf();   // coming back from a project: the shelf goes back to where it was (only in the first moments after Back)
   if (!q && rs[0] && !S.warmedHome) { S.warmedHome = true; warmRelease(rs[0].release_id); }
 }
 

@@ -6,8 +6,8 @@ import { _resetTourCache, usDate } from '../functions/_lib/tour.js';
 import { withWorld, fixtureLib, makeBucket, OWNER_KEY, APPS_URL } from './_helpers.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('../site.config.json', import.meta.url), 'utf8'));
-const OWNER_ONLY = ['fillYoutubeFacts', 'saveShop', 'mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
-  'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
+const OWNER_ONLY = ['fillYoutubeFacts', 'saveShop', 'saveMilestones', 'planMilestoneAudio', 'mediaManifest', 'updateFan', 'deleteFan', 'addSoundcloudSong', 'createReleaseFromSoundcloud', 'setOwnerPassword', 'getFans', 'edgeSync', 'backupNow', 'backupGet', 'backupStatus', 'adoptDomain', 'releaseDomain',
+  'studioGet', 'studioSaveRelease', 'studioSaveBulk', 'studioSaveTrack', 'studioSaveLinks', 'studioSaveTrackLinks', 'studioPlanUpload', 'studioAddSong', 'studioNewRelease', 'studioSetCover', 'studioSetVoice', 'studioReplaceAudio', 'studioAddPhoto',
   'missingList', 'missingResolve', 'missingLink', 'missingHide', 'missingRemove', 'missingAdd'];
 const quick = async fn => { const st = globalThis.setTimeout; globalThis.setTimeout = (f, ms, ...a) => st(f, ms === 700 ? 0 : ms, ...a); try { return await fn(); } finally { globalThis.setTimeout = st; } };
 
@@ -1063,6 +1063,37 @@ test('shop: anyone can read it, only the owner saves it, only https buy links, t
   assert.equal((await w.owner('saveShop', many)).ok, false);
   assert.equal((await w.call('getShop', [])).result.length, 1, 'still the last good save');
   assert.equal((await w.owner('saveShop', [])).ok, true); assert.deepEqual((await w.call('getShop', [])).result, []);
+}));
+
+test('milestones: anyone can read them, only the owner saves them, dates, voice-note keys and links are checked, max 60', () => withWorld(async (w) => {
+  assert.deepEqual((await w.call('getMilestones', [])).result, []);
+  assert.equal((await w.call('saveMilestones', ['wrong', [{ title: 'First radio play' }]])).ok, false);
+  assert.deepEqual((await w.call('getMilestones', [])).result, [], 'a refused save changes nothing');
+  const plan = (await w.owner('planMilestoneAudio', { ext: 'MP3' })).result;
+  assert.match(plan.key, /^milestones\/voice-[0-9a-f]{12}\.mp3$/);
+  assert.match((await w.owner('planMilestoneAudio', { ext: 'exe' })).error, /MP3/); assert.equal((await w.call('planMilestoneAudio', ['wrong', { ext: 'mp3' }])).ok, false);
+  const good = { title: 'First time on the radio', date: '2024-06-15', text: 'WNPL, late night.', audio: plan.key, audio_label: 'Hear it', url: 'https://example.com/clip', url_label: 'Watch' };
+  const saved = await w.owner('saveMilestones', [good, { title: 'First show in Nashville', date: '2023' }, { title: 'No date yet' }]);
+  assert.equal(saved.ok, true); assert.equal(saved.result.length, 3); assert.ok(saved.result.every((m) => /^[0-9a-f]{12}$/.test(m.id)), 'each gets an id');
+  const got = (await w.call('getMilestones', [])).result; assert.deepEqual([got[0].title, got[0].date, got[0].audio, got[1].date, got[2].date], ['First time on the radio', '2024-06-15', plan.key, '2023', '']);
+  for (const bad of [{ title: '' }, { title: 'x', date: 'June 2024' }, { title: 'x', date: '2024-13' }, { title: 'x', audio: 'img/abc/400' }, { title: 'x', audio: 'milestones/../x.mp3' }, { title: 'x', url: 'javascript:alert(1)' }, { title: 'x', url: 'http://example.com' }, { title: 'x', url: 'https://user@evil.com' }]) {
+    assert.equal((await w.owner('saveMilestones', [bad])).ok, false, JSON.stringify(bad));
+  }
+  assert.equal((await w.owner('saveMilestones', Array.from({ length: 61 }, (_, i) => ({ title: 'M' + i })))).ok, false);
+  assert.equal((await w.call('getMilestones', [])).result.length, 3, 'still the last good save');
+  assert.equal((await w.owner('saveMilestones', [])).ok, true); assert.deepEqual((await w.call('getMilestones', [])).result, []);
+}));
+
+test('Studio: one song can have its own streaming links, checked, shown to visitors (smart links), and cleared by saving nothing', () => withWorld(async (w) => {
+  assert.match((await w.owner('studioSaveTrackLinks', 'trk_a1', { links: [['Spotify', 'javascript:alert(1)']] })).error, /https:\/\//);
+  assert.match((await w.owner('studioSaveTrackLinks', 'ghost', { links: [] })).error, /not found/);
+  assert.equal((await w.call('studioSaveTrackLinks', ['wrong', 'trk_a1', { links: [] }])).ok, false);
+  assert.equal((await w.owner('studioSaveTrackLinks', 'trk_a1', { links: [['Spotify', 'https://open.spotify.com/track/x'], ['Apple Music', 'https://music.apple.com/x']] })).ok, true);
+  const pub = (await w.call('getShare', ['PUB'])).result;
+  assert.deepEqual(pub.overlay.tl.trk_a1, { links: [['Spotify', 'https://open.spotify.com/track/x'], ['Apple Music', 'https://music.apple.com/x']] });
+  assert.deepEqual((await w.owner('getOverlay')).result.tl.trk_a1.links.length, 2);
+  await w.owner('studioSaveTrackLinks', 'trk_a1', { links: [] });
+  assert.equal((await w.call('getShare', ['PUB'])).result.overlay, undefined, 'nothing saved, nothing sent');
 }));
 
 test('tour feed: Road to 100 numbers, shows so far, next show from a planned row; public; unreadable sheet hides itself', () => withWorld(async (w) => {

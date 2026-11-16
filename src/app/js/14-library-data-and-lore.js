@@ -147,13 +147,11 @@ function renderLore() {
   const hi = [['Most-used producer', top(L.idx.producers)], ['Most-featured artist', top(L.idx.features)], ['Most-used place', top(L.idx.places)]].filter(h => h[1]);
   const cats = [['producers', 'Producers', L.idx.producers, 'producers'], ['engineers', 'Engineers', L.idx.engineers, 'engineers'], ['features', 'Featured', L.idx.features, 'features'],
     ['places', 'Places', L.idx.places, 'recording locations'], ['photographers', 'Photographers', L.idx.photographers, 'photo credits']];
-  const phRels = L.eras.map(e => ({ r: e.r, ph: extrasOf(e.r.release_id, 'photo').filter(x => x.file_id) })).filter(x => x.ph.length);
   let cat = cats.some(c => c[0] === S.loreCat) ? S.loreCat : (cats.find(c => c[2].size) || cats[0])[0];
   $('#main').innerHTML = `<div class="wrap lore">
     ${homeHeader(true)}
-    <section class="lorephotos" aria-label="Photos"><h2 class="sh"><span><b>Photos</b></span></h2>
-      <div class="loreeras lphshelf" role="list">${SITE.photos.map((f, i) => `<button type="button" role="listitem" class="lph1" data-lphoto="${i}" aria-label="Open photo ${i + 1}"><img src="/photos/${esc(f)}.jpg" alt="Nicólas Soul" loading="lazy" onerror="this.parentNode.remove()"></button>`).join('')}</div></section>
     <div id="loreStory"></div>
+    <div id="loreMilestones"></div>
     <section class="lorenums" aria-label="By the numbers"><h2 class="sh"><span><b>By the</b> numbers</span></h2>
     <div class="lorestats">
       <button type="button" class="kpi tap" data-lore-types aria-expanded="false" aria-controls="loreTypes"><b>${t.releases}</b><span>Releases</span></button><div class="kpi"><b>${t.songs}</b><span>Songs</span></div>
@@ -168,14 +166,11 @@ function renderLore() {
         ${e.r.recorded_at ? `<span class="cs">${esc(e.r.recorded_at)}</span>` : ''}${e.ages.made ? `<span class="agechip">made at ${esc(e.ages.made)}</span>` : ''}
         ${nv || e.photos ? `<span class="cs">${[nv ? nv + (nv === 1 ? ' video' : ' videos') : '', e.photos ? e.photos + (e.photos === 1 ? ' photo' : ' photos') : ''].filter(Boolean).join(' · ')}</span>` : ''}</button>`; }).join('')}</div>
     <div id="loreTimeline"></div>
-    ${phRels.length ? `<h2 class="sh"><span><b>Photos</b> from every release</span></h2>
-    <div class="loreeras" role="list">${phRels.map(x => `<button type="button" role="listitem" class="loreera" data-lore-phrel="${esc(x.r.release_id)}"><span class="lc"><img data-ss-src="${esc(x.ph[0].file_id)}" alt="" loading="lazy"></span><b>${esc(x.r.title)}</b><span class="cs">${x.ph.length} ${x.ph.length === 1 ? 'photo' : 'photos'}</span></button>`).join('')}</div>` : ''}
     <div id="loreStories"></div>
     <h2 class="sh"><span><b>The people</b> behind it</span></h2>
     <label class="lorecatsel"><span class="sr-only">Credits</span><select class="field" data-lcatsel aria-label="Credits">${cats.map(c => `<option value="${c[0]}"${c[0] === cat ? ' selected' : ''}>${esc(c[1])} (${c[2].size})</option>`).join('')}</select></label>
     <div id="lorePeople"></div>
   </div>`;
-  $$('[data-lphoto]').forEach(b => b.addEventListener('click', () => openLorePhoto(+b.dataset.lphoto)));
   const tyBtn = $('[data-lore-types]'), tyBox = $('#loreTypes');
   if (tyBtn && tyBox) {   // Releases by kind: Albums, EPs, Mixtapes, Singles...
     const counts = new Map(); L.eras.forEach(e => { const k = typeOf(e.r); counts.set(k, (counts.get(k) || 0) + 1); });
@@ -184,7 +179,6 @@ function renderLore() {
     tyBtn.addEventListener('click', () => { const open = tyBox.hidden; tyBox.hidden = !open; tyBtn.setAttribute('aria-expanded', String(open)); });
   }
   $$('[data-lcover]').forEach(img => setCover(img, img.dataset.lcover));
-  $$('[data-lore-phrel]').forEach(b => { ssThumb(b.querySelector('img')); b.addEventListener('click', () => { S.releaseId = b.dataset.lorePhrel; openSlideshow(0); }); });
   // The people: one list at a time as name chips; tap a name to see which releases they are on.
   const drawPeople = () => {
     const c = cats.find(x => x[0] === cat), all = [...c[2].values()].sort((x, y) => y.releases.size - x.releases.size || x.name.localeCompare(y.name));
@@ -207,7 +201,8 @@ function renderLore() {
 }
 // Lore photo viewer: full screen; rotate, download, next/previous. (Pinch to zoom works as on any page.)
 function openLorePhoto(i) {
-  const list = [...$$('[data-lphoto] img')].map(x => x.getAttribute('src')).filter(Boolean);
+  const list = [...$$('[data-lphoto] img')].map(x => x.getAttribute('src')).filter(Boolean);   // (the photos are on the Media tab now; the viewer also works from anywhere)
+  if (!list.length) (SITE.photos || []).forEach(f => list.push('/photos/' + f + '.jpg'));
   if (!list.length) return;
   let at = Math.max(0, Math.min(i, list.length - 1)), rot = 0;
   const m = $('#modal'); m.className = 'modal lbmodal';

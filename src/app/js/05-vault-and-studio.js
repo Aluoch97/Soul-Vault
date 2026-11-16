@@ -25,7 +25,7 @@ function renderVault() {
     <section class="sgroup g-create"><h2 class="vsub">Create &amp; edit</h2>
       <button class="shero" data-nav="studio"><span class="si">${I.edit}</span><span class="st"><b>Studio</b><span class="cs">New releases, songs, info, links and your bio</span></span><span class="sc">${I.chev}</span></button>
       <div class="sfolders">
-        <ul class="acts-list single">${row('data-nav="shop"', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>', 'Shop', 'CDs and merch with a Stripe buy link')}</ul>
+        <ul class="acts-list single">${row('data-nav="shop"', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>', 'Shop', 'CDs and merch with a Stripe buy link')}${row('data-nav="milestones"', I.pin, 'Milestones', 'Big moments on the Lore page, with voice notes')}</ul>
         ${edge ? folder('songs', I.up2, 'Fix songs', 'Missing audio, link-only songs, lengths and dates', [
           row('data-missing', I.up2, 'Missing files', 'Songs waiting for their audio'),
           row('data-fillfacts', I.clock, 'Fill in link song details', 'Length and release date from YouTube, for songs added earlier'),
@@ -288,7 +288,13 @@ function drawStudio() {
       <datalist id="stuSvc">${STU_SERVICES.map(x => `<option value="${x}">`).join('')}</datalist>
       <div class="save"><button type="button" class="pill soft" id="stuAddLink">${I.plus}Add a link</button></div>
       ${f('stFirst', 'First appeared on (DatPiff, Bandcamp…)', lk.first)}
-      <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></div></section>
+      <div class="save"><button type="button" class="pill main" id="stuSaveLinks">Save links</button><span class="st" id="stuLinksSt" role="status"></span></div></div></div>
+      ${tracks.length ? `<div class="stu stubox"><div class="stubody">
+        <p class="cs" style="margin:0"><b>One song's own links.</b> A song's smart link sends fans to these. A song with none uses the release's links above.</p>
+        <label class="sf">Song<select class="field" id="stuTlSong">${tracks.map(t => `<option value="${esc(t.track_id)}">${esc(t.number_label || t.track_no)}. ${esc(t.title)}${(ov.tl || {})[t.track_id] ? ' (has links)' : ''}</option>`).join('')}</select></label>
+        <div id="stuTl" style="display:grid;gap:8px"></div>
+        <div class="save"><button type="button" class="pill soft" id="stuAddTl">${I.plus}Add a link</button></div>
+        <div class="save"><button type="button" class="pill main" id="stuSaveTl">Save this song's links</button><span class="st" id="stuTlSt" role="status"></span></div></div></div>` : ''}</section>
     ${EDGE_UPLOADS() ? `<section data-stupanel="add">${stuAddSection(rid)}</section>` : ''}
     <details class="stu" id="stuBio"><summary>Your bio</summary><div class="stubody"><p class="cs" style="margin:0">The story fans read on the Lore page.</p>
       <textarea class="field" id="loreBio" maxlength="8000" rows="8" placeholder="Write the story: where you're from, how the sound started, the eras, what's next.">${esc(S.lib.artist_bio || '')}</textarea>
@@ -363,6 +369,21 @@ function drawStudio() {
     Object.assign(r, basics, world); (g.overlay.flags = g.overlay.flags || { releases: {}, tracks: {} }).releases[rid] = $('#stUnrel').checked;
     const mine = rel(rid); if (mine) { Object.assign(mine, basics, world, { unreleased: $('#stUnrel').checked }); }
   }));
+  if ($('#stuTlSong')) {   // one song's own links
+    const tlRows = () => { const t = $('#stuTlSong').value, l = (ov.tl || {})[t]; $('#stuTl').innerHTML = (l && l.links || []).map(linkRow).join(''); };
+    tlRows();
+    $('#stuTlSong').addEventListener('change', tlRows);
+    $('#stuAddTl').addEventListener('click', () => { $('#stuTl').insertAdjacentHTML('beforeend', linkRow(['', ''])); });
+    $('#stuTl').addEventListener('click', e => { const b = e.target.closest('[data-stu-rmlink]'); if (b) b.closest('.lrow').remove(); });
+    $('#stuSaveTl').addEventListener('click', e => guard(e.currentTarget, $('#stuTlSt'), async () => {
+      const t = $('#stuTlSong').value, links = [...$$('#stuTl .lrow')].map(row => { const i = row.querySelectorAll('input'); return [i[0].value, i[1].value]; });
+      await run('studioSaveTrackLinks', BOOT.key, t, { links });
+      const clean = links.filter(l => l[0].trim() && l[1].trim());
+      ov.tl = ov.tl || {}; if (clean.length) ov.tl[t] = { links: clean }; else delete ov.tl[t];
+      S.links = Object.assign({}, S.links || {}, { tl: Object.assign({}, ov.tl) });
+      const opt = $('#stuTlSong').selectedOptions[0]; if (opt) opt.textContent = opt.textContent.replace(/ \(has links\)$/, '') + (clean.length ? ' (has links)' : '');
+    }));
+  }
   $('#stuAddLink').addEventListener('click', () => { $('#stuLinks').insertAdjacentHTML('beforeend', linkRow(['', ''])); });
   $('#stuLinks').addEventListener('click', e => { const b = e.target.closest('[data-stu-rmlink]'); if (b) b.closest('.lrow').remove(); });
   $('#stuSaveLinks').addEventListener('click', e => guard(e.currentTarget, $('#stuLinksSt'), async () => {

@@ -86,6 +86,7 @@ function openNpMore() {
     ${canSetVolume ? '' : '<p class="cs">Use your phone\'s side buttons for volume.</p>'}
     <div class="nptrans"><label>Song transitions <select class="field" data-trans aria-label="Song transitions"></select></label></div>
     <p class="cs">Gapless starts the next song a split second early so there is no silence. Crossfade blends the end of one song into the start of the next.</p>
+    ${S.now && S.now.r && !isUnrel(S.now.r) ? `<div class="npsmart"><button type="button" class="pill soft" data-smart-link="song">${I.link}Share a smart link for this song</button><p class="cs">A link where a friend picks Spotify, Apple Music or whatever they use.</p></div>` : ''}
     <div class="end"><button class="pill soft" data-close>Done</button></div></div>`;
   m.hidden = false; paintTransChoice();
 }

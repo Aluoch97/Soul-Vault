@@ -1,11 +1,18 @@
 /* ── Press tab: two tabs, Coverage (search + the stories by year) and Press kit (bio, photos, contact, links) ──
    Everything here comes from `SITE` (03-home-tour-press.js): `bio`, `booking`, `photos`, `links`, `press`. Text is escaped. */
 const pressYear = p => (/\b(19|20)\d\d\b/.exec(p.date || '') || [])[0] || 'Earlier';
+// Newest first. A full date ("Jan 14, 2026") sorts by the day; a year alone ("2026") counts as the start of that year; no date goes last. Same date keeps the order they are listed in.
+function pressTime(p) {
+  const t = Date.parse(String(p.date || '')); if (!isNaN(t)) return t;
+  const y = (/\b(19|20)\d\d\b/.exec(p.date || '') || [])[0]; return y ? Date.UTC(+y, 0, 1) : -Infinity;
+}
+const pressSorted = list => list.map((p, i) => [p, i]).sort((a, b) => pressTime(b[0]) - pressTime(a[0]) || a[1] - b[1]).map(x => x[0]);
 function pressCard(p) {
   return `<a class="pcard" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">
     <div class="pimg"><span class="pfall" aria-hidden="true">${esc(p.site)}</span><img src="/press-img/${esc(p.image)}.jpg" alt="" loading="lazy" onerror="this.remove()"></div>
+    <div class="pmeta"><span class="pdate">${esc(p.date || '')}</span><span class="psrc">${esc([p.author, p.site].filter(Boolean).join(' · '))}</span></div>
     <div class="pbody"><div class="ptitle">${esc(p.title)}</div><p class="pdesc">${esc(p.desc)}</p>
-      <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">${esc([p.site, p.author, p.date].filter(Boolean).join(' · '))}</span>${I.chev}</div></div></a>`;
+      <div class="pfoot"><span class="pico" aria-hidden="true">${esc(p.site.charAt(0))}</span><span class="psrc">Read the story</span>${I.chev}</div></div></a>`;
 }
 function pressKitHtml() {
   const paras = String(SITE.bio || '').split(/\n\s*\n/).filter(Boolean), photos = (SITE.photos || []).slice(0, 6);
@@ -20,7 +27,7 @@ function pressKitHtml() {
 }
 function drawPressList() {
   const q = lyNorm($('#pq') ? $('#pq').value : ''), yr = $('#pyear') ? $('#pyear').value : '';
-  const list = SITE.press.filter(p => (!yr || pressYear(p) === yr) && (!q || lyNorm([p.title, p.site, p.desc, p.author].join(' ')).includes(q)));
+  const list = pressSorted(SITE.press).filter(p => (!yr || pressYear(p) === yr) && (!q || lyNorm([p.title, p.site, p.desc, p.author].join(' ')).includes(q)));
   const years = [...new Set(list.map(pressYear))];
   const body = $('#pressBody'); if (!body) return;
   if (!list.length) { body.innerHTML = '<p class="cs">Nothing matches that.</p>'; return; }
@@ -29,7 +36,7 @@ function drawPressList() {
 function fillPress() {
   const kit = $('#pressKit'); if (!kit) return;
   kit.innerHTML = pressKitHtml();
-  const years = [...new Set(SITE.press.map(pressYear))];
+  const years = [...new Set(pressSorted(SITE.press).map(pressYear))];
   $('#pressFind').innerHTML = `<div class="pfind"><label class="vidsearch">${I.search}<input id="pq" type="search" placeholder="Search press" aria-label="Search press" autocomplete="off"></label>
     ${years.length > 1 ? `<label class="libsel"><span class="sr-only">Year</span><select id="pyear" aria-label="Year"><option value="">All years</option>${years.map(y => `<option>${esc(y)}</option>`).join('')}</select></label>` : ''}</div>`;
   $('#pq').addEventListener('input', drawPressList); const sel = $('#pyear'); if (sel) sel.addEventListener('change', drawPressList);

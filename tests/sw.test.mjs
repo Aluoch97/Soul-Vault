@@ -28,7 +28,7 @@ test('kind: only the app pages, its saved files and cover pictures are handled; 
   const { ctx } = world();
   const k = (url, o = {}) => ctx.kind(Object.assign(new Request(url, { method: o.method || 'GET', headers: o.headers }), o.mode ? {} : {}), ORIGIN);
   const kn = (url) => { const r = new Request(url); Object.defineProperty(r, 'mode', { value: 'navigate' }); return ctx.kind(r, ORIGIN); };
-  for (const p of ['/', '/vault', '/vault/2025-rise-of-the-lost', '/video', '/video/music-videos', '/tour/road-to-100', '/press', '/lore', '/admin']) assert.equal(kn(ORIGIN + p), 'page', p);
+  for (const p of ['/', '/vault', '/vault/2025-rise-of-the-lost', '/video', '/video/music-videos', '/media/videos', '/media/photos', '/link/2025-rise-of-the-lost', '/tour/road-to-100', '/press', '/lore', '/admin']) assert.equal(kn(ORIGIN + p), 'page', p);
   for (const p of ['/join', '/shows', '/privacy-policy', '/roadto100shows', '/privacy-policy.html', '/sitemap.xml', '/something-else']) assert.equal(kn(ORIGIN + p), 'bypass', p + ' is a separate page: always from the network');
   assert.equal(k(ORIGIN + '/app.js?v=T1'), 'shell'); assert.equal(k(ORIGIN + '/lame.js'), 'shell');
   for (const p of ['/fonts/a.woff2', '/icon-192.png', '/favicon-32.png', '/photos/x.jpg', '/press-img/y.jpg', '/home-covers/z.jpg', '/og-image.png', '/manifest.webmanifest']) assert.equal(k(ORIGIN + p), 'static', p);

@@ -15,6 +15,7 @@ import * as FN from './_lib/fans.js';
 import * as MS from './_lib/missing.js';
 import * as BK from './_lib/backup.js';
 import * as SH from './_lib/shop.js';
+import * as MILE from './_lib/milestones.js';
 import * as TOUR from './_lib/tour.js';
 import { RELEASE_TYPES, cleanBasics, cleanWorld, cleanWorldPart, cleanTrack, cleanLinks, cleanSr, normOverlay, overlayIsEmpty, patchRow } from './_lib/studio.js';
 
@@ -312,6 +313,15 @@ async function studio(ctx, fn, a) {
     if (!relOf(rid)) throw new Error('Release not found.');
     const c = cleanLinks(a[2] || {});
     if (c.links.length || c.first) ov.releases[rid] = c; else delete ov.releases[rid];
+    await saveOverlay(env.DB, ov); mem.ov = ov; mem.at = Date.now(); await forgetCached(all);
+    return true;
+  }
+  if (fn === 'studioSaveTrackLinks') {   // one song's own streaming links (its smart link uses these; without them it uses the release's)
+    const tid = String(a[1] || '');
+    if (!all.tracks.some(t => t.track_id === tid)) throw new Error('Song not found.');
+    const c = cleanLinks({ links: (a[2] || {}).links });
+    ov.tl = ov.tl || {};
+    if (c.links.length) ov.tl[tid] = { links: c.links }; else delete ov.tl[tid];
     await saveOverlay(env.DB, ov); mem.ov = ov; mem.at = Date.now(); await forgetCached(all);
     return true;
   }
@@ -736,6 +746,14 @@ export async function onRequestPost(ctx) {
     } else if (fn === 'saveShop' && env.DB) {
       if (!isOwner(env, args[0])) return json({ ok: false, error: 'This link is missing its owner key. Open the app from your owner link.' });
       try { return json({ ok: true, result: await SH.saveShop(env.DB, args[1]) }); } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
+    } else if (fn === 'getMilestones' && env.DB) {   // the Lore page's milestones: public to read
+      return json({ ok: true, result: await MILE.getMilestones(env.DB) });
+    } else if (fn === 'saveMilestones' && env.DB) {
+      if (!isOwner(env, args[0])) return json({ ok: false, error: 'This link is missing its owner key. Open the app from your owner link.' });
+      try { return json({ ok: true, result: await MILE.saveMilestones(env.DB, args[1]) }); } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
+    } else if (fn === 'planMilestoneAudio') {   // a new key for a milestone's voice note (the file then goes to /upload)
+      if (!isOwner(env, args[0])) return json({ ok: false, error: 'This link is missing its owner key. Open the app from your owner link.' });
+      try { return json({ ok: true, result: MILE.planAudio((args[1] || {}).ext) }); } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'getHome' && env.DB) {
       const out = await edgeHome(ctx, args);
       if (out) return json({ ok: true, result: out });
@@ -780,7 +798,7 @@ export async function onRequestPost(ctx) {
     } else if (env.DB && /^(addYoutubeSong|createReleaseFromYoutube|addYoutubePlaylistVideos|refreshYoutubeTitles|youtubeTitleStatus|checkYoutube)$/.test(fn) && await youtubeOnEdge(env)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
-    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong|createReleaseFromSoundcloud|fillYoutubeFacts)$/.test(fn)) {
+    } else if (/^(studio(Get|SaveRelease|SaveBulk|SaveTrack|SaveTrackLinks|SaveLinks|PlanUpload|AddSong|NewRelease|SetCover|SetVoice|ReplaceAudio|AddPhoto)|missing(List|Resolve|Link|Hide|Remove|Add)|addSoundcloudSong|createReleaseFromSoundcloud|fillYoutubeFacts)$/.test(fn)) {
       try { return json({ ok: true, result: await studio(ctx, fn, args) }); }
       catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'edgeStatus') {

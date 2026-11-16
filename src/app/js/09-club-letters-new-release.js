@@ -147,7 +147,7 @@ function featuresSection() {
 }
 // Extras: Unreleased, Features and Series in one area with three tabs (a tab only shows when it has something in it).
 function extrasSection() {
-  const parts = [['unreleased', 'Unreleased', unreleasedSection()], ['features', 'Features', featuresSection()], ['series', 'Series', seriesRow(true)]].filter(p => p[2]);
+  const parts = [['unreleased', 'Unreleased', unreleasedSection()], ['features', 'Features', featuresSection()], ['series', 'Series', seriesRow(true)], ['picks', "Soul's Picks", picksRow()]].filter(p => p[2]);
   if (!parts.length) return '';
   const cur = parts.find(p => p[0] === secState('extras').tab) || parts[0];   // (the default is not remembered: if Unreleased shows up a moment later, it becomes the first tab)
   const tabs = `<div class="vs-tabs ex-tabs" role="tablist" aria-label="Extras">${parts.map(([k, l]) => `<button type="button" role="tab" data-extab="${k}" aria-selected="${k === cur[0]}">${l}</button>`).join('')}</div>`;

@@ -16,6 +16,7 @@ function mosaic(ts, cls) {
 }
 const plCard = p => { const ts = plTracks(p); return `<button class="plcard" data-pl="${esc(p.playlist_id)}" aria-label="Playlist: ${esc(p.title)}, ${ts.length} songs">
       ${mosaic(ts)}<span class="nm">${esc(p.title)}</span><span class="cs">${songs(ts.length)}${OWNER ? ' · ' + (p.fans ? 'fan club' : 'private') : ''}</span></button>`; };
+// (Soul's Picks is a tab of the Extras area on the Music tab: Unreleased, Features, Series, Soul's Picks; extrasSection in 09 draws it, so it has no heading of its own.)
 // Soul's Picks: playlists I designed myself (my hardest verses, my best singing), shown like editorial picks: framed gold section, big cards, a badge.
 // Fans see the ones shared with the fan club.
 const pickCard = p => { const ts = plTracks(p), rt = fmtRuntime(runtimeOf(ts));
@@ -28,7 +29,6 @@ function picksRow() {
   if (!ps.length) return '';
   return `<section id="picks" class="vsec picks" aria-label="Soul's Picks">
     <div class="vs-ribbon pickribbon">${I.star}<span>Curated by Nicólas Soul</span></div>
-    <h2 class="sh"><span><b>Soul's Picks</b></span></h2>
     <p class="cs vs-blurb">Playlists I put together myself: the verses I'm proudest of and the songs where I sing my hardest.</p>
     <div class="hrow picksgrid" role="list">${ps.map(pickCard).join('')}</div></section>`;
 }
