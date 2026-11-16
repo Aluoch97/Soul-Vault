@@ -171,7 +171,7 @@ function renderLyr() {
   box.innerHTML = lines.map((l, i) => l.text ? (synced ? `<button class="ly" data-lt="${l.t}" data-li="${i}">${esc(l.text)}</button>` : `<p class="ly">${esc(l.text)}</p>`)
                                             : '<span class="ly gap" aria-hidden="true"></span>').join('');
   const note = $('#lyNote');
-  note.innerHTML = synced ? '' : `<span>These lyrics aren't synced yet, so they scroll with the song.</span>${OWNER ? '<button class="pill soft" data-sync-start>Sync lyrics</button>' : ''}`;
+  note.innerHTML = synced ? '' : `<span>These lyrics aren't synced yet, so they scroll with the song.</span>${OWNER ? '<button class="pill soft" data-sync-start>Sync lyrics</button><button class="pill soft" data-sync-suggest>Suggest timings</button>' : ''}`;
   note.hidden = synced;
   updateLyr(true);
 }
@@ -203,7 +203,7 @@ function renderSync() {
   const i = s.times.length, done = i >= s.lines.length;
   box.className = 'syncui';
   box.innerHTML = done
-    ? `<div class="prog">All ${s.lines.length} lines timed</div><div class="cur">Save these timings?</div>
+    ? `<div class="prog">All ${s.lines.length} lines timed</div><div class="cur">Save these timings?</div>${s.note ? `<p class="cs" id="syNote">${esc(s.note)}</p>` : ''}
        <div class="row3"><button class="pill main" data-sync-save>Save synced lyrics</button><button class="pill soft" data-sync-undo>Undo last</button><button class="pill soft" data-sync-cancel>Cancel</button></div>`
     : `<div class="prog">Line ${i + 1} of ${s.lines.length} · tap the moment it starts</div>
        <div class="cur" aria-live="polite">${esc(s.lines[i])}</div><div class="nxt">${esc(s.lines[i + 1] || '')}</div>
