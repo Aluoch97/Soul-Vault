@@ -203,13 +203,11 @@
   .roadtix { flex: none; }
 
   /* Lore: the story, year by year, stories behind the songs */
-  .lorestory, .loretime, .lorestories { margin: 18px 0; } .lorestory p { margin: 0 0 10px; font-size: 16px; line-height: 1.55; color: rgba(244,238,242,.88); }
+  .lorestory, .loretime { margin: 18px 0; } .lorestory p { margin: 0 0 10px; font-size: 16px; line-height: 1.55; color: rgba(244,238,242,.88); }
   .lorestory summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: #f5c542; font-weight: 700; font-size: 14px; }
   .ltl { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid rgba(245,197,66,.35); display: grid; gap: 16px; }
   .ltl li { position: relative; } .ltl li::before { content: ''; position: absolute; left: -21px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: #f5c542; box-shadow: 0 0 0 4px rgba(245,197,66,.18); }
   .lty { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; } .lty b { font: 800 24px/1 var(--serif, var(--sans)); } .ltr { display: flex; flex-wrap: wrap; gap: 6px; }
-  .lsl { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; } .lsl li { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.03); min-height: 56px; }
-  .lsm { display: grid; gap: 2px; min-width: 0; flex: 1; } .lsm b { overflow-wrap: anywhere; } .lsm .cs { font-size: 13px; } .lsl .pill { min-height: 44px; flex: none; } .lorestories > .pill { margin-top: 10px; }
   /* Video tab: search, autoplay switch, Play the song, Up next */
   .vidfind { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 0 0 10px; }
   .vidsearch { flex: 1 1 200px; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.05); color: var(--dim); }
