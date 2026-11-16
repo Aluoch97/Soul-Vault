@@ -89,4 +89,7 @@
   .mswrelh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; } .mswrelh .linkish { margin-left: auto; min-height: 44px; }
   .mswsongs { margin: 4px 0 2px; padding: 0; list-style: none; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
   .mswsong { padding: 8px 0; border-top: 1px solid var(--line); } .mswsong:first-child { border-top: 0; }
+  .mswhere .stusticky { position: sticky; bottom: 0; z-index: 5; margin: 8px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--raise, #1b1b22); }
+  .mswhere label.mswpick { display: none; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -10px 4px -10px -10px; cursor: pointer; vertical-align: middle; } .mswpick input { width: 22px; height: 22px; }
+  .mswhere.selmode label.mswpick { display: inline-flex; }
   .mswsongt { font-weight: 600; } .mswsong .msst { margin: 2px 0; } .mswsong .msbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }

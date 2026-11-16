@@ -1336,6 +1336,30 @@ await step('Missing files > Where your songs play from: Upload file puts a song 
   assert.equal(await page.evaluate((id) => !!trk(id), gone.id), false, 'and from the app library');
   await noSideways('missing files upload remove'); await page.evaluate(() => closeModal());
 });
+await step('Missing files > Where your songs play from: Select songs lets you tick several (or all) and remove them together; it asks first', async () => {
+  await page.evaluate(() => { renderVault(); }); await page.waitForSelector('[data-missing], details.sset'); await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); });
+  await page.click('[data-missing]'); await page.waitForSelector('#msWhere [data-ws-selmode]', { timeout: 15000 });
+  const where = async () => (await w.call('missingWhere', [KEY])).result;
+  const st = () => page.evaluate(() => ({ picks: document.querySelectorAll('[data-ws-pick]').length, shown: [...document.querySelectorAll('[data-ws-pick]')].filter((c) => c.offsetParent !== null).length, ticked: document.querySelectorAll('[data-ws-pick]:checked').length, bar: !document.querySelector('#wsSelBar').hidden, n: document.querySelector('#wsSelN').textContent, del: document.querySelector('[data-ws-delsel]').disabled, all: document.querySelector('[data-ws-selall]').textContent }));
+  const b0 = await where(); const loose = b0.songs.filter((s) => s.where !== 'cloudflare');
+  assert.ok(loose.length >= 4, 'there are songs to select: ' + loose.length);
+  let s = await st(); assert.deepEqual([s.picks, s.shown, s.bar], [loose.length, 0, false], 'ordinary view: no checkboxes, no bar: ' + JSON.stringify(s));
+  await page.click('[data-ws-selmode]'); s = await st(); assert.deepEqual([s.shown, s.bar, s.del], [loose.length, true, true], 'select mode: a checkbox on every song not on Cloudflare, the bar, Remove off until something is ticked: ' + JSON.stringify(s));
+  await page.click('[data-ws-selall]'); s = await st(); assert.deepEqual([s.ticked, s.del, s.all], [loose.length, false, 'Select none'], 'Select all: ' + JSON.stringify(s));
+  await page.click('[data-ws-selall]'); s = await st(); assert.deepEqual([s.ticked, s.del, s.all], [0, true, 'Select all'], 'Select none: ' + JSON.stringify(s));
+  const three = loose.slice(0, 3); for (const x of three) await page.click('[data-ws-pick="' + x.id + '"]');
+  s = await st(); assert.deepEqual([s.ticked, s.n], [3, '3'], JSON.stringify(s));
+  let asked = ''; page.once('dialog', (d) => { asked = d.message(); d.dismiss(); });
+  await page.click('[data-ws-delsel]'); await page.waitForTimeout(300);
+  assert.ok(/Remove 3 songs/.test(asked) && three.every((x) => asked.includes(x.title)) && /not deleted/.test(asked), 'it lists what goes and says the audio files stay: ' + JSON.stringify([asked, three.map((x) => x.title)]));
+  assert.equal((await where()).songs.length, b0.songs.length, 'Cancel changes nothing');
+  page.once('dialog', (d) => d.accept()); await page.click('[data-ws-delsel]');
+  await page.waitForFunction((ids) => ids.every((id) => !document.querySelector('[data-ws="' + id + '"]')), three.map((x) => x.id), { timeout: 20000 });
+  const b1 = await where(); assert.equal(b1.songs.length, b0.songs.length - 3, 'three songs are gone on the server'); assert.ok(three.every((x) => !b1.songs.some((y) => y.id === x.id)));
+  assert.equal(await page.evaluate((ids) => ids.some((id) => !!trk(id)), three.map((x) => x.id)), false, 'and from the app library');
+  s = await st(); assert.deepEqual([s.bar, s.ticked], [false, 0], 'back to the ordinary view after removing: ' + JSON.stringify(s));
+  await noSideways('missing files select'); await page.evaluate(() => closeModal());
+});
 await step('fans never see the hidden test release', async () => {
   const lib = (await w.call('getShare', ['PUB'])).result;
   assert.ok(!JSON.stringify(lib).includes('Browser Test EP'), 'the hidden release must not reach the public link');
