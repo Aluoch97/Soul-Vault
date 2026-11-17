@@ -546,6 +546,47 @@ await step('opening the app and tapping around never starts any sound (it would 
   assert.deepEqual(r.plays, [], 'no sound was started by just opening the app and tapping: ' + JSON.stringify(r));
   await c.close();
 });
+await step('phone notifications: a fan turns them on from the Home footer; Nick sends one from Settings > Notify fans (newest release); the fan link stays hidden until the keys exist', async () => {
+  const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('push page error: ' + e.message));
+  await pg.addInitScript(() => {
+    let subbed = null; const perm = { v: 'default' };
+    const sub = () => ({ endpoint: 'https://push.test/phone1-abcdefghijkl', toJSON() { return { endpoint: this.endpoint, keys: { p256dh: 'A'.repeat(87), auth: 'B'.repeat(22) } }; }, async unsubscribe() { subbed = null; return true; } });
+    const reg = { pushManager: { async getSubscription() { return subbed; }, async subscribe(o) { window.__keyLen = o.applicationServerKey.length; subbed = sub(); return subbed; } }, update: async () => {}, unregister: async () => true };
+    Object.defineProperty(window, 'PushManager', { value: function () {}, configurable: true });
+    Object.defineProperty(window, 'Notification', { value: { get permission() { return perm.v; }, requestPermission: async () => (perm.v = 'granted') }, configurable: true });
+    Object.defineProperty(navigator, 'serviceWorker', { value: { register: async () => reg, getRegistration: async () => reg, ready: Promise.resolve(reg), getRegistrations: async () => [reg], addEventListener() {} }, configurable: true });
+  });
+  // keys not set yet: no link
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.hfoot', { timeout: 15000 }); await pg.waitForTimeout(600);
+  assert.equal(await pg.locator('[data-push-open]').isVisible(), false, 'no Notifications link while the keys are missing');
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+  const raw = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)), d = (await crypto.subtle.exportKey('jwk', pair.privateKey)).d;
+  w.env.VAPID_PUBLIC_KEY = Buffer.from(raw).toString('base64url'); w.env.VAPID_PRIVATE_KEY = d;
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.hfoot', { timeout: 15000 }); await pg.waitForSelector('[data-push-open]:not([hidden])', { timeout: 5000 });
+  const small = await pg.evaluate(() => Math.round(document.querySelector('[data-push-open]').getBoundingClientRect().height)); assert.ok(small >= 44, 'footer link is 44px tall: ' + small);
+  await pg.click('[data-push-open]'); await pg.waitForSelector('#pushBtn:not([hidden])');
+  assert.match(await pg.innerText('#pushMsg'), /Get a notification on your phone/);
+  await pg.click('#pushBtn'); await pg.waitForFunction(() => /You're on/.test(document.querySelector('#pushMsg').textContent), null, { timeout: 5000 });
+  assert.equal(await pg.evaluate(() => window.__keyLen), 65, 'subscribed with our public key');
+  assert.equal(Number((await w.db.prepare('SELECT COUNT(*) AS n FROM push_subs').first()).n), 1, 'the phone is saved');
+  assert.equal(await pg.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, 'no sideways scroll');
+  await pg.click('#pushBtn'); await pg.waitForFunction(() => /Get a notification/.test(document.querySelector('#pushMsg').textContent), null, { timeout: 5000 });
+  assert.equal(Number((await w.db.prepare('SELECT COUNT(*) AS n FROM push_subs').first()).n), 0, 'turning off removes the phone');
+  await pg.click('#pushBtn'); await pg.waitForFunction(() => /You're on/.test(document.querySelector('#pushMsg').textContent), null, { timeout: 5000 });
+  await c.close();
+  // Nick (the owner page) sends the newest release
+  page.once('dialog', (dlg) => dlg.accept());
+  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-push-owner]', { state: 'attached' });
+  await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((x) => { x.open = true; }); document.querySelector('[data-push-owner]').click(); });
+  await page.waitForSelector('#pnBody:not([hidden])', { timeout: 5000 });
+  assert.match(await page.innerText('#pnSt'), /1 phone has notifications on\. You have sent 0 of 3/);
+  await page.click('[data-pn="release"]'); assert.match(await page.inputValue('#pnTitle'), /New music/); assert.match(await page.inputValue('#pnBody2'), /is out now/);
+  await page.evaluate(() => { window.__pushPosted = []; }); const before = w.pushed.length;
+  await page.click('#pnSend'); await page.waitForFunction(() => /1 of 3|sent 1 of 3/.test(document.querySelector('#pnSt').textContent), null, { timeout: 8000 });
+  assert.equal(w.pushed.length - before, 1, 'one encrypted message went to the phone\'s push service');
+  assert.ok(String(w.pushed[w.pushed.length - 1].headers.authorization).startsWith('vapid t='), 'signed with our key');
+  await page.click('#modal [data-close]');
+});
 await step('update pop-up: a newer app version shows "A new version is ready. Tap to update" above the tab bar; the same version shows nothing', async () => {
   const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('update bar page error: ' + e.message));
   await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });

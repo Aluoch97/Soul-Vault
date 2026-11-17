@@ -144,12 +144,14 @@ export async function harness({ lib = fixtureLib(), seed = true, bucket = true, 
     if (u.startsWith('https://soundcloud.com/oembed')) { const x = (h.soundcloud || {})[new URL(u).searchParams.get('url')]; return x ? reply(x) : new Response('no', { status: 404 }); }
     if (u.startsWith('https://www.youtube.com/oembed')) { const id = new URL(new URL(u).searchParams.get('url')).searchParams.get('v'); return id in h.youtube.videos && !h.youtube.noOembed ? reply({ title: h.youtube.videos[id] }) : new Response('no', { status: 404 }); }
     if (u.startsWith('https://i.ytimg.com/vi/')) return h.ytImages[u.split('/').pop()] === false ? new Response('no', { status: 404 }) : new Response(new Uint8Array(6000), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    if (u.startsWith('https://push.test/')) { h.pushed.push({ url: u, headers: Object.fromEntries(new Headers(init.headers)), body: init.body }); return new Response(null, { status: h.pushStatus[u] || 201 }); }   // a fake push service: h.pushStatus[url] = 410 makes that phone 'gone'
     return new Response('not found', { status: 404 });
   };
   if (seed) await t.mirror.saveLib(db, lib, { synced_at: Date.now() });
   const pending = [];
   const h = {
     t, db, env, media, log, lib, youtube: { videos: {}, playlists: {} }, ytCalls: [], ytImages: {},
+    pushed: [], pushStatus: {},
     mail: [], mailFail: [], mailDown: false, feed: SAMPLE_FEED, shows: [], tracker: null,
     ctx(request) { return { request, env, waitUntil: p => { pending.push(Promise.resolve(p).catch(() => {})); } }; },
     async settle() { await Promise.all(pending.splice(0)); },
