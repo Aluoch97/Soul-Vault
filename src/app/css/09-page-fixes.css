@@ -26,3 +26,8 @@
   .vsec.picks .pickcard { flex: 0 0 min(64vw, 250px); scroll-snap-align: start; }
   /* Lore photos: the section is a heading with the shelf UNDER it (the old two-column photo grid style no longer applies to it) */
   .wrap.lore .lorephotos { display: block; grid-template-columns: none; }
+
+/* Support: the Home button opens the support page in place */
+button.support { border: 0; cursor: pointer; font-family: inherit; }
+.supportpanel { width: min(440px, 100%); margin: 16px auto 0; padding: 12px 4px 4px; }
+.supportpanel .supportframe { min-height: 380px; }

@@ -557,6 +557,17 @@ await step('Release page header is calmer: Play and Shuffle are the two big butt
   if (process.env.SHOT_REL) await page.screenshot({ path: process.env.SHOT_REL });
   await page.evaluate(() => { S.shop = []; S.shopP = Promise.resolve([]); });
 });
+await step('Home > Support opens the NuRenaissance support page inside the page (like the Soul Tribe card), nothing loads before the tap, a Home redraw keeps it, Close puts the button back', async () => {
+  await page.evaluate(() => renderHome()); await page.waitForSelector('.homepg [data-support-open]');
+  const before = await page.evaluate(() => ({ tag: document.querySelector('.homepg .support').tagName, frames: document.querySelectorAll('#supportpanel iframe').length, next: document.querySelector('.homepg .support').nextElementSibling.className }));
+  assert.ok(before.tag === 'BUTTON' && before.frames === 0 && /nulink/.test(before.next), 'a button, no frame yet, NuRenaissance link right after: ' + JSON.stringify(before));
+  await page.click('.homepg [data-support-open]'); await page.waitForSelector('#supportpanel iframe');
+  assert.equal(await page.evaluate(() => document.querySelector('#supportpanel iframe').getAttribute('src')), '/support?embed=1', 'the support page, shown in embedded form');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('.homepg [data-support-open]').length), 0, 'the button is replaced by the panel');
+  await page.evaluate(() => refreshView()); assert.equal(await page.evaluate(() => document.querySelectorAll('#supportpanel iframe').length), 1, 'the library arriving does not wipe the open panel');
+  await page.click('[data-support-close]');
+  assert.equal(await page.evaluate(() => [document.querySelectorAll('#supportpanel').length, document.querySelectorAll('.homepg [data-support-open]').length].join()), '0,1', 'Close puts the button back');
+});
 await step('Nick\'s round: NuRenaissance link under Support, Releases shows the kinds, bigger Lore photos, centred Tour and Press tabs, voice notes start inside the tap, Video opens from the kept list', async () => {
   // Home: a link to the NuRenaissance site sits right under the Support button
   await page.evaluate(() => renderHome()); await page.waitForSelector('.homepg .support');

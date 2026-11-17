@@ -136,7 +136,7 @@ function renderHome() {
       <h1 class="herot">Nicólas <span>Soul</span></h1>
       <p class="herop">${esc(SITE.tagline)}</p>
       <div class="linkgrid" role="group" aria-label="Listen and follow">${SITE.links.map(l => `<a class="soc" href="${esc(l[1])}" target="_blank" rel="noopener" aria-label="${esc(l[0])}" title="${esc(l[0])}">${BRAND[l[0]] ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="${BRAND[l[0]]}"/></svg>` : esc(l[0])}</a>`).join('')}</div>
-      <a class="support" href="${esc(SITE.support)}" target="_blank" rel="noopener"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></a>
+      <button type="button" class="support" data-support-open aria-label="Support Nicólas Soul"><span>Support Nicólas Soul</span><i aria-hidden="true">$</i></button>
       <a class="nulink" href="https://www.nrnszn.com" target="_blank" rel="noopener">NuRenaissance Media<span aria-hidden="true"> ↗</span><span class="sr-only"> (opens nrnszn.com)</span></a>
     </section>
     <section class="hsec" aria-label="New music">
@@ -160,7 +160,7 @@ function renderHome() {
   // (a still image instead if the person asked for less motion or is saving data).
   $$('[data-home-cover]').forEach(img => setCover(img, img.dataset.homeCover, true));
   fillHomeExtras();
-  wireYt(); wireTribe();
+  wireYt(); wireTribe(); wireSupport();
   window.scrollTo(0, 0);
 }
 

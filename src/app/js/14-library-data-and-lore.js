@@ -24,7 +24,7 @@ function libCacheClear() { try { localStorage.removeItem(libCacheKey()); } catch
 function refreshView() {
   const y = window.scrollY;
   if (S.view === 'library') renderLibrary(true);
-  else if (S.view === 'home') { if ($('#tribe.open')) fillHomeLatest(); else renderHome(); }   // never wipe a sign-up form that is being filled in
+  else if (S.view === 'home') { if ($('#tribe.open') || $('#supportpanel')) fillHomeLatest(); else renderHome(); }   // never wipe a sign-up form that is being filled in
   else if (S.view === 'tour' || S.view === 'press' || S.view === 'video') { /* static pages: nothing to refresh */ }
   else if (S.view === 'release' && !S.editing && rel(S.releaseId)) renderRelease(S.releaseId);
   else if (S.view === 'vault') renderVault();
