@@ -54,31 +54,37 @@ async function openPushSheet() {
 }
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('[data-push-open]'); if (a) { e.preventDefault(); openPushSheet(); } });
 
-/* Owner: Notify fans */
-async function openPushOwner() {
-  const m = $('#modal'); m.className = 'modal';
-  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Notify fans"><h2>Notify fans</h2><p class="cs" id="pnSt">Checking…</p>
+/* Owner: Notify fans (a full Settings page, like Milestones and Shop: Settings > Fans & activity > Notify fans) */
+async function renderNotifyPage() {
+  clearPageBg(); S.view = 'notify'; renderChrome();
+  const head = '<button class="back" data-nav="vault">' + I.back + 'Settings</button><header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Notify</b> fans</h1><button class="round" data-nav="vault" aria-label="Settings">' + I.gear + '</button></header>';
+  $('#main').innerHTML = `<div class="wrap studio shoppg pnpage">${head}
+    <p class="cs" id="pnSt" role="status" aria-live="polite">Checking…</p>
     <div id="pnBody" hidden>
-      <div class="pnquick"><button type="button" class="pill soft" data-pn="release">Newest release</button><button type="button" class="pill soft" data-pn="show">Next show</button></div>
-      <label class="pnlbl" for="pnTitle">Title (shows in bold)</label><input id="pnTitle" maxlength="60" autocomplete="off" placeholder="New music">
-      <label class="pnlbl" for="pnBody2">Message</label><input id="pnBody2" maxlength="140" autocomplete="off" placeholder="Out now on all platforms">
-      <label class="pnlbl" for="pnUrl">Where a tap goes</label><select id="pnUrl"><option value="/">Home</option><option value="/vault">Music</option><option value="/tour">Tour</option><option value="/lore">Lore</option></select>
-      <p class="cs" id="pnPrev"></p><button type="button" class="pill main" id="pnSend">Send</button>
+      <p class="cs">Send a notification to everyone who turned them on. Tap a suggestion to fill it in, change the words if you like, then send.</p>
+      <div class="mschips"><button type="button" class="pill soft" data-pn="release">${I.plus}Newest release</button><button type="button" class="pill soft" data-pn="show">${I.plus}Next show</button></div>
+      <div class="shopitem">
+        <label class="sf">Title (shows in bold)<input class="field" id="pnTitle" maxlength="60" autocomplete="off" placeholder="New music from Nicólas Soul"></label>
+        <label class="sf">Message<input class="field" id="pnBody2" maxlength="140" autocomplete="off" placeholder="Out now on all platforms"></label>
+        <label class="sf">Where a tap goes<select class="field" id="pnUrl"><option value="/">Home</option><option value="/vault">Music</option><option value="/tour">Tour</option><option value="/lore">Lore</option></select></label>
+        <p class="cs" id="pnPrev"></p>
+      </div>
+      <div class="save"><button type="button" class="pill main" id="pnSend">Send</button><span class="st" id="pnMsg" role="status" aria-live="polite"></span></div>
       <p class="cs" id="pnLast"></p></div>
-    <p class="cs" id="pnErr" role="alert" style="color:#ff8a8a" hidden></p><div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
-  m.hidden = false;
-  const st = $('#pnSt'), err = $('#pnErr'), sh = m.firstElementChild; let status;   // listeners go on this sheet (a new one each time), never on the shared #modal
+    <p class="cs" id="pnErr" role="alert" style="color:#ff8a8a" hidden></p></div>`;
+  const st = $('#pnSt'), err = $('#pnErr'), page = $('.pnpage'); let status;
   const fail = t => { err.textContent = t; err.hidden = !t; };
   async function load() {
     try { status = await run('pushStatus', BOOT.key); } catch (e) { st.textContent = (e && e.message) || 'Could not load.'; return; }
+    if (!$('#pnSt')) return;
     if (!status.on) { st.textContent = 'Notifications are not switched on yet: the two keys (VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY) are missing in Cloudflare.'; return; }
     st.textContent = status.subscribers + (status.subscribers === 1 ? ' phone has' : ' phones have') + ' notifications on. You have sent ' + status.sentToday + ' of ' + status.cap + ' allowed in the last 24 hours.';
     $('#pnBody').hidden = false; $('#pnSend').textContent = 'Send to ' + status.subscribers + (status.subscribers === 1 ? ' phone' : ' phones');
     $('#pnLast').innerHTML = (status.last || []).length ? '<b>Recently sent:</b><br>' + status.last.map(l => esc(new Date(l.at).toLocaleDateString() + ': ' + l.title + ' (' + l.sent + ' phones)')).join('<br>') : '';
   }
-  const prev = () => { if (!$('#pnPrev')) return; $('#pnPrev').textContent = ($('#pnTitle').value || $('#pnBody2').value) ? 'It will look like: “' + ($('#pnTitle').value || '…') + '” — ' + ($('#pnBody2').value || '…') : ''; };
-  sh.addEventListener('input', prev);
-  sh.addEventListener('click', async e => {
+  const prev = () => { const p = $('#pnPrev'); if (!p) return; const t = $('#pnTitle').value, b = $('#pnBody2').value; p.textContent = (t || b) ? 'It will look like: “' + (t || '…') + '” — ' + (b || '…') : ''; };
+  page.addEventListener('input', prev);
+  page.addEventListener('click', async e => {
     const q = e.target.closest && e.target.closest('[data-pn]');
     if (q) {
       fail('');
@@ -89,12 +95,13 @@ async function openPushOwner() {
         $('#pnTitle').value = 'Next show'; $('#pnBody2').value = [nx.dateText, nx.venue, nx.city].filter(Boolean).join(' · '); $('#pnUrl').value = '/tour'; }
       prev(); return;
     }
-    if (e.target.id !== 'pnSend') return; fail('');
+    if (!e.target.closest || !e.target.closest('#pnSend')) return; fail('');
     const title = $('#pnTitle').value.trim(); if (!title) return fail('Write a title first.');
     if (!confirm('Send this to ' + status.subscribers + ' phone' + (status.subscribers === 1 ? '' : 's') + '?\n\n' + title + '\n' + $('#pnBody2').value)) return;
-    const b = e.target; b.disabled = true; b.textContent = 'Sending…';
-    try { const r = await run('pushSend', BOOT.key, { title, body: $('#pnBody2').value, url: $('#pnUrl').value }); toast('Sent to ' + r.sent + ' phone' + (r.sent === 1 ? '' : 's') + (r.removed ? ' (' + r.removed + ' had turned them off)' : '')); await load(); }
-    catch (er) { fail((er && er.message) || 'Could not send.'); b.disabled = false; b.textContent = 'Send'; }
+    const b = $('#pnSend'); b.disabled = true; b.textContent = 'Sending…';
+    try { const r = await run('pushSend', BOOT.key, { title, body: $('#pnBody2').value, url: $('#pnUrl').value }); $('#pnMsg').textContent = 'Sent to ' + r.sent + ' phone' + (r.sent === 1 ? '' : 's') + (r.removed ? ' (' + r.removed + ' had turned them off)' : ''); toast('Sent to ' + r.sent + ' phone' + (r.sent === 1 ? '' : 's')); await load(); }
+    catch (er) { fail((er && er.message) || 'Could not send.'); b.textContent = 'Send'; }
+    b.disabled = false;
   });
   load();
 }
