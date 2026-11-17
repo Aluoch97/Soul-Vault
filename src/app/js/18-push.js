@@ -67,7 +67,7 @@ async function openPushOwner() {
       <p class="cs" id="pnLast"></p></div>
     <p class="cs" id="pnErr" role="alert" style="color:#ff8a8a" hidden></p><div class="end"><button class="pill soft" data-close>Close</button></div></div>`;
   m.hidden = false;
-  const st = $('#pnSt'), err = $('#pnErr'); let status;
+  const st = $('#pnSt'), err = $('#pnErr'), sh = m.firstElementChild; let status;   // listeners go on this sheet (a new one each time), never on the shared #modal
   const fail = t => { err.textContent = t; err.hidden = !t; };
   async function load() {
     try { status = await run('pushStatus', BOOT.key); } catch (e) { st.textContent = (e && e.message) || 'Could not load.'; return; }
@@ -76,9 +76,9 @@ async function openPushOwner() {
     $('#pnBody').hidden = false; $('#pnSend').textContent = 'Send to ' + status.subscribers + (status.subscribers === 1 ? ' phone' : ' phones');
     $('#pnLast').innerHTML = (status.last || []).length ? '<b>Recently sent:</b><br>' + status.last.map(l => esc(new Date(l.at).toLocaleDateString() + ': ' + l.title + ' (' + l.sent + ' phones)')).join('<br>') : '';
   }
-  const prev = () => { $('#pnPrev').textContent = ($('#pnTitle').value || $('#pnBody2').value) ? 'It will look like: “' + ($('#pnTitle').value || '…') + '” — ' + ($('#pnBody2').value || '…') : ''; };
-  m.addEventListener('input', prev);
-  m.addEventListener('click', async e => {
+  const prev = () => { if (!$('#pnPrev')) return; $('#pnPrev').textContent = ($('#pnTitle').value || $('#pnBody2').value) ? 'It will look like: “' + ($('#pnTitle').value || '…') + '” — ' + ($('#pnBody2').value || '…') : ''; };
+  sh.addEventListener('input', prev);
+  sh.addEventListener('click', async e => {
     const q = e.target.closest && e.target.closest('[data-pn]');
     if (q) {
       fail('');
