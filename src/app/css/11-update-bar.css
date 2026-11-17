@@ -3,3 +3,9 @@
 .updbar span { flex: 1; min-width: 0; }
 .updbar .updgo { min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: #e8b04a; color: #1a1205; font-weight: 700; font-size: 16px; cursor: pointer; }
 .updbar .updx { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
+
+/* Notify fans (js/18-push.js) */
+.pnquick { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
+.pnlbl { display: block; margin: 10px 0 4px; font-size: 14px; opacity: .8; }
+#modal .sheet input#pnTitle, #modal .sheet input#pnBody2, #modal .sheet select#pnUrl { width: 100%; box-sizing: border-box; min-height: 44px; font-size: 16px; }
+#pushBtn, #pnSend { min-height: 44px; margin: 6px 0; }

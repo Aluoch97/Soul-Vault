@@ -14,6 +14,7 @@ import * as ST from './_lib/site.js';
 import * as FN from './_lib/fans.js';
 import * as MS from './_lib/missing.js';
 import * as BK from './_lib/backup.js';
+import * as PU from './_lib/push.js';
 import * as SH from './_lib/shop.js';
 import * as MILE from './_lib/milestones.js';
 import * as WHERE from './_lib/where.js';
@@ -761,6 +762,15 @@ export async function onRequestPost(ctx) {
     } else if (fn === 'saveShop' && env.DB) {
       if (!isOwner(env, args[0])) return json({ ok: false, error: 'This link is missing its owner key. Open the app from your owner link.' });
       try { return json({ ok: true, result: await SH.saveShop(env.DB, args[1]) }); } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
+    } else if (PU.PUSH_FNS.indexOf(fn) > -1) {   // phone notifications: fans turn them on; only the owner sees the numbers and sends
+      try {
+        if (fn === 'pushInfo') return json({ ok: true, result: PU.pushInfo(env) });
+        if (!env.DB) return json({ ok: false, error: 'Notifications need the database.' });
+        if (fn === 'pushSubscribe') return json({ ok: true, result: await PU.pushSubscribe(env.DB, env, args[0], request.headers.get('cf-connecting-ip')) });
+        if (fn === 'pushUnsubscribe') return json({ ok: true, result: await PU.pushUnsubscribe(env.DB, args[0]) });
+        if (!isOwner(env, args[0])) return json({ ok: false, error: 'This link is missing its owner key. Open the app from your owner link.' });
+        return json({ ok: true, result: fn === 'pushStatus' ? await PU.pushStatus(env.DB, env) : await PU.pushSend(env.DB, env, args[1]) });
+      } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'getMilestones' && env.DB) {   // the Lore page's milestones: public to read
       return json({ ok: true, result: await MILE.getMilestones(env.DB) });
     } else if (fn === 'saveMilestones' && env.DB) {
