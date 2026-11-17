@@ -322,6 +322,7 @@ document.addEventListener('click', e => {
     else if (d.nav === 'studio' && OWNER) renderStudio();
     else if (d.nav === 'shop' && OWNER) renderShop();
     else if (d.nav === 'milestones' && OWNER) renderMilestonesEditor();
+    else if (d.nav === 'notify' && OWNER) renderNotifyPage();
     else if (d.nav === 'home') renderHome();
     else if (d.nav === 'tour') renderTour();
     else if (d.nav === 'press') renderPress();

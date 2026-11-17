@@ -576,18 +576,24 @@ await step('phone notifications: a fan turns them on from the Home footer; Nick 
   assert.equal(Number((await w.db.prepare('SELECT COUNT(*) AS n FROM push_subs').first()).n), 0, 'turning off removes the phone');
   await pg.click('#pushBtn'); await pg.waitForFunction(() => /You're on/.test(document.querySelector('#pushMsg').textContent), null, { timeout: 5000 });
   await c.close();
-  // Nick (the owner page) sends the newest release
+  // Nick (the owner page) sends the newest release, from a full Settings page (not a pop-up), with text he can actually read
   page.once('dialog', (dlg) => dlg.accept());
-  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-push-owner]', { state: 'attached' });
-  await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((x) => { x.open = true; }); document.querySelector('[data-push-owner]').click(); });
-  await page.waitForSelector('#pnBody:not([hidden])', { timeout: 5000 });
+  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-nav="notify"]', { state: 'attached' });
+  await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((x) => { x.open = true; }); document.querySelector('[data-nav="notify"]').click(); });
+  await page.waitForSelector('.pnpage #pnBody:not([hidden])', { timeout: 5000 });
+  assert.equal(await page.evaluate(() => document.querySelector('#modal').hidden || !document.querySelector('#modal .sheet')), true, 'it is a page, not a pop-up sheet');
+  assert.ok(await page.evaluate(() => !!document.querySelector('.pnpage .back[data-nav="vault"]') && !!document.querySelector('.pnpage .vh')), 'same Settings-page frame as Milestones: back button and header');
   assert.match(await page.innerText('#pnSt'), /1 phone has notifications on\. You have sent 0 of 3/);
+  await page.fill('#pnTitle', 'ROAD TO 100');
+  const vis = await page.evaluate(() => { const cs = getComputedStyle(document.querySelector('#pnTitle')), lum = (c) => { const m = c.match(/\d+(\.\d+)?/g).map(Number).slice(0, 3).map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * m[0] + .7152 * m[1] + .0722 * m[2]; }, a = lum(cs.color), b = lum(cs.backgroundColor); return { ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05), color: cs.color, bg: cs.backgroundColor, fs: cs.fontSize }; });
+  assert.ok(vis.ratio >= 4.5, 'what you type is readable (contrast ' + vis.ratio.toFixed(1) + ': ' + vis.color + ' on ' + vis.bg + ')'); assert.ok(parseFloat(vis.fs) >= 16, 'input text is 16px+ so iPhones do not zoom');
+  if (process.env.PUSH_SHOT) await page.screenshot({ path: process.env.PUSH_SHOT });
   await page.click('[data-pn="release"]'); assert.match(await page.inputValue('#pnTitle'), /New music/); assert.match(await page.inputValue('#pnBody2'), /is out now/);
-  await page.evaluate(() => { window.__pushPosted = []; }); const before = w.pushed.length;
+  const before = w.pushed.length;
   await page.click('#pnSend'); await page.waitForFunction(() => /sent 1 of 3/.test(document.querySelector('#pnSt').textContent), null, { timeout: 8000 });
   assert.equal(w.pushed.length - before, 1, 'one encrypted message went to the phone\'s push service');
   assert.ok(String(w.pushed[w.pushed.length - 1].headers.authorization).startsWith('vapid t='), 'signed with our key');
-  await page.click('#modal [data-close]');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, 'no sideways scroll');
 });
 await page.evaluate(() => { const m = document.querySelector('#modal'); if (m) { m.hidden = true; m.innerHTML = ''; } }).catch(() => {});   // whatever happened above, the next steps start with no sheet open
 await step('update pop-up: a newer app version shows "A new version is ready. Tap to update" above the tab bar; the same version shows nothing', async () => {
