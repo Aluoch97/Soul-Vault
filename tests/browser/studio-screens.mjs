@@ -546,6 +546,20 @@ await step('opening the app and tapping around never starts any sound (it would 
   assert.deepEqual(r.plays, [], 'no sound was started by just opening the app and tapping: ' + JSON.stringify(r));
   await c.close();
 });
+await step('update pop-up: a newer app version shows "A new version is ready. Tap to update" above the tab bar; the same version shows nothing', async () => {
+  const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('update bar page error: ' + e.message));
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });
+  const mine = await pg.evaluate(() => APP_VERSION); assert.ok(mine, 'the page knows its own version');
+  await pg.evaluate((v) => { window.__v = v; const o = window.fetch; window.fetch = (u, opts) => (u === '/' ? Promise.resolve(new Response('<script src="/app.js?v=' + window.__v + '"></script>')) : o(u, opts)); }, mine);
+  await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await pg.waitForTimeout(500);
+  assert.equal(await pg.locator('.updbar').count(), 0, 'same version: nothing shown');
+  await pg.evaluate(() => { window.__v = '99-newer'; document.dispatchEvent(new Event('visibilitychange')); });
+  await pg.waitForSelector('.updbar', { timeout: 3000 });
+  const r = await pg.evaluate(() => { const b = document.querySelector('.updbar').getBoundingClientRect(), g = document.querySelector('.updgo').getBoundingClientRect(), t = document.querySelector('.tabs') ? document.querySelector('.tabs').getBoundingClientRect() : null; return { text: document.querySelector('.updbar').innerText, goH: Math.round(g.height), bottom: Math.round(b.bottom), tabTop: t ? Math.round(t.top) : null, sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }; });
+  assert.match(r.text, /A new version is ready/); assert.ok(r.goH >= 44, 'tap area is 44px+: ' + r.goH); assert.ok(r.tabTop === null || r.bottom <= r.tabTop, 'sits above the tab bar: ' + JSON.stringify(r)); assert.ok(r.sw <= r.cw + 1, 'no sideways scroll');
+  await pg.click('.updx'); assert.equal(await pg.locator('.updbar').count(), 0, '× hides it');
+  await c.close();
+});
 await step('Release page header is calmer: Play and Shuffle are the two big buttons, Share / Save offline / Queue sit on one quiet row, the small facts share a line', async () => {
   await page.evaluate(() => { S.links = S.links || { releases: {} }; S.links.releases = S.links.releases || {}; S.links.releases.rel_pub = { first: 'DatPiff', links: [['Spotify', 'https://open.spotify.com/x']] }; S.shop = [{ title: 'Test CD', price: '$12', blurb: 'Ships from Nashville.', buy_url: 'https://buy.stripe.com/x', release_id: 'rel_pub' }]; S.shopP = Promise.resolve(S.shop); renderRelease('rel_pub'); });
   await page.waitForSelector('#relhead .acts'); await page.waitForSelector('#shopRel .shopcard', { timeout: 5000 });
