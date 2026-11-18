@@ -481,7 +481,7 @@ await step('Studio top "Add songs": no release picked first; files go into a bra
   const f = (name) => ({ name, mimeType: 'audio/mpeg', buffer: Buffer.from(name.repeat(40)) });
   await page.click('#stuQuick'); await page.waitForSelector('#qFiles', { state: 'attached' });
   await page.click('#qGo'); await seen('Choose at least one audio file');
-  await page.setInputFiles('#qFiles', [f('02 Quick Two.mp3'), f('01 Quick One.mp3')]); await page.waitForSelector('[data-q-title]');
+  await page.setInputFiles('#qFiles', [f('02 Quick Two.mp3'), f('01 Quick One.mp3')]); await page.waitForSelector('[data-q-title]'); await page.selectOption('#qDest', ''); await page.waitForSelector('#qTitle', { state: 'visible' });
   await noSideways('quick add songs form'); await page.click('#qGo'); await seen('Give the new release a name');
   await page.fill('#qTitle', 'Quick Add Single'); await page.selectOption('#qType', 'EP');
   await page.click('#qGo'); await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 30000 });
@@ -491,6 +491,23 @@ await step('Studio top "Add songs": no release picked first; files go into a bra
   await page.selectOption('#qDest', rel.release_id); assert.equal(await page.evaluate(() => document.querySelector('#qNew').hidden), true, 'no name box for an existing release');
   await page.setInputFiles('#qFiles', [f('03 Quick Three.mp3')]); await page.click('#qGo'); await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 30000 });
   nat = await store(); assert.equal(nat.tracks.filter((t) => t.release_id === rel.release_id).length, 3, 'added to the existing release');
+});
+await step('Add songs: several files with no release chosen become separate hidden singles, each named after its song (no release name asked)', async () => {
+  await page.evaluate(() => { S.stuTab = 'info'; renderStudio(); }); await page.waitForSelector('#stuQuick', { state: 'visible' });
+  const f = (name) => ({ name, mimeType: 'audio/mpeg', buffer: Buffer.from(name.repeat(40)) });
+  await page.click('#stuQuick'); await page.waitForSelector('#qFiles', { state: 'attached' });
+  await page.setInputFiles('#qFiles', [f('Solo Alpha.mp3'), f('Solo Beta.mp3'), f('Solo Gamma.mp3')]); await page.waitForSelector('[data-q-title]');
+  assert.equal(await page.evaluate(() => document.querySelector('#qDest').value), '__singles', 'several files default to separate singles');
+  assert.equal(await page.evaluate(() => document.querySelector('#qTitle').closest('label').hidden), true, 'no release name box');
+  await noSideways('each-as-single form'); await page.fill('[data-q-title="1"]', 'Solo Beta Edited'); await page.check('#qUnrel');
+  await page.click('#qGo'); await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 40000 });
+  const nat = await store();
+  for (const t of ['Solo Alpha', 'Solo Beta Edited', 'Solo Gamma']) {
+    const rel = nat.releases.find((r) => r.title === t); assert.ok(rel, t + ' single exists'); assert.equal(!!rel.hidden, true, t + ' hidden'); assert.equal(rel.type, 'Single');
+    assert.deepEqual(nat.tracks.filter((x) => x.release_id === rel.release_id).map((x) => x.title), [t], t + ' has its one song');
+    assert.equal(await page.evaluate((id) => !!(S.stu.overlay.flags.releases || {})[id], rel.release_id), true, t + ' marked Unreleased');
+  }
+  const ov = await page.evaluate(() => run('getOverlay')); assert.ok(nat.releases.filter((r) => /^Solo /.test(r.title)).every((r) => (ov.flags.releases || {})[r.release_id] === true), 'the Unreleased mark is saved on the server too');
 });
 await step('the + New release form asks whose song it is: my own music, or a feature (my guest spot on someone else\'s song)', async () => {
   await page.evaluate(() => openNewRelease()); await page.waitForSelector('#nrFiles', { state: 'attached' });
