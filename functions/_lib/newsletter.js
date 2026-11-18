@@ -223,7 +223,7 @@ export async function getNextBandsintownShow(env) {
     const events = await res.json();
     if (!events || !events.length) return null;
     const next = events[0], venue = next.venue || {};
-    return { venueName: venue.name || 'a venue TBA', city: venue.city || '', region: venue.region || venue.country || '', dateFormatted: formatShowDate(next.datetime),
+    return { date: String(next.datetime || '').slice(0, 10), venueName: venue.name || 'a venue TBA', city: venue.city || '', region: venue.region || venue.country || '', dateFormatted: formatShowDate(next.datetime),
       ticketUrl: (next.offers && next.offers[0] && next.offers[0].url) || next.url || '' };
   } catch (e) { return null; }
 }

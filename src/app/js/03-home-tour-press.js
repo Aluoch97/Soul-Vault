@@ -153,8 +153,8 @@ function renderHome() {
       <p class="cs">Get new music before anyone else, show announcements, and behind the scenes content.</p></div>
       <button type="button" class="pill main" data-tribe-open>${I.mail}Join the Soul Tribe</button></section>` : ''}
     <footer class="hfoot"><p class="cs">Booking: <a href="mailto:${esc(SITE.booking)}">${esc(SITE.booking)}</a></p>
-      <nav class="hlinks" aria-label="More"><a href="/privacy-policy">Privacy</a><a href="#" data-install>Add to Home Screen</a><a href="#" data-offline-music>Offline music</a><a href="#" data-refresh>Refresh</a></nav>
-      <p class="cs hver"><span class="appver" title="The version of the app on this device">v${esc(APP_VERSION || '?')}</span> · © ${new Date().getFullYear()} Nicólas Soul</p></footer>
+      <nav class="hlinks" aria-label="More"><a href="/privacy-policy">Privacy</a><a href="#" data-install>Add to Home Screen</a><a href="#" data-offline-music>Offline music</a><a href="#" data-push-open hidden>Notifications</a><a href="#" data-refresh>Refresh</a></nav>
+      <p class="cs hver"><a class="appver" href="/whats-new" title="What's new in this version">${APP_RELEASE ? 'Version ' + esc(APP_RELEASE) + ' · What\'s new' : 'What\'s new'}</a> · © ${new Date().getFullYear()} Nicólas Soul</p></footer>
   </div>`;
   // Covers; videos load from YouTube only when tapped (nothing from YouTube runs until then); then the background video
   // (a still image instead if the person asked for less motion or is saving data).

@@ -85,9 +85,9 @@ test('the YouTube feed: newest video, entities decoded, thumbnail from the video
 test('Bandsintown: soonest show; the date is the venue\'s own day; no app id, an error or no shows gives nothing', () => withWorld(async (w) => {
   const NL = w.t.newsletter;
   w.shows = [{ datetime: '2026-11-20T02:00:00', venue: { name: 'The Basement', city: 'Nashville', region: 'TN' }, offers: [{ url: 'https://t.example/1' }], url: 'https://b.example/1' }, { datetime: '2026-12-01T20:00:00', venue: {} }];
-  assert.deepEqual(await NL.getNextBandsintownShow(w.env), { venueName: 'The Basement', city: 'Nashville', region: 'TN', dateFormatted: 'Friday, November 20', ticketUrl: 'https://t.example/1' });
+  assert.deepEqual(await NL.getNextBandsintownShow(w.env), { date: '2026-11-20', venueName: 'The Basement', city: 'Nashville', region: 'TN', dateFormatted: 'Friday, November 20', ticketUrl: 'https://t.example/1' });
   w.shows = [{ datetime: '2026-12-05T20:00:00', venue: {}, url: 'https://b.example/2' }];
-  assert.deepEqual(await NL.getNextBandsintownShow(w.env), { venueName: 'a venue TBA', city: '', region: '', dateFormatted: 'Saturday, December 5', ticketUrl: 'https://b.example/2' });
+  assert.deepEqual(await NL.getNextBandsintownShow(w.env), { date: '2026-12-05', venueName: 'a venue TBA', city: '', region: '', dateFormatted: 'Saturday, December 5', ticketUrl: 'https://b.example/2' });
   assert.equal(NL.formatShowDate('2026-11-21T02:30:00Z'), 'Friday, November 20');                          // a real time zone is converted to Central
   w.shows = []; assert.equal(await NL.getNextBandsintownShow(w.env), null);
   w.shows = null; assert.equal(await NL.getNextBandsintownShow(w.env), null);

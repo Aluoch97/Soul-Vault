@@ -546,6 +546,74 @@ await step('opening the app and tapping around never starts any sound (it would 
   assert.deepEqual(r.plays, [], 'no sound was started by just opening the app and tapping: ' + JSON.stringify(r));
   await c.close();
 });
+await step('phone notifications: a fan turns them on from the Home footer; Nick sends one from Settings > Notify fans (newest release); the fan link stays hidden until the keys exist', async () => {
+  const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('push page error: ' + e.message));
+  const phonePair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);   // a real key, so the server can really encrypt to it
+  const phoneKeys = { p256dh: Buffer.from(new Uint8Array(await crypto.subtle.exportKey('raw', phonePair.publicKey))).toString('base64url'), auth: Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64url') };
+  await pg.addInitScript((keys) => {
+    let subbed = null; const perm = { v: 'default' };
+    const sub = () => ({ endpoint: 'https://push.test/phone1-abcdefghijkl', toJSON() { return { endpoint: this.endpoint, keys }; }, async unsubscribe() { subbed = null; return true; } });
+    const reg = { pushManager: { async getSubscription() { return subbed; }, async subscribe(o) { window.__keyLen = o.applicationServerKey.length; subbed = sub(); return subbed; } }, update: async () => {}, unregister: async () => true };
+    Object.defineProperty(window, 'PushManager', { value: function () {}, configurable: true });
+    Object.defineProperty(window, 'Notification', { value: { get permission() { return perm.v; }, requestPermission: async () => (perm.v = 'granted') }, configurable: true });
+    Object.defineProperty(navigator, 'serviceWorker', { value: { register: async () => reg, getRegistration: async () => reg, ready: Promise.resolve(reg), getRegistrations: async () => [reg], addEventListener() {} }, configurable: true });
+  }, phoneKeys);
+  // keys not set yet: no link
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.hfoot', { timeout: 15000 }); await pg.waitForTimeout(600);
+  assert.equal(await pg.locator('[data-push-open]').isVisible(), false, 'no Notifications link while the keys are missing');
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+  const raw = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)), d = (await crypto.subtle.exportKey('jwk', pair.privateKey)).d;
+  w.env.VAPID_PUBLIC_KEY = Buffer.from(raw).toString('base64url'); w.env.VAPID_PRIVATE_KEY = d;
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.hfoot', { timeout: 15000 }); await pg.waitForSelector('[data-push-open]:not([hidden])', { timeout: 5000 });
+  const small = await pg.evaluate(() => Math.round(document.querySelector('[data-push-open]').getBoundingClientRect().height)); assert.ok(small >= 44, 'footer link is 44px tall: ' + small);
+  await pg.click('[data-push-open]'); await pg.waitForSelector('#pushBtn:not([hidden])');
+  assert.match(await pg.innerText('#pushMsg'), /Get a notification on your phone/);
+  await pg.click('#pushBtn'); await pg.waitForFunction(() => /You're on/.test(document.querySelector('#pushMsg').textContent), null, { timeout: 5000 });
+  assert.equal(await pg.evaluate(() => window.__keyLen), 65, 'subscribed with our public key');
+  assert.equal(Number((await w.db.prepare('SELECT COUNT(*) AS n FROM push_subs').first()).n), 1, 'the phone is saved');
+  assert.equal(await pg.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, 'no sideways scroll');
+  await pg.click('#pushBtn'); await pg.waitForFunction(() => /Get a notification/.test(document.querySelector('#pushMsg').textContent), null, { timeout: 5000 });
+  assert.equal(Number((await w.db.prepare('SELECT COUNT(*) AS n FROM push_subs').first()).n), 0, 'turning off removes the phone');
+  await pg.click('#pushBtn'); await pg.waitForFunction(() => /You're on/.test(document.querySelector('#pushMsg').textContent), null, { timeout: 5000 });
+  await c.close();
+  // Nick (the owner page) sends the newest release, from a full Settings page (not a pop-up), with text he can actually read
+  page.once('dialog', (dlg) => dlg.accept());
+  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-nav="notify"]', { state: 'attached' });
+  await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((x) => { x.open = true; }); document.querySelector('[data-nav="notify"]').click(); });
+  await page.waitForSelector('.pnpage #pnBody:not([hidden])', { timeout: 5000 });
+  assert.equal(await page.evaluate(() => document.querySelector('#modal').hidden || !document.querySelector('#modal .sheet')), true, 'it is a page, not a pop-up sheet');
+  assert.ok(await page.evaluate(() => !!document.querySelector('.pnpage .back[data-nav="vault"]') && !!document.querySelector('.pnpage .vh')), 'same Settings-page frame as Milestones: back button and header');
+  assert.match(await page.innerText('#pnSt'), /1 phone has notifications on\. You have sent 0 of 3/);
+  await page.fill('#pnTitle', 'ROAD TO 100');
+  const vis = await page.evaluate(() => { const cs = getComputedStyle(document.querySelector('#pnTitle')), lum = (c) => { const m = c.match(/\d+(\.\d+)?/g).map(Number).slice(0, 3).map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * m[0] + .7152 * m[1] + .0722 * m[2]; }, a = lum(cs.color), b = lum(cs.backgroundColor); return { ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05), color: cs.color, bg: cs.backgroundColor, fs: cs.fontSize }; });
+  assert.ok(vis.ratio >= 4.5, 'what you type is readable (contrast ' + vis.ratio.toFixed(1) + ': ' + vis.color + ' on ' + vis.bg + ')'); assert.ok(parseFloat(vis.fs) >= 16, 'input text is 16px+ so iPhones do not zoom');
+  assert.equal(await page.isChecked('#pnAutoRel'), false); assert.equal(await page.isChecked('#pnAutoShow'), false);
+  await page.check('#pnAutoRel'); await page.waitForFunction(() => /On: new music/.test(document.querySelector('#pnAutoSt').textContent), null, { timeout: 5000 });
+  assert.equal(Number((await w.db.prepare("SELECT COUNT(*) AS n FROM kv WHERE k = 'push_auto' AND v LIKE '%\"releases\":true%'").first()).n), 1, 'the automatic switch is saved');
+  await page.uncheck('#pnAutoRel'); await page.waitForFunction(() => /Off\. Nothing is sent by itself/.test(document.querySelector('#pnAutoSt').textContent), null, { timeout: 5000 });
+  if (process.env.PUSH_SHOT) await page.screenshot({ path: process.env.PUSH_SHOT });
+  await page.click('[data-pn="release"]'); assert.match(await page.inputValue('#pnTitle'), /New music/); assert.match(await page.inputValue('#pnBody2'), /is out now/);
+  const before = w.pushed.length;
+  await page.click('#pnSend'); await page.waitForFunction(() => /sent 1 of 3/.test(document.querySelector('#pnSt').textContent), null, { timeout: 8000 });
+  assert.equal(w.pushed.length - before, 1, 'one encrypted message went to the phone\'s push service');
+  assert.ok(String(w.pushed[w.pushed.length - 1].headers.authorization).startsWith('vapid t='), 'signed with our key');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, 'no sideways scroll');
+});
+await page.evaluate(() => { const m = document.querySelector('#modal'); if (m) { m.hidden = true; m.innerHTML = ''; } }).catch(() => {});   // whatever happened above, the next steps start with no sheet open
+await step('update pop-up: a newer app version shows "A new version is ready. Tap to update" above the tab bar; the same version shows nothing', async () => {
+  const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('update bar page error: ' + e.message));
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.tabs [data-nav="library"]', { state: 'attached', timeout: 15000 });
+  const mine = await pg.evaluate(() => APP_VERSION); assert.ok(mine, 'the page knows its own version');
+  await pg.evaluate((v) => { window.__v = v; const o = window.fetch; window.fetch = (u, opts) => (u === '/' ? Promise.resolve(new Response('<script src="/app.js?v=' + window.__v + '"></script>')) : o(u, opts)); }, mine);
+  await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await pg.waitForTimeout(500);
+  assert.equal(await pg.locator('.updbar').count(), 0, 'same version: nothing shown');
+  await pg.evaluate(() => { window.__v = '99-newer'; document.dispatchEvent(new Event('visibilitychange')); });
+  await pg.waitForSelector('.updbar', { timeout: 3000 });
+  const r = await pg.evaluate(() => { const b = document.querySelector('.updbar').getBoundingClientRect(), g = document.querySelector('.updgo').getBoundingClientRect(), t = document.querySelector('.tabs') ? document.querySelector('.tabs').getBoundingClientRect() : null; return { text: document.querySelector('.updbar').innerText, goH: Math.round(g.height), bottom: Math.round(b.bottom), tabTop: t ? Math.round(t.top) : null, sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }; });
+  assert.match(r.text, /A new version is ready/); assert.ok(r.goH >= 44, 'tap area is 44px+: ' + r.goH); assert.ok(r.tabTop === null || r.bottom <= r.tabTop, 'sits above the tab bar: ' + JSON.stringify(r)); assert.ok(r.sw <= r.cw + 1, 'no sideways scroll');
+  await pg.click('.updx'); assert.equal(await pg.locator('.updbar').count(), 0, '× hides it');
+  await c.close();
+});
 await step('Release page header is calmer: Play and Shuffle are the two big buttons, Share / Save offline / Queue sit on one quiet row, the small facts share a line', async () => {
   await page.evaluate(() => { S.links = S.links || { releases: {} }; S.links.releases = S.links.releases || {}; S.links.releases.rel_pub = { first: 'DatPiff', links: [['Spotify', 'https://open.spotify.com/x']] }; S.shop = [{ title: 'Test CD', price: '$12', blurb: 'Ships from Nashville.', buy_url: 'https://buy.stripe.com/x', release_id: 'rel_pub' }]; S.shopP = Promise.resolve(S.shop); renderRelease('rel_pub'); });
   await page.waitForSelector('#relhead .acts'); await page.waitForSelector('#shopRel .shopcard', { timeout: 5000 });
@@ -829,7 +897,7 @@ await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link
   await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome());
   await page.waitForSelector('[data-refresh]');
   const ver0 = await page.evaluate(() => [APP_VERSION, document.querySelector('.appver').textContent]);
-  assert.ok(/^\d+-[0-9a-f]+$/.test(ver0[0]) && ver0[1] === 'v' + ver0[0], 'the version is shown: ' + ver0);
+  assert.ok(/^\d+-[0-9a-f]+$/.test(ver0[0]) && /^(Version \d+\.\d+ · )?What's new$/.test(ver0[1]), 'the short version and a What\'s new link are shown: ' + ver0);
   const urls = []; page.on('request', (rq) => { if (rq.isNavigationRequest()) urls.push(rq.url()); });
   const nav = page.waitForNavigation({ timeout: 8000 }); await page.click('a[data-refresh]'); await nav;
   assert.ok(urls.some((u) => /[?&]r=\d+/.test(u)), 'it reloads on a fresh address nothing has saved: ' + urls.join(' '));
@@ -967,7 +1035,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   assert.ok(lay.h.some((x) => /On the road/.test(x)) && lay.h.some((x) => /Shop|Watch|New music/.test(x)), 'section headings present: ' + lay.h);
   assert.deepEqual(lay.grids, [2, 2], 'new music and videos sit two across');
   assert.ok(lay.titles >= 2, 'covers and videos show their titles');
-  assert.ok(lay.links.length === 4 && lay.links.every((n) => n >= 44), 'footer links have 44px tap room: ' + lay.links);
+  assert.ok((lay.links.length === 4 || lay.links.length === 5) && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (a fifth, Notifications, shows once the keys exist): ' + lay.links);
   await noSideways('home with road card');
   if (process.env.SHOT_HOME) await page.screenshot({ path: process.env.SHOT_HOME, fullPage: true });
   await page.click('#roadHome .roadmain'); await page.waitForFunction(() => S.view === 'tour', null, { timeout: 5000 });

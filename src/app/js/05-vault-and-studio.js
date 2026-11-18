@@ -38,9 +38,10 @@ function renderVault() {
       row('data-nav="siteinsights"', I.chart, 'Website insights', 'Visitors, pages, cities and devices'),
       row('data-nav="insights"', I.chart, 'Listening insights', 'Plays and listeners'),
       edge ? row('data-fans', I.link, 'Soul Tribe fan list', 'Sign-ups from /join, to download') : '',
+      edge ? row('data-nav="notify"', I.mail, 'Notify fans', 'Send a phone notification: new music or a show') : '',
     ], 'g-fans')}
     <section class="sgroup g-health"><h2 class="vsub">Health &amp; data</h2>
-      <ul class="acts-list single">${row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version. You have v' + esc(APP_VERSION || '?'))}</ul>
+      <ul class="acts-list single">${row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version. You have ' + (APP_RELEASE ? esc(APP_RELEASE) : 'v' + esc(APP_VERSION || '?')))}</ul>
       <div class="sfolders">
         ${folder('health', I.layers, 'Health checks', 'YouTube, playback and problems reported', [
           row('data-check-yt', I.film, 'Check YouTube setup', 'Needed for playlists from YouTube'),

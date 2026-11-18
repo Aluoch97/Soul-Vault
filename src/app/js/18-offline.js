@@ -15,9 +15,11 @@ window.addEventListener('online', () => toast('Back online'));
 // "Refresh": an app saved to the home screen has no reload button. This forgets the saved copy and loads the newest version.
 // The version this page is running, read from its own script address (/app.js?v=<build>-<fingerprint>). Shown in the Home footer and Settings so you can always tell which one you have.
 const APP_VERSION = (/[?&]v=([^&"]+)/.exec(((document.querySelector('script[src*="/app.js"]') || {}).src) || '') || [])[1] || '';
+// The short number for people ("1.1"): the newest heading in CHANGELOG.md, put in by build.js. Empty on a copy built without it.
+const APP_RELEASE = '__SV_RELEASE__';
 async function refreshApp() {
   toast('Refreshing…');
-  try { if ('serviceWorker' in navigator) await Promise.all((await navigator.serviceWorker.getRegistrations()).map(r => r.unregister())); } catch (e) { /* carry on */ }
+  try { if ('serviceWorker' in navigator) await Promise.all((await navigator.serviceWorker.getRegistrations()).map(r => r.update())); } catch (e) { /* carry on */ }   // update, never unregister: unregistering would switch off phone notifications
   try { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch (e) { /* carry on */ }
   // Ask the network for fresh copies of the page and the code (skipping the browser's saved ones), then reload on an address nothing has saved (?r=<time>, removed again on load).
   try { const code = (document.querySelector('script[src*="/app.js"]') || {}).src; await Promise.all([fetch('/', { cache: 'reload' }), code ? fetch(code, { cache: 'reload' }) : null]); } catch (e) { /* offline: the reload below says so */ }

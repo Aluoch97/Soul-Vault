@@ -9,7 +9,7 @@ It only WRITES the file. Nothing is changed until you run it, for example (this 
 For a dry run, load it into a scratch SQLite file first:  sqlite3 scratch.db < restore.sql
 
 What a backup holds: every table in the D1 database (kv: owned catalog, native rows, overlay, missing-files list, owner password hash, ...;
-shares, listens, live, comments, errors, fans, site_views, news_sends, news_survey). It leaves out the derived copy of the Sheet (kv keys "p:*" and "meta"), which rebuilds itself.
+shares, listens, live, comments, errors, fans, site_views, news_sends, news_survey, push_subs, push_log). It leaves out the derived copy of the Sheet (kv keys "p:*" and "meta"), which rebuilds itself.
 Music and picture files are NOT in a backup (they live in the soulvault-media bucket; masters are on Nick's own drive).
 """
 import gzip, json, sys
@@ -22,6 +22,9 @@ DDL = {
     'errors': 'CREATE TABLE IF NOT EXISTS errors (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, mode TEXT, message TEXT)',
     'fans': 'CREATE TABLE IF NOT EXISTS fans (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, first_name TEXT, last_name TEXT, email TEXT UNIQUE, consent INTEGER, city TEXT, birth_year TEXT, social TEXT, how_heard TEXT, favorite TEXT, source TEXT, ip_hash TEXT, news INTEGER DEFAULT 0)',
     'live': 'CREATE TABLE IF NOT EXISTS live (device_id TEXT PRIMARY KEY, at INTEGER, share_token TEXT, track_id TEXT, version_id TEXT, release_id TEXT, device TEXT)',
+    'push_subs': 'CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL, at INTEGER NOT NULL, ip_hash TEXT)',
+    'push_auto_seen': 'CREATE TABLE IF NOT EXISTS push_auto_seen (kind TEXT NOT NULL, key TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (kind, key))',
+    'push_log': 'CREATE TABLE IF NOT EXISTS push_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, title TEXT, body TEXT, url TEXT, sent INTEGER, failed INTEGER, removed INTEGER)',
     'news_sends': 'CREATE TABLE IF NOT EXISTS news_sends (day TEXT PRIMARY KEY, subject TEXT, sent INTEGER, total INTEGER, mode TEXT, at INTEGER)',
     'news_survey': 'CREATE TABLE IF NOT EXISTS news_survey (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, email TEXT, video TEXT, response TEXT)',
     'site_views': 'CREATE TABLE IF NOT EXISTS site_views (view_id TEXT PRIMARY KEY, at INTEGER, last INTEGER, visit_id TEXT, device_id TEXT, share_token TEXT, path TEXT, device TEXT, city TEXT, region TEXT, country TEXT, ref TEXT, seconds INTEGER)',
