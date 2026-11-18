@@ -14,7 +14,7 @@ async function markUnrel(kind, id) {
   const row = kind === 'release' ? rel(id) : trk(id); if (row) row.unreleased = true;
 }
 async function batchUpload(files, titles, rid, stat, bar, unrel) {
-  const g = S.stu, failed = []; let ok = 0;
+  const g = S.stu, failed = [], errs = []; let ok = 0;
   for (let i = 0; i < files.length; i++) {
     try {
       const out = await uploadSongToEdge(files[i], rid, null, titles[i], 'Original', true, t => stat(`Song ${i + 1} of ${files.length}: ${titles[i]}. ${t}`), p => bar((i + p) / files.length));
@@ -22,9 +22,9 @@ async function batchUpload(files, titles, rid, stat, bar, unrel) {
       if (out.version) { S.lib.versions.push(out.version); if (g && g.versions) g.versions.push(out.version); if (out.version.url) (S.urlByFile = S.urlByFile || {})[out.version.audio] = out.version.url; }
       if (unrel && out.track) { try { await markUnrel('track', out.track.track_id); } catch (e) { failed.push(`${titles[i]} (added, but could not be marked Unreleased)`); } }
       ok++;
-    } catch (e) { failed.push(`${titles[i]} (${(e && e.message) || 'did not upload'})`); }
+    } catch (e) { errs.push((e && e.message) || 'did not upload'); failed.push(`${titles[i]} (${errs[errs.length - 1]})`); }
   }
-  return { ok, failed, msg: `${ok} of ${files.length} song${files.length === 1 ? '' : 's'} added.` + (failed.length ? ' Not added: ' + failed.join('; ') + '.' : '') };
+  return { ok, failed, errs, msg: `${ok} of ${files.length} song${files.length === 1 ? '' : 's'} added.` + (failed.length ? ' Not added: ' + failed.join('; ') + '.' : '') };
 }
 const batchPick = list => [...list].filter(f => BATCH_OK.test(f.name)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 function wireBatchSongs(rid, say) {
@@ -71,6 +71,8 @@ function openQuickSongs() {
   $('#qDest').value = ''; $('#qDest').addEventListener('change', syncDest);
   $('#qFiles').addEventListener('change', e => {
     q.files = batchPick(e.target.files); drawList();
+    const skipped = [...e.target.files].filter(f => !BATCH_OK.test(f.name)).map(f => f.name);
+    $('#qSt').style.color = ''; $('#qSt').textContent = skipped.length ? `${skipped.length} file${skipped.length === 1 ? '' : 's'} left out (not MP3, WAV, AIFF, FLAC, M4A, AAC or OGG): ${skipped.slice(0, 4).join(', ')}${skipped.length > 4 ? '…' : ''}` : '';
     if (q.files.length === 1 && !$('#qTitle').value) $('#qTitle').value = batchTitle(q.files[0].name);
     if (q.files.length > 1 && !$('#qDest').value) { $('#qDest').value = '__singles'; syncDest(); }   // many files and no release chosen: most likely separate singles
   });
@@ -83,17 +85,17 @@ function openQuickSongs() {
     if (rid === '__singles') {   // one hidden Single per file, named after the song
       const titles = [...$$('[data-q-title]')].map((e, i) => e.value.trim() || batchTitle(q.files[i].name)), n = q.files.length, left = [], failed = []; let ok = 0, last = '';
       for (let i = 0; i < n; i++) {
-        let r = null;
+        let r = null, step = 'creating the release';
         try {
           st.textContent = `Single ${i + 1} of ${n}: ${titles[i]}. Creating it…`;
           r = await run('studioNewRelease', BOOT.key, { title: titles[i], type: 'Single', year: String(new Date().getFullYear()), coverId: '', artist_name: '' });
           (S.lib.releases = S.lib.releases || []).push(r); if (S.stu && S.stu.releases) S.stu.releases.push(r);
-          const out = await batchUpload([q.files[i]], [titles[i]], r.release_id, t => { st.textContent = `Single ${i + 1} of ${n}: ${titles[i]}. ${t.replace(/^Song 1 of 1: [^.]*\. /, '')}`; }, p => $('#qBar').style.setProperty('--p', Math.round(((i + p) / n) * 100) + '%'));
-          if (!out.ok) throw new Error(out.failed[0] || 'did not upload');
+          step = 'uploading the song'; const out = await batchUpload([q.files[i]], [titles[i]], r.release_id, t => { st.textContent = `Single ${i + 1} of ${n}: ${titles[i]}. ${t.replace(/^Song 1 of 1: [^.]*\. /, '')}`; }, p => $('#qBar').style.setProperty('--p', Math.round(((i + p) / n) * 100) + '%'));
+          if (!out.ok) throw new Error(out.errs[0] || 'did not upload');
           if ($('#qUnrel').checked) { try { await markUnrel('release', r.release_id); } catch (e3) { failed.push(`${titles[i]} (added, but could not be marked Unreleased)`); } }
           ok++; last = r.release_id;
         } catch (e) {
-          failed.push(`${titles[i]} (${(e && e.message) || 'failed'})`); left.push(i);
+          failed.push(`${titles[i]} (${step}: ${(e && e.message) || 'failed'})`); left.push(i);
           if (r) { try { await run('deleteRelease', BOOT.key, r.release_id); S.lib.releases = S.lib.releases.filter(x => x.release_id !== r.release_id); if (S.stu) S.stu.releases = S.stu.releases.filter(x => x.release_id !== r.release_id); } catch (e2) { /* an empty hidden release stays: remove it in Studio */ } }
         }
       }

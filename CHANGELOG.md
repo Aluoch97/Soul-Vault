@@ -1,10 +1,10 @@
 # What's new on soulnicolas.com
 
-Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.1 to 5.2); a big redesign starts a new first number (6.0). The numbering was set to 5.0 on Nov 18, 2026 to match the work already done.
+Short version numbers: 1.0, 1.1, 1.2 ... A small change goes up by one step (1.1 to 1.2); a big redesign starts a new first number (2.0).
 The newest version is on top, and it is the number shown at the bottom of Home and in Settings. Write each entry in plain words.
 To release: add a new `## x.y · date` block at the top of this file in the same pull request. The build picks it up by itself.
 
-## 5.1 · Nov 18, 2026
+## 1.1 · Nov 18, 2026
 Phone notifications and simpler version numbers.
 - **Phone notifications:** turn them on from the Home footer ("Notifications") to hear about new music and new shows.
 - **Automatic notifications** (Nick): Settings > Fans & activity > Notify fans has two switches, New music and New shows. Off until you turn them on.
@@ -12,7 +12,7 @@ Phone notifications and simpler version numbers.
 - **Support** on Home opens the payment page inside the app.
 - **What's new** page (this one) and a short version number instead of a long code.
 
-## 5.0 · Nov 16, 2026
+## 1.0 · Nov 16, 2026
 Everything before the version list started.
 - Soul Vault is soulnicolas.com: Home, Music (the Vault), Tour, Press, Media and Lore.
 - Studio for releases, songs, covers, lyrics, voice notes and YouTube/SoundCloud songs; Settings, Shop, Milestones and the Soul Tribe fan list.
