@@ -157,15 +157,16 @@ async function replaceAudioOnEdge(file, v, t, stat, bar) {
 function stuAddSection(rid, isOwnerEdge) {
   return `<div class="stu stubox"><div class="stubody">
     <p class="cs" style="margin:0">Songs and pictures go straight to your own storage. A WAV or AIFF is turned into a 256 kbps MP3 first; your master files stay on your computer.</p>
-    <div class="save"><button type="button" class="pill main" id="stuAddSong">${I.plus}Add a song</button><button type="button" class="pill soft" id="stuAddPhotos">${I.img}Add photos</button><button type="button" class="pill soft" id="stuCover">${I.img}Change cover</button>
+    <div class="save"><button type="button" class="pill main" id="stuAddSong">${I.plus}Add a song</button><button type="button" class="pill main" id="stuAddBatch">${I.plus}Add several songs</button><button type="button" class="pill soft" id="stuAddPhotos">${I.img}Add photos</button><button type="button" class="pill soft" id="stuCover">${I.img}Change cover</button>
       <button type="button" class="pill soft" id="stuBg">${I.img}Page background</button><button type="button" class="pill soft" id="stuClean">${I.img}Clean cover</button></div>
-    <input type="file" id="stuPhotoFiles" accept="image/*" multiple hidden><input type="file" id="stuCoverFile" accept="image/*" hidden><input type="file" id="stuBgFile" accept="image/*" hidden><input type="file" id="stuCleanFile" accept="image/*" hidden>
+    <input type="file" id="stuBatchFiles" accept=".wav,.aif,.aiff,.flac,.mp3,.m4a,.aac,.ogg,audio/*" multiple hidden><div id="stuBatchBox" class="stu stubox" hidden></div><input type="file" id="stuPhotoFiles" accept="image/*" multiple hidden><input type="file" id="stuCoverFile" accept="image/*" hidden><input type="file" id="stuBgFile" accept="image/*" hidden><input type="file" id="stuCleanFile" accept="image/*" hidden>
     <p class="cs" style="margin:0">Page background, clean cover and song covers work once the catalog is switched to Cloudflare (Settings, Move off the Sheet).</p>
     <p class="st" id="stuAddSt" role="status"></p></div></div>`;
 }
 function wireStuAdd(rid) {
   const say = (t, bad) => { const e = $('#stuAddSt'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--red, #ff6b6b)' : ''; } };
   $('#stuAddSong').addEventListener('click', () => openUpload(rid));
+  wireBatchSongs(rid, say);
   $('#stuAddPhotos').addEventListener('click', () => $('#stuPhotoFiles').click());
   $('#stuCover').addEventListener('click', () => $('#stuCoverFile').click());
   const oneImage = (btn, input, kind, sizes, done) => {
