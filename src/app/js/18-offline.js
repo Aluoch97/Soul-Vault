@@ -27,3 +27,5 @@ async function refreshApp() {
 }
 try { const u = new URL(location.href); if (u.searchParams.has('r')) { u.searchParams.delete('r'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } } catch (e) { /* leave the address alone */ }
 document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-refresh]'); if (t) { e.preventDefault(); refreshApp(); } });
+// What's new (the version history) is for the owner only: the Home footer link and this Settings row only exist for the owner.
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-whatsnew]'); if (t) { e.preventDefault(); window.open('/whats-new', '_blank', 'noopener'); } });
