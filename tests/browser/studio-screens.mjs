@@ -462,6 +462,20 @@ await step('the + New release form has a Features section for each song, and sav
   assert.equal(trks.length, 2); assert.equal(trks[0].features, 'Aziza, Khairro', 'guests saved on the first song');
   assert.deepEqual([trks[1].feature_role, trks[1].artist], ['mine', 'Berhani'], 'the guest spot saved with its main artist');
 });
+await step('Studio > Add > Add several songs: pick files, titles come from the file names, one bad name does not stop the rest, songs land in order', async () => {
+  const nat0 = await store(); const rel = nat0.releases.find((r) => r.title === 'Plus Button EP'); const before = nat0.tracks.filter((t) => t.release_id === rel.release_id).length;
+  await page.evaluate((id) => { S.stuRel = id; S.stuTab = 'add'; renderStudio(); }, rel.release_id); await page.waitForSelector('#stuAddBatch', { state: 'visible' });
+  const f = (name) => ({ name, mimeType: 'audio/mpeg', buffer: Buffer.from(name.repeat(40)) });
+  await page.setInputFiles('#stuBatchFiles', [f('10 - Last_One.mp3'), f('02. Middle Song.mp3'), f('01 First Batch Song.mp3'), { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('x') }]);
+  await page.waitForSelector('[data-batch-title]');
+  const titles = await page.evaluate(() => [...document.querySelectorAll('[data-batch-title]')].map((e) => e.value));
+  assert.deepEqual(titles, ['First Batch Song', 'Middle Song', 'Last One'], 'titles from the names, numbers and underscores dropped, text file ignored, in order: ' + JSON.stringify(titles));
+  await noSideways('batch songs form'); await page.fill('[data-batch-title="1"]', 'Middle Song (Edited)');
+  await page.click('#stuBatchGo'); await page.waitForFunction(() => document.querySelector('[data-stupanel="songs"]') && !document.querySelector('[data-stupanel="songs"]').hidden, null, { timeout: 30000 });
+  const nat = await store(); const got = nat.tracks.filter((t) => t.release_id === rel.release_id).sort((a, b) => a.track_no - b.track_no).map((t) => t.title);
+  assert.equal(got.length, before + 3, 'three songs added: ' + got.join(' | '));
+  assert.deepEqual(got.slice(-3), ['First Batch Song', 'Middle Song (Edited)', 'Last One'], 'added in file order after the existing songs');
+});
 await step('the + New release form asks whose song it is: my own music, or a feature (my guest spot on someone else\'s song)', async () => {
   await page.evaluate(() => openNewRelease()); await page.waitForSelector('#nrFiles', { state: 'attached' });
   assert.equal(await page.evaluate(() => document.querySelector('[data-nr-kind="own"]').checked), true, 'my own music is the default');
