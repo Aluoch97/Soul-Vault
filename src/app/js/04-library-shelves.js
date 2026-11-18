@@ -76,7 +76,7 @@ function loadLinks() {
     S.links = Object.assign({}, fb, base);
     S.links.releases = mergeRelLinks(fb.releases, base.releases);
     S.links.sr = Object.assign({}, fb.sr || {}, base.sr || {});
-    applyFlags(S.lib);
+    if (applyFlags(S.lib) && S.view === 'library' && typeof refreshView === 'function') setTimeout(refreshView, 0);   // the Unreleased marks arrived after the Music tab was drawn: draw it again
     const el = $('#listenRow'); if (el && S.releaseId) el.innerHTML = listenRow(rel(S.releaseId)); const fr = $('#firstRow'); if (fr && S.releaseId) fr.innerHTML = firstRow(rel(S.releaseId));
     if (S.now) syncVideo();
     return S.links;
@@ -86,8 +86,10 @@ function loadLinks() {
 // Unreleased flags saved in Studio (kept on Cloudflare) win over the Sheet's.
 function applyFlags(lib) {
   const f = S.links && S.links.flags; if (!f || !lib) return;
-  (lib.releases || []).forEach(r => { if (f.releases && r.release_id in f.releases) r.unreleased = !!f.releases[r.release_id]; });
-  (lib.tracks || []).forEach(t => { if (f.tracks && t.track_id in f.tracks) t.unreleased = !!f.tracks[t.track_id]; });
+  let n = 0;   // how many rows changed, so the page can redraw if the flags arrived after it was drawn
+  (lib.releases || []).forEach(r => { if (f.releases && r.release_id in f.releases && r.unreleased !== !!f.releases[r.release_id]) { r.unreleased = !!f.releases[r.release_id]; n++; } });
+  (lib.tracks || []).forEach(t => { if (f.tracks && t.track_id in f.tracks && t.unreleased !== !!f.tracks[t.track_id]) { t.unreleased = !!f.tracks[t.track_id]; n++; } });
+  return n;
 }
 function firstRow(r) {
   const e = r && S.links && S.links.releases && S.links.releases[r.release_id];
