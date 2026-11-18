@@ -897,7 +897,7 @@ await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link
   await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome());
   await page.waitForSelector('[data-refresh]');
   const ver0 = await page.evaluate(() => [APP_VERSION, document.querySelector('.appver').textContent]);
-  assert.ok(/^\d+-[0-9a-f]+$/.test(ver0[0]) && ver0[1] === 'v' + ver0[0], 'the version is shown: ' + ver0);
+  assert.ok(/^\d+-[0-9a-f]+$/.test(ver0[0]) && /^(Version \d+\.\d+ · )?What's new$/.test(ver0[1]), 'the short version and a What\'s new link are shown: ' + ver0);
   const urls = []; page.on('request', (rq) => { if (rq.isNavigationRequest()) urls.push(rq.url()); });
   const nav = page.waitForNavigation({ timeout: 8000 }); await page.click('a[data-refresh]'); await nav;
   assert.ok(urls.some((u) => /[?&]r=\d+/.test(u)), 'it reloads on a fresh address nothing has saved: ' + urls.join(' '));
