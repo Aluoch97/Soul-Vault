@@ -1,8 +1,14 @@
 # What's new on soulnicolas.com
 
-Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.1 to 5.2); a big redesign starts a new first number (6.0). The numbering was set to 5.0 on Nov 18, 2026 to match the work already done.
-The newest version is on top, and it is the number shown at the bottom of Home and in Settings. Write each entry in plain words.
+Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.2 to 5.3); a big redesign starts a new first number (6.0). The numbering was set to 5.0 on Nov 18, 2026 to match the work already done.
+The newest version is on top, and it is the number shown to the owner at the bottom of Home and in Settings (visitors do not see it). Write each entry in plain words.
 To release: add a new `## x.y · date` block at the top of this file in the same pull request. The build picks it up by itself.
+
+## 5.2 · Nov 18, 2026
+The version and What's new are for the owner only.
+- The bottom of Home no longer shows "Version 5.2 · What's new" to visitors. You still see it when you are signed in as the owner.
+- Settings has a **What's new** row (next to Refresh the app) that opens the history.
+- The What's new page is still at /whats-new, but nothing public links to it and it is kept out of search results.
 
 ## 5.1 · Nov 18, 2026
 Phone notifications and simpler version numbers.

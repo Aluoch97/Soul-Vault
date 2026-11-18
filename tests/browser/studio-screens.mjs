@@ -944,7 +944,15 @@ await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link
   await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome());
   await page.waitForSelector('[data-refresh]');
   const ver0 = await page.evaluate(() => [APP_VERSION, document.querySelector('.appver').textContent]);
-  assert.ok(/^\d+-[0-9a-f]+$/.test(ver0[0]) && /^(Version \d+\.\d+ · )?What's new$/.test(ver0[1]), 'the short version and a What\'s new link are shown: ' + ver0);
+  assert.ok(/^\d+-[0-9a-f]+$/.test(ver0[0]) && /^(Version \d+\.\d+ · )?What's new$/.test(ver0[1]), 'the short version and a What\'s new link are shown to the owner: ' + ver0);
+  // ...but a fan (or any stranger) sees neither the version nor a What's new link, while Refresh stays for everyone.
+  { const fc = await phoneContext(), fp = await fc.newPage(); await fp.goto('https://soulnicolas.com/?s=PUB'); await fp.waitForSelector('.hfoot', { timeout: 15000 });
+    assert.equal(await fp.locator('.appver').count(), 0, 'fans must not see the version / What\'s new link');
+    assert.ok(!/What's new|Version \d/.test(await fp.locator('.hfoot').innerText()), 'no version text in the fan footer');
+    assert.ok(await fp.locator('.hfoot [data-refresh]').count() > 0, 'Refresh stays in the fan footer'); await fc.close(); }
+  await page.evaluate(() => renderVault()); await page.waitForSelector('[data-whatsnew]');
+  assert.ok(await page.evaluate(() => /Only you see this/.test(document.querySelector('[data-whatsnew]').innerText)), 'Settings has a What\'s new row for the owner');
+  await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome()); await page.waitForSelector('[data-refresh]');
   const urls = []; page.on('request', (rq) => { if (rq.isNavigationRequest()) urls.push(rq.url()); });
   const nav = page.waitForNavigation({ timeout: 8000 }); await page.click('a[data-refresh]'); await nav;
   assert.ok(urls.some((u) => /[?&]r=\d+/.test(u)), 'it reloads on a fresh address nothing has saved: ' + urls.join(' '));

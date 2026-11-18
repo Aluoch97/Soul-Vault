@@ -41,7 +41,7 @@ function renderVault() {
       edge ? row('data-nav="notify"', I.mail, 'Notify fans', 'Send a phone notification: new music or a show') : '',
     ], 'g-fans')}
     <section class="sgroup g-health"><h2 class="vsub">Health &amp; data</h2>
-      <ul class="acts-list single">${row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version. You have ' + (APP_RELEASE ? esc(APP_RELEASE) : 'v' + esc(APP_VERSION || '?')))}</ul>
+      <ul class="acts-list single">${row('data-refresh', I.up2, 'Refresh the app', 'Load the newest version. You have ' + (APP_RELEASE ? esc(APP_RELEASE) : 'v' + esc(APP_VERSION || '?')))}${row('data-whatsnew', I.layers, 'What\'s new', 'The version history. Only you see this.')}</ul>
       <div class="sfolders">
         ${folder('health', I.layers, 'Health checks', 'YouTube, playback and problems reported', [
           row('data-check-yt', I.film, 'Check YouTube setup', 'Needed for playlists from YouTube'),
