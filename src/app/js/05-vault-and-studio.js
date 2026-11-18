@@ -255,7 +255,7 @@ function drawStudio() {
     <button class="back" data-nav="vault">${I.back}Settings</button>
     <header class="vh"><h1 class="page-h" style="padding:0;margin:0"><b>Studio</b></h1><button class="round" data-nav="vault" aria-label="Settings">${I.gear}</button></header>
     <div class="stupick"><select class="field stusel" id="stuRel" aria-label="Release">${rels.map(x => `<option value="${esc(x.release_id)}" ${x.release_id === rid ? 'selected' : ''}>${esc(x.title)} (${esc(x.year)})</option>`).join('')}</select>
-      ${EDGE_UPLOADS() ? `<button type="button" class="pill main" id="stuNewRel">${I.plus}New</button>` : ''}</div>
+      ${EDGE_UPLOADS() ? `<button type="button" class="pill main" id="stuNewRel">${I.plus}New</button><button type="button" class="pill soft" id="stuQuick">${I.plus}Add songs</button>` : ''}</div>
     <section class="stuhead" aria-label="${esc(r.title)}">
       <span class="stuart">${r.cover_file_id ? `<img class="art" data-cover="${esc(r.cover_file_id)}" alt="">` : ''}</span>
       <span class="stumeta"><b>${esc(r.title)}</b><span class="cs">${esc([typeOf(r), r.year].filter(Boolean).join(' · '))} · ${plural(tracks.length, 'song')}</span>
@@ -329,7 +329,7 @@ function drawStudio() {
   const say = (el, t, bad) => { if (el) { el.textContent = t; el.style.color = bad ? 'var(--red, #ff6b6b)' : ''; } };
   const guard = async (btn, st, fn) => { btn.disabled = true; say(st, 'Saving…'); try { await fn(); say(st, 'Saved'); toast('Saved'); } catch (e) { say(st, e.message || 'Could not save', true); } btn.disabled = false; };
   $('#stuRel').addEventListener('change', e => { S.stuRel = e.target.value; drawStudio(); });
-  if ($('#stuNewRel')) { $('#stuNewRel').addEventListener('click', openNewRelease); wireStuAdd(rid); }
+  if ($('#stuNewRel')) { $('#stuNewRel').addEventListener('click', openNewRelease); $('#stuQuick').addEventListener('click', openQuickSongs); wireStuAdd(rid); }
   // Edit several releases at once: each ticked release is saved the same way as the single form, with only the ticked fields changed.
   const bkCount = () => { $('#bkCount').textContent = [...$$('[data-bk-rel]')].filter(x => x.checked).length + ' selected'; };
   $$('[data-bk-rel]').forEach(c => c.addEventListener('change', bkCount));
