@@ -62,12 +62,14 @@ async function runFetch(fn, ...a) {
   if (!BOOT.api) throw new Error('The backup connection needs app_url in the Settings tab.');
   // BOOT.api is our own /api on Cloudflare (when switched on); BOOT.gas is the Apps Script address. If our own answer fails, the call is repeated against Apps Script.
   const call = url => fetch(url, { method: 'POST', body: JSON.stringify({ fn: fn, args: a }), credentials: 'omit', redirect: 'follow' }).then(async r => ({ r, j: await r.json() }));
-  let r, j;
+  let r, j, firstErr = '';
   try { ({ r, j } = await call(BOOT.api)); }
   catch (e) {
+    firstErr = String((e && e.message) || e).slice(0, 80);
     if (BOOT.gas && BOOT.gas !== BOOT.api) { try { ({ r, j } = await call(BOOT.gas)); } catch (e2) { throw new Error('Could not reach Soul Vault. Check your internet connection.'); } }
     else throw new Error('Could not reach Soul Vault. Check your internet connection.');
   }
+  if (!j.ok && j.error === 'Unknown action.' && firstErr) throw new Error('Soul Vault did not answer this request (' + firstErr + '). Wait a moment and try again.');   // the spare (Apps Script) does not know edge-only calls: say what really went wrong
   if (!j.ok) throw new Error(j.error || 'Something went wrong.');
   return j.result;
 }
