@@ -61,7 +61,12 @@ async function renderNotifyPage() {
   $('#main').innerHTML = `<div class="wrap studio shoppg pnpage">${head}
     <p class="cs" id="pnSt" role="status" aria-live="polite">Checking…</p>
     <div id="pnBody" hidden>
-      <p class="cs">Send a notification to everyone who turned them on. Tap a suggestion to fill it in, change the words if you like, then send.</p>
+      <div class="shopitem pnauto"><h2 class="vsub" style="margin:0 0 6px">Automatic</h2>
+        <p class="cs">Fans are told by themselves. They go out between 9 AM and 9 PM Central and count toward the 3-a-day limit. Switching one on never announces anything that already exists.</p>
+        <div class="stuvis"><label class="chk"><input type="checkbox" id="pnAutoRel"> <span><b>New music</b><span class="cs">When a release goes live: it is public and its release date has arrived.</span></span></label>
+          <label class="chk"><input type="checkbox" id="pnAutoShow"> <span><b>New shows</b><span class="cs">When a new upcoming show appears in your Road to 100 sheet (Completed = FALSE) or on Bandsintown.</span></span></label></div>
+        <p class="cs" id="pnAutoSt" role="status" aria-live="polite"></p></div>
+      <p class="cs">Or send one yourself: tap a suggestion to fill it in, change the words if you like, then send.</p>
       <div class="mschips"><button type="button" class="pill soft" data-pn="release">${I.plus}Newest release</button><button type="button" class="pill soft" data-pn="show">${I.plus}Next show</button></div>
       <div class="shopitem">
         <label class="sf">Title (shows in bold)<input class="field" id="pnTitle" maxlength="60" autocomplete="off" placeholder="New music from Nicólas Soul"></label>
@@ -79,11 +84,20 @@ async function renderNotifyPage() {
     if (!$('#pnSt')) return;
     if (!status.on) { st.textContent = 'Notifications are not switched on yet: the two keys (VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY) are missing in Cloudflare.'; return; }
     st.textContent = status.subscribers + (status.subscribers === 1 ? ' phone has' : ' phones have') + ' notifications on. You have sent ' + status.sentToday + ' of ' + status.cap + ' allowed in the last 24 hours.';
+    if (status.auto) { $('#pnAutoRel').checked = !!status.auto.releases; $('#pnAutoShow').checked = !!status.auto.shows; }
     $('#pnBody').hidden = false; $('#pnSend').textContent = 'Send to ' + status.subscribers + (status.subscribers === 1 ? ' phone' : ' phones');
     $('#pnLast').innerHTML = (status.last || []).length ? '<b>Recently sent:</b><br>' + status.last.map(l => esc(new Date(l.at).toLocaleDateString() + ': ' + l.title + ' (' + l.sent + ' phones)')).join('<br>') : '';
   }
   const prev = () => { const p = $('#pnPrev'); if (!p) return; const t = $('#pnTitle').value, b = $('#pnBody2').value; p.textContent = (t || b) ? 'It will look like: “' + (t || '…') + '” — ' + (b || '…') : ''; };
   page.addEventListener('input', prev);
+  page.addEventListener('change', async e => {
+    if (!e.target.closest || !e.target.closest('.pnauto')) return;
+    const say = $('#pnAutoSt'), want = { releases: $('#pnAutoRel').checked, shows: $('#pnAutoShow').checked };
+    say.textContent = 'Saving…';
+    try { const r = await run('pushAuto', BOOT.key, want); $('#pnAutoRel').checked = !!r.releases; $('#pnAutoShow').checked = !!r.shows;
+      say.textContent = (r.releases || r.shows) ? 'On: ' + [r.releases ? 'new music' : '', r.shows ? 'new shows' : ''].filter(Boolean).join(' and ') + '. Everything that exists today was recorded, so only NEW things are announced.' : 'Off. Nothing is sent by itself.'; }
+    catch (er) { say.textContent = (er && er.message) || 'Could not save.'; await load(); }
+  });
   page.addEventListener('click', async e => {
     const q = e.target.closest && e.target.closest('[data-pn]');
     if (q) {

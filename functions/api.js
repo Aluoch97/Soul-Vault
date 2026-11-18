@@ -15,6 +15,8 @@ import * as FN from './_lib/fans.js';
 import * as MS from './_lib/missing.js';
 import * as BK from './_lib/backup.js';
 import * as PU from './_lib/push.js';
+import * as AP from './_lib/autopush.js';
+import { getNextBandsintownShow } from './_lib/newsletter.js';
 import * as SH from './_lib/shop.js';
 import * as MILE from './_lib/milestones.js';
 import * as WHERE from './_lib/where.js';
@@ -133,6 +135,28 @@ async function edgeHome(ctx, args) {
     return { release_id: r.release_id, title: r.title, cover_file_id: r.cover_file_id, src: MEDIA_BASE + 'img/' + r.cover_file_id + '/' + size, img: '', thumb: '' };
   };
   return { picks: { single: await pick(list.filter(r => kind(r) === 'Single')[0]), project: await pick(list.filter(r => kind(r) !== 'Single')[0]) } };
+}
+
+// ───────── Automatic phone notifications: new music and new shows (see _lib/autopush.js) ─────────
+async function autoData(ctx) {
+  const lib = await library(ctx); if (!lib) return null;
+  const now = new Date(), today = AP.centralToday(now);
+  const body = shareBody({ token: 'auto', target_type: 'all', target_id: 'all', active: true }, lib, now, mem.ov);   // what a logged-out visitor can see
+  const key = r => { const d = String(r.release_date || ''); return /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : String(r.year || 0) + '-00-00'; };
+  const releases = (body.releases || []).filter(r => !r.locked && !r.hidden && !(r.unreleased === true || String(r.unreleased) === 'true') && key(r) <= today)
+    .map(r => ({ key: r.release_id, title: r.title, slug: relSlug(r.release_id) }));
+  const shows = [], tour = await TOUR.getTour(ctx.env);
+  if (tour && tour.available) for (const s of tour.shows || []) if (!s.done && s.date && s.date >= today) shows.push({ key: s.date, date: s.date, venue: s.venue, city: s.city });
+  const bands = ctx.env.BANDSINTOWN_APP_ID ? await getNextBandsintownShow(ctx.env) : null;
+  if (bands && bands.date && bands.date >= today && !shows.some(s => s.key === bands.date)) shows.push({ key: bands.date, date: bands.date, venue: bands.venueName, city: bands.city });
+  return { releases, shows };
+}
+const AUTO = { at: 0 };
+async function maybeAuto(ctx) {   // run by normal visits, at most every 10 minutes in one data centre
+  const now = Date.now(); if (now - AUTO.at < 10 * 60 * 1000) return; AUTO.at = now;
+  const set = await AP.getAutoSettings(ctx.env.DB); if (!set.releases && !set.shows) return;
+  const data = await autoData(ctx); if (!data) return;
+  await AP.runAuto(ctx.env.DB, ctx.env, data);
 }
 
 // ───────── Studio (owner only) ─────────
@@ -735,6 +759,7 @@ export async function onRequestPost(ctx) {
   let req; try { req = JSON.parse(text); } catch (e) { return json({ ok: false, error: 'Unknown action.' }); }
   const fn = req && req.fn, args = Array.isArray(req && req.args) ? req.args : [];
   if (env.DB && env.BACKUPS && fn !== 'edgeStatus') ctx.waitUntil(BK.maybeBackup(env).catch(() => {}));   // a daily backup, started by normal visits
+  if (env.DB && env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && fn !== 'edgeStatus') ctx.waitUntil(maybeAuto(ctx).catch(() => {}));   // automatic new-music / new-show notifications, if Nick turned them on
   try {
     if (fn === 'mediaManifest') {   // every music and picture file in our storage, so an offsite copy can be made (tools/download-media.py)
       if (!isOwner(env, args[0])) return json({ ok: false, error: 'Not allowed.' });
@@ -769,7 +794,8 @@ export async function onRequestPost(ctx) {
         if (fn === 'pushSubscribe') return json({ ok: true, result: await PU.pushSubscribe(env.DB, env, args[0], request.headers.get('cf-connecting-ip')) });
         if (fn === 'pushUnsubscribe') return json({ ok: true, result: await PU.pushUnsubscribe(env.DB, args[0]) });
         if (!isOwner(env, args[0])) return json({ ok: false, error: 'This link is missing its owner key. Open the app from your owner link.' });
-        return json({ ok: true, result: fn === 'pushStatus' ? await PU.pushStatus(env.DB, env) : await PU.pushSend(env.DB, env, args[1]) });
+        if (fn === 'pushAuto') return json({ ok: true, result: args[1] && typeof args[1] === 'object' ? await AP.setAutoSettings(env.DB, args[1], (await autoData(ctx)) || { releases: [], shows: [] }) : await AP.getAutoSettings(env.DB) });
+        return json({ ok: true, result: fn === 'pushStatus' ? Object.assign(await PU.pushStatus(env.DB, env), { auto: await AP.getAutoSettings(env.DB) }) : await PU.pushSend(env.DB, env, args[1]) });
       } catch (e) { return json({ ok: false, error: String((e && e.message) || e) }); }
     } else if (fn === 'getMilestones' && env.DB) {   // the Lore page's milestones: public to read
       return json({ ok: true, result: await MILE.getMilestones(env.DB) });
