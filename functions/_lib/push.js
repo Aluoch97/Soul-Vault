@@ -3,7 +3,7 @@
 // each phone (RFC 8291, aes128gcm) and signs the request with our key (VAPID, RFC 8292), both with the browser-standard WebCrypto. A push service
 // (Google, Apple, Mozilla) only ever sees encrypted bytes. The signing subject is the site address, never an email.
 // Keys: the Cloudflare secrets VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (made once with tools/make-vapid-keys.mjs). Without them nothing is shown or sent.
-export const PUSH_FNS = ['pushInfo', 'pushSubscribe', 'pushUnsubscribe', 'pushStatus', 'pushSend'];
+export const PUSH_FNS = ['pushInfo', 'pushSubscribe', 'pushUnsubscribe', 'pushStatus', 'pushSend', 'pushAuto'];
 /** Most notifications that can go out in 24 hours (Nick's own sends only; nothing is automatic). */
 export const PUSH_DAILY_CAP = 3;
 const MAX_SUBS = 20000;

@@ -587,6 +587,10 @@ await step('phone notifications: a fan turns them on from the Home footer; Nick 
   await page.fill('#pnTitle', 'ROAD TO 100');
   const vis = await page.evaluate(() => { const cs = getComputedStyle(document.querySelector('#pnTitle')), lum = (c) => { const m = c.match(/\d+(\.\d+)?/g).map(Number).slice(0, 3).map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * m[0] + .7152 * m[1] + .0722 * m[2]; }, a = lum(cs.color), b = lum(cs.backgroundColor); return { ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05), color: cs.color, bg: cs.backgroundColor, fs: cs.fontSize }; });
   assert.ok(vis.ratio >= 4.5, 'what you type is readable (contrast ' + vis.ratio.toFixed(1) + ': ' + vis.color + ' on ' + vis.bg + ')'); assert.ok(parseFloat(vis.fs) >= 16, 'input text is 16px+ so iPhones do not zoom');
+  assert.equal(await page.isChecked('#pnAutoRel'), false); assert.equal(await page.isChecked('#pnAutoShow'), false);
+  await page.check('#pnAutoRel'); await page.waitForFunction(() => /On: new music/.test(document.querySelector('#pnAutoSt').textContent), null, { timeout: 5000 });
+  assert.equal(Number((await w.db.prepare("SELECT COUNT(*) AS n FROM kv WHERE k = 'push_auto' AND v LIKE '%\"releases\":true%'").first()).n), 1, 'the automatic switch is saved');
+  await page.uncheck('#pnAutoRel'); await page.waitForFunction(() => /Off\. Nothing is sent by itself/.test(document.querySelector('#pnAutoSt').textContent), null, { timeout: 5000 });
   if (process.env.PUSH_SHOT) await page.screenshot({ path: process.env.PUSH_SHOT });
   await page.click('[data-pn="release"]'); assert.match(await page.inputValue('#pnTitle'), /New music/); assert.match(await page.inputValue('#pnBody2'), /is out now/);
   const before = w.pushed.length;
