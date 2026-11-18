@@ -476,6 +476,22 @@ await step('Studio > Add > Add several songs: pick files, titles come from the f
   assert.equal(got.length, before + 3, 'three songs added: ' + got.join(' | '));
   assert.deepEqual(got.slice(-3), ['First Batch Song', 'Middle Song (Edited)', 'Last One'], 'added in file order after the existing songs');
 });
+await step('Studio top "Add songs": no release picked first; files go into a brand-new hidden release, or into an existing one', async () => {
+  await page.evaluate(() => { S.stuTab = 'info'; renderStudio(); }); await page.waitForSelector('#stuQuick', { state: 'visible' });
+  const f = (name) => ({ name, mimeType: 'audio/mpeg', buffer: Buffer.from(name.repeat(40)) });
+  await page.click('#stuQuick'); await page.waitForSelector('#qFiles', { state: 'attached' });
+  await page.click('#qGo'); await seen('Choose at least one audio file');
+  await page.setInputFiles('#qFiles', [f('02 Quick Two.mp3'), f('01 Quick One.mp3')]); await page.waitForSelector('[data-q-title]');
+  await noSideways('quick add songs form'); await page.click('#qGo'); await seen('Give the new release a name');
+  await page.fill('#qTitle', 'Quick Add Single'); await page.selectOption('#qType', 'EP');
+  await page.click('#qGo'); await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 30000 });
+  let nat = await store(); const rel = nat.releases.find((r) => r.title === 'Quick Add Single'); assert.ok(rel, 'the new release exists'); assert.equal(!!rel.hidden, true, 'starts hidden');
+  assert.deepEqual(nat.tracks.filter((t) => t.release_id === rel.release_id).sort((a, b) => a.track_no - b.track_no).map((t) => t.title), ['Quick One', 'Quick Two']);
+  await page.click('#stuQuick'); await page.waitForSelector('#qFiles', { state: 'attached' });
+  await page.selectOption('#qDest', rel.release_id); assert.equal(await page.evaluate(() => document.querySelector('#qNew').hidden), true, 'no name box for an existing release');
+  await page.setInputFiles('#qFiles', [f('03 Quick Three.mp3')]); await page.click('#qGo'); await page.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 30000 });
+  nat = await store(); assert.equal(nat.tracks.filter((t) => t.release_id === rel.release_id).length, 3, 'added to the existing release');
+});
 await step('the + New release form asks whose song it is: my own music, or a feature (my guest spot on someone else\'s song)', async () => {
   await page.evaluate(() => openNewRelease()); await page.waitForSelector('#nrFiles', { state: 'attached' });
   assert.equal(await page.evaluate(() => document.querySelector('[data-nr-kind="own"]').checked), true, 'my own music is the default');
