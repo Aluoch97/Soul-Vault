@@ -4,6 +4,9 @@ const cfg = JSON.parse(fs.readFileSync('site.config.json', 'utf8'));
 const raw = require('./build_app.js').assembleApp();   // the app is kept in parts under src/app (see build_app.js)
 const open = '<script id="sv-app">', a = raw.indexOf(open), b = raw.indexOf('</script>', a);
 if (a < 0 || b < 0) throw new Error('src/app/index.html is missing its <script id="sv-app"> block');
+// The short version people see ("1.1") is the newest "## x.y" heading in CHANGELOG.md; the long build-hash stays in the app's script address (cache + update bar).
+const clText = fs.existsSync('CHANGELOG.md') ? fs.readFileSync('CHANGELOG.md', 'utf8') : '';
+const release = (clText.match(/^## (\d+\.\d+)\b/m) || [, ''])[1];
 const build = (fs.readFileSync('apps-script/Vault.gs', 'utf8').match(/SV_BUILD = '(\d+)'/) || [, '0'])[1];
 let code = raw.slice(a + open.length, b);
 // On the website the MP3 encoder is a plain file next to the app instead of an Apps Script route.
@@ -56,7 +59,8 @@ let minified = false;
 try { code = require('esbuild').transformSync(code, { minify: true, target: 'safari15', legalComments: 'none' }).code; minified = true; }
 catch (e) { console.log('minify skipped (' + String(e.message || e).split('\n')[0].slice(0, 80) + ')'); }
 // The address of app.js carries a fingerprint of its content, so every new version is fetched at once instead of waiting for the browser's saved copy to expire.
-const appHash = require('crypto').createHash('sha1').update(code).digest('hex').slice(0, 8);
+code = code.replace(/__SV_RELEASE__/g, release);
+const appHash =require('crypto').createHash('sha1').update(code).digest('hex').slice(0, 8);
 page = page.replace('APPHASH', appHash);
 fs.writeFileSync('dist/index.html', page); fs.writeFileSync('dist/app.js', code);
 // The service worker (saved copy of the app for fast opening and offline). Its file changes with every app version, so a new deploy replaces the old saved copy.
@@ -64,6 +68,22 @@ fs.writeFileSync('dist/sw.js', fs.readFileSync('src/sw.template.js', 'utf8').rep
 const lame = fs.readFileSync('apps-script/Lame.html', 'utf8').replace(/^\s*<script[^>]*>/, '').replace(/<\/script>\s*$/, '');
 fs.writeFileSync('dist/lame.js', lame);
 fs.cpSync('public', 'dist', { recursive: true });   // includes public/fonts/
+// What's new page, made from CHANGELOG.md ("## x.y · date" starts a release, "- " lines are its notes). All text is escaped.
+{
+  const e = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const inl = (t) => e(t).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  const rels = [];
+  for (const raw of clText.split('\n')) {
+    const l = raw.trimEnd();
+    if (l.startsWith('## ')) rels.push({ t: l.slice(3), intro: [], items: [] });
+    else if (!rels.length) continue;
+    else if (l.startsWith('- ')) rels[rels.length - 1].items.push(l.slice(2));
+    else if (l.trim()) rels[rels.length - 1].intro.push(l.trim());
+  }
+  const body = rels.map((r, i) => '<section><h2>' + e(r.t) + (i === 0 ? ' <span class="now">current</span>' : '') + '</h2>' + r.intro.map((p) => '<p>' + inl(p) + '</p>').join('') + '<ul>' + r.items.map((x) => '<li>' + inl(x) + '</li>').join('') + '</ul></section>').join('\n');
+  const css = '<style>:root{--bg:#0d0d0d;--ink:#f5f4f0;--dim:#a9a6a1;--line:#2a2a2a;--red:#e8392e;--green:#2fbf5b}*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink)}body{font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}.wrap{max-width:720px;margin:0 auto;padding:28px 20px calc(60px + env(safe-area-inset-bottom))}a{color:var(--green)}.back{display:inline-flex;align-items:center;min-height:44px;margin-bottom:10px;font-size:15px;text-decoration:none}h1{font-size:clamp(30px,6vw,40px);line-height:1.1;margin:0 0 6px}h2{font-size:20px;margin:30px 0 8px;padding-top:18px;border-top:1px solid var(--line)}p,li{color:#e6e3de}ul{padding-left:22px}li{margin:6px 0}.trim{height:6px;margin:0 -20px 22px;background:linear-gradient(90deg,#000 0 32%,#fff 32% 34%,var(--red) 34% 66%,#fff 66% 68%,var(--green) 68%)}.now{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--green);color:#000;vertical-align:middle}code{color:#cfcac2}</style>';
+  fs.writeFileSync('dist/whats-new.html', '<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#151318"><meta name="robots" content="noindex"><title>What\'s new | Soul Vault</title>' + css + '</head><body><div class="wrap"><div class="trim" aria-hidden="true"></div><a class="back" href="/">&larr; Back to Soul Vault</a><h1>What\'s new</h1>' + body + '</div></body></html>\n');
+}
 // The other pages (join, shows, privacy policy, tracker) get the browser icon too.
 for (const f of fs.readdirSync('dist')) {
   if (!f.endsWith('.html') || f === 'index.html') continue;
