@@ -1092,7 +1092,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   assert.ok(lay.h.some((x) => /On the road/.test(x)) && lay.h.some((x) => /Shop|Watch|New music/.test(x)), 'section headings present: ' + lay.h);
   assert.deepEqual(lay.grids, [2, 2], 'new music and videos sit two across');
   assert.ok(lay.titles >= 2, 'covers and videos show their titles');
-  assert.ok((lay.links.length === 4 || lay.links.length === 5) && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (a fifth, Notifications, shows once the keys exist): ' + lay.links);
+  assert.ok((lay.links.length === 5 || lay.links.length === 6) && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (Privacy, Add to Home Screen, Offline music, Refresh and Admin; a sixth, Notifications, shows once the keys exist): ' + lay.links);
   await noSideways('home with road card');
   if (process.env.SHOT_HOME) await page.screenshot({ path: process.env.SHOT_HOME, fullPage: true });
   await page.click('#roadHome .roadmain'); await page.waitForFunction(() => S.view === 'tour', null, { timeout: 5000 });
