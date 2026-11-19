@@ -949,7 +949,9 @@ await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link
   { const fc = await phoneContext(), fp = await fc.newPage(); await fp.goto('https://soulnicolas.com/?s=PUB'); await fp.waitForSelector('.hfoot', { timeout: 15000 });
     assert.equal(await fp.locator('.appver').count(), 0, 'fans must not see the version / What\'s new link');
     assert.ok(!/What's new|Version \d/.test(await fp.locator('.hfoot').innerText()), 'no version text in the fan footer');
-    assert.ok(await fp.locator('.hfoot [data-refresh]').count() > 0, 'Refresh stays in the fan footer'); await fc.close(); }
+    assert.ok(await fp.locator('.hfoot [data-refresh]').count() > 0, 'Refresh stays in the fan footer');
+    assert.equal(await fp.locator('.hfoot .hlinks a[href="/admin"]').count(), 1, 'the Admin link is the last link of the footer (it only opens the sign-in)');
+    assert.equal(await fp.locator('.hfoot .hlinks a').last().getAttribute('href'), '/admin', 'Admin comes last, after Refresh'); await fc.close(); }
   await page.evaluate(() => renderVault()); await page.waitForSelector('[data-whatsnew]');
   assert.ok(await page.evaluate(() => /Only you see this/.test(document.querySelector('[data-whatsnew]').innerText)), 'Settings has a What\'s new row for the owner');
   await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome()); await page.waitForSelector('[data-refresh]');

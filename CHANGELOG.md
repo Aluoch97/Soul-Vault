@@ -1,8 +1,12 @@
 # What's new on soulnicolas.com
 
-Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.2 to 5.3); a big redesign starts a new first number (6.0). The numbering was set to 5.0 on Nov 18, 2026 to match the work already done.
+Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.3 to 5.4); a big redesign starts a new first number (6.0). The numbering was set to 5.0 on Nov 18, 2026 to match the work already done.
 The newest version is on top, and it is the number shown to the owner at the bottom of Home and in Settings (visitors do not see it). Write each entry in plain words.
 To release: add a new `## x.y · date` block at the top of this file in the same pull request. The build picks it up by itself.
+
+## 5.3 · Nov 19, 2026
+An Admin link at the bottom of Home.
+- The row of small links at the bottom of Home (Privacy, Add to Home Screen, Offline music, Refresh) now ends with **Admin**. It opens the owner sign-in; if you are already signed in on this device it takes you straight in. Visitors only ever see the sign-in.
 
 ## 5.2 · Nov 18, 2026
 The version and What's new are for the owner only.
