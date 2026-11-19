@@ -949,7 +949,9 @@ await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link
   { const fc = await phoneContext(), fp = await fc.newPage(); await fp.goto('https://soulnicolas.com/?s=PUB'); await fp.waitForSelector('.hfoot', { timeout: 15000 });
     assert.equal(await fp.locator('.appver').count(), 0, 'fans must not see the version / What\'s new link');
     assert.ok(!/What's new|Version \d/.test(await fp.locator('.hfoot').innerText()), 'no version text in the fan footer');
-    assert.ok(await fp.locator('.hfoot [data-refresh]').count() > 0, 'Refresh stays in the fan footer'); await fc.close(); }
+    assert.ok(await fp.locator('.hfoot [data-refresh]').count() > 0, 'Refresh stays in the fan footer');
+    assert.equal(await fp.locator('.hfoot .hlinks a[href="/admin"]').count(), 1, 'the Admin link is the last link of the footer (it only opens the sign-in)');
+    assert.equal(await fp.locator('.hfoot .hlinks a').last().getAttribute('href'), '/admin', 'Admin comes last, after Refresh'); await fc.close(); }
   await page.evaluate(() => renderVault()); await page.waitForSelector('[data-whatsnew]');
   assert.ok(await page.evaluate(() => /Only you see this/.test(document.querySelector('[data-whatsnew]').innerText)), 'Settings has a What\'s new row for the owner');
   await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome()); await page.waitForSelector('[data-refresh]');
@@ -1090,7 +1092,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   assert.ok(lay.h.some((x) => /On the road/.test(x)) && lay.h.some((x) => /Shop|Watch|New music/.test(x)), 'section headings present: ' + lay.h);
   assert.deepEqual(lay.grids, [2, 2], 'new music and videos sit two across');
   assert.ok(lay.titles >= 2, 'covers and videos show their titles');
-  assert.ok((lay.links.length === 4 || lay.links.length === 5) && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (a fifth, Notifications, shows once the keys exist): ' + lay.links);
+  assert.ok((lay.links.length === 5 || lay.links.length === 6) && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (Privacy, Add to Home Screen, Offline music, Refresh and Admin; a sixth, Notifications, shows once the keys exist): ' + lay.links);
   await noSideways('home with road card');
   if (process.env.SHOT_HOME) await page.screenshot({ path: process.env.SHOT_HOME, fullPage: true });
   await page.click('#roadHome .roadmain'); await page.waitForFunction(() => S.view === 'tour', null, { timeout: 5000 });
