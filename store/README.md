@@ -10,7 +10,7 @@ Status: **preparation only. Nothing has been built, signed or submitted.** Store
 
 ## Decisions for Nick
 1. **Bundle / package name** (cannot change after the first upload). Suggested: `com.soulnicolas.vault`. Use the same developer account name you used before.
-2. **Which kind of iPhone app.** (a) *Loads soulnicolas.com inside the app* is the quick way, but Apple often rejects it (guideline 4.2, "just a website"). (b) *Bundle the app files in the app* is much safer for review, but the app then runs from the address `capacitor://localhost`, and our servers only allow soulnicolas.com (the music and picture storage and the API). Option (b) needs us to allow that address in `functions/api.js`, `functions/upload.js` and the R2 bucket's CORS rules. I recommend (b); it is a small, testable change I can make.
+2. **Which kind of iPhone app.** (a) *Loads soulnicolas.com inside the app* is the quick way, but Apple often rejects it (guideline 4.2, "just a website"). (b) *Bundle the app files in the app* is much safer for review, but the app then runs from the address `capacitor://localhost`, and our servers only allow soulnicolas.com (the music and picture storage and the API). Option (b) needs us to allow that address wherever our servers check the site address (the API, the upload function, and the music and picture storage rules). I recommend (b); it is a small, testable change I can make.
 3. **Phone notifications.** Our web notifications do not work inside an iPhone app (a different system, APNs, is needed). Plan: ship the first version without them, add native push later.
 4. **Support button** (tips and payments inside an app): Apple has rules about payments. Decide whether the store build hides it or keeps it. I am not sure it would pass.
 
