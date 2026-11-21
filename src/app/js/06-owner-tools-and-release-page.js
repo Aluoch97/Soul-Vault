@@ -307,6 +307,16 @@ function recordRecent(t) {
   const list = ls.get(recentKey(), []).filter(id => id !== t.track_id);
   list.unshift(t.track_id); ls.set(recentKey(), list.slice(0, 20));
 }
+function savedRow() {   // songs this fan saved with the heart in Now Playing (their NuRenaissance account, js/18-nrn-account.js)
+  if (!nrnGet() || !S.nrnSaved || !S.nrnSaved.size) return '';
+  const ts = [...S.nrnSaved].map(trk).filter(t => t && !hidden(t) && primaryOf(t)).slice(0, 40);
+  if (!ts.length) return '';
+  return `<section id="saved"><h2 class="sh"><span><b>Saved</b> songs</span></h2><div class="recent hrow">${ts.map(t => {
+    const r = rel(t.release_id) || {};
+    return `<button class="rc" data-track-play="${esc(t.track_id)}"><img class="art" data-cover="${esc(r.cover_file_id)}" alt="">
+      <span class="ct">${esc(t.title)}</span><span class="cs">${esc(r.title)}</span></button>`;
+  }).join('')}</div></section>`;
+}
 function recentRow() {
   const ts = ls.get(recentKey(), []).map(trk).filter(t => t && !hidden(t) && primaryOf(t)).slice(0, 8);
   if (!ts.length) return '';

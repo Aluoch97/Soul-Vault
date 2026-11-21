@@ -1,0 +1,6 @@
+/* NuRenaissance account extras (Nov 21, 2026): the Soul Tribe offer sheet and the Save heart in Now Playing (js/18-nrn-account.js). */
+.sheet .field-l { display: block; margin: 12px 0 6px; font-weight: 700; }
+.sheet #tribeFirst { width: 100%; box-sizing: border-box; font-size: 16px; color: var(--ink, #fff); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.22); border-radius: 12px; padding: 10px 12px; }
+.sheet .tribeok { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 10px; }
+.sheet .tribeok input { width: 22px; height: 22px; flex: none; }
+#np [data-np-like][aria-pressed="true"] { color: #ff6b8a; border-color: rgba(255,107,138,.55); }
