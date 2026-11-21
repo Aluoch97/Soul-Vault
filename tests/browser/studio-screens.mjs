@@ -618,6 +618,50 @@ await step('NuRenaissance account: the footer link hides until nrnszn.com says o
   assert.equal(await pg.getAttribute('[data-nrn-acct]', 'href'), 'https://www.nrnszn.com/api/account/connect?return=' + encodeURIComponent('https://soulnicolas.com/'));
   await c.close();
 });
+await step('account round 2: after signing in, a one-time Soul Tribe offer (needs the box ticked); the heart in Now Playing saves the song to the account; the Music tab shows Saved songs', async () => {
+  const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('saved page error: ' + e.message));
+  const saved = new Map(), posts = [];
+  await pg.route('https://www.nrnszn.com/api/account/**', async (r) => {
+    const req = r.request(), u = new URL(req.url()), h = { 'access-control-allow-origin': 'https://soulnicolas.com', 'access-control-allow-headers': 'content-type, authorization', 'access-control-allow-methods': 'GET, POST' };
+    if (req.method() === 'OPTIONS') return r.fulfill({ status: 204, headers: h });
+    const auth = req.headers()['authorization'] || '';
+    if (u.pathname.endsWith('/me')) return r.fulfill({ status: 200, contentType: 'application/json', headers: h, body: JSON.stringify({ on: true, user: null }) });
+    if (u.pathname.endsWith('/redeem')) return r.fulfill({ status: 200, contentType: 'application/json', headers: h, body: JSON.stringify({ ok: true, user: { email: 'fan@example.com', name: 'Jo Fan', id: 'u1' }, token: 'a1.u1.9999999999999.sigsigsigsigsigsigsigsig' }) });
+    if (u.pathname.endsWith('/saved')) {
+      if (auth !== 'Bearer a1.u1.9999999999999.sigsigsigsigsigsigsigsig') return r.fulfill({ status: 401, contentType: 'application/json', headers: h, body: '{"ok":false}' });
+      if (req.method() === 'GET') return r.fulfill({ status: 200, contentType: 'application/json', headers: h, body: JSON.stringify({ ok: true, items: [...saved.values()] }) });
+      const b = JSON.parse(req.postData() || '{}'); posts.push(b); if (b.on) saved.set(b.id, { kind: 'song', id: b.id, title: b.title }); else saved.delete(b.id);
+      return r.fulfill({ status: 200, contentType: 'application/json', headers: h, body: JSON.stringify({ ok: true, on: !!b.on }) });
+    }
+    return r.fulfill({ status: 404, headers: h, body: '' });
+  });
+  const joins = [];
+  await pg.route('https://soulnicolas.com/api', async (r) => { const b = JSON.parse(r.request().postData() || '{}'); if (b.fn === 'joinSubmit') { joins.push(b.args[0]); return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: { ok: true, added: true } }) }); } return r.fallback(); });
+  await pg.goto('https://soulnicolas.com/?s=PUB#nrn_ticket=' + 'T'.repeat(43)); await pg.waitForSelector('.hfoot', { timeout: 15000 });
+  await pg.waitForSelector('#tribeJoin', { timeout: 6000 });
+  assert.equal(await pg.inputValue('#tribeFirst'), 'Jo', 'first name filled from the account');
+  await pg.click('#tribeJoin'); await pg.waitForFunction(() => /Tick the box/.test(document.querySelector('#tribeMsg').textContent));
+  assert.equal(joins.length, 0, 'nothing sent without the box ticked');
+  await pg.check('#tribeOk'); await pg.click('#tribeJoin'); await pg.waitForFunction(() => /You're in/.test(document.querySelector('#tribeMsg').textContent));
+  assert.deepEqual([joins[0].email, joins[0].emailConsent, joins[0].source], ['fan@example.com', true, 'NuRenaissance account']);
+  await pg.waitForFunction(() => document.querySelector('#modal').hidden, null, { timeout: 4000 });
+  // the heart
+  await pg.evaluate(() => { const t = S.lib.tracks.find((x) => primaryOf(x) && !hidden(x)); S.now = { t, v: primaryOf(t), r: rel(t.release_id), dl: '' }; });
+  await pg.waitForSelector('[data-np-like]:not([hidden])', { state: 'attached', timeout: 4000 });
+  const tid = await pg.evaluate(() => S.now.t.track_id);
+  await pg.evaluate(() => document.querySelector('[data-np-like]').click());
+  await pg.waitForFunction(() => document.querySelector('[data-np-like]').getAttribute('aria-pressed') === 'true');
+  assert.deepEqual([posts[0].app, posts[0].kind, posts[0].id, posts[0].on], ['vault', 'song', tid, true]);
+  await pg.evaluate(() => renderLibrary()); await pg.waitForSelector('#saved [data-track-play]');
+  assert.equal(await pg.getAttribute('#saved [data-track-play]', 'data-track-play'), tid, 'the Music tab shows it under Saved songs');
+  // a second visit: no second Tribe offer; the saved list is read back from the account
+  await pg.goto('about:blank'); await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.hfoot', { timeout: 15000 }); await pg.waitForTimeout(2200);
+  assert.equal(await pg.locator('#tribeJoin').count(), 0, 'the Tribe offer is shown once');
+  assert.equal(await pg.evaluate((id) => S.nrnSaved.has(id), tid), true, 'saved songs come back from the account');
+  await pg.evaluate(() => document.querySelector('[data-np-like]') && 0);
+  assert.equal(await pg.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, 'no sideways scroll');
+  await c.close();
+});
 await step('phone notifications: a fan turns them on from the Home footer; Nick sends one from Settings > Notify fans (newest release); the fan link stays hidden until the keys exist', async () => {
   const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('push page error: ' + e.message));
   const phonePair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);   // a real key, so the server can really encrypt to it

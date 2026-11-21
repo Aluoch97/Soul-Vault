@@ -4,6 +4,11 @@ Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.3
 The newest version is on top, and it is the number shown to the owner at the bottom of Home and in Settings (visitors do not see it). Write each entry in plain words.
 To release: add a new `## x.y · date` block at the top of this file in the same pull request. The build picks it up by itself.
 
+## 5.6 · Nov 21, 2026
+Your NuRenaissance account does more here.
+- **Save songs**: when you are signed in, Now Playing has a ♡ Save button. Saved songs show on the Music tab as **Saved songs** and follow you to any phone or computer where you sign in.
+- **Join the Soul Tribe in one tap**: right after you sign in, you are asked once if you want to join, with your account e-mail and name filled in (you still tick the box to agree to e-mails).
+
 ## 5.5 · Nov 21, 2026
 Notifications live with your account; no Refresh link.
 - The **Notifications** link at the bottom of Home now only shows once you are signed in with your NuRenaissance account, right next to it (the same in every NuRenaissance app). Phones that already turned them on keep getting them.
