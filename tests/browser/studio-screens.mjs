@@ -636,7 +636,11 @@ await step('phone notifications: a fan turns them on from the Home footer; Nick 
   const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
   const raw = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)), d = (await crypto.subtle.exportKey('jwk', pair.privateKey)).d;
   w.env.VAPID_PUBLIC_KEY = Buffer.from(raw).toString('base64url'); w.env.VAPID_PRIVATE_KEY = d;
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.hfoot', { timeout: 15000 }); await pg.waitForTimeout(600);
+  assert.equal(await pg.locator('[data-push-open]').isVisible(), false, 'keys set, but signed out of the NuRenaissance account: still no Notifications link (it lives with the account)');
+  await pg.evaluate(() => localStorage.setItem('sv_nrn', JSON.stringify({ email: 'fan@example.com', name: 'Fan' })));
   await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.hfoot', { timeout: 15000 }); await pg.waitForSelector('[data-push-open]:not([hidden])', { timeout: 5000 });
+  assert.equal(await pg.evaluate(() => { const a = document.querySelector('[data-nrn-acct]'), n = document.querySelector('[data-push-open]'); return a.nextElementSibling === n; }), true, 'Notifications sits right after the account link');
   const small = await pg.evaluate(() => Math.round(document.querySelector('[data-push-open]').getBoundingClientRect().height)); assert.ok(small >= 44, 'footer link is 44px tall: ' + small);
   await pg.click('[data-push-open]'); await pg.waitForSelector('#pushBtn:not([hidden])');
   assert.match(await pg.innerText('#pushMsg'), /Get a notification on your phone/);
@@ -962,26 +966,27 @@ await step('Shop: add a CD in Studio, it shows on Home and its release page with
   await page.evaluate(() => { closeModal && closeModal(); renderHome(); }); await page.waitForSelector('#shopHome .shopcard.sold', { timeout: 8000 });
   assert.deepEqual(await page.evaluate(() => [!!document.querySelector('#shopHome a.shopbtn'), document.querySelector('#shopHome .shopbtn').textContent]), [false, 'Sold out']);
 });
-await step('Settings no longer lists Lore (it is on the tab bar); a Refresh link on Home and in Settings clears the saved copy and reloads', async () => {
+await step('Settings no longer lists Lore (it is on the tab bar); Settings > Refresh the app clears the saved copy and reloads (Home has no Refresh link)', async () => {
   await page.evaluate(() => { renderVault(); document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await seen('Refresh the app'); const html = await page.evaluate(() => document.body.innerText);
   assert.ok(html.includes('Refresh the app'), 'Settings has Refresh the app');
   assert.ok(!html.includes('Producers, places and eras'), 'no Lore row in Settings');
   await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome());
-  await page.waitForSelector('[data-refresh]');
+  await page.waitForSelector('.appver');
+  assert.equal(await page.locator('.hfoot [data-refresh]').count(), 0, 'no Refresh in the Home footer any more (the tap-to-update bar does it; Settings keeps Refresh the app)');
   const ver0 = await page.evaluate(() => [APP_VERSION, document.querySelector('.appver').textContent]);
   assert.ok(/^\d+-[0-9a-f]+$/.test(ver0[0]) && /^(Version \d+\.\d+ · )?What's new$/.test(ver0[1]), 'the short version and a What\'s new link are shown to the owner: ' + ver0);
-  // ...but a fan (or any stranger) sees neither the version nor a What's new link, while Refresh stays for everyone.
+  // ...but a fan (or any stranger) sees neither the version nor a What's new link (nor a Refresh link, since Nov 21, 2026).
   { const fc = await phoneContext(), fp = await fc.newPage(); await fp.goto('https://soulnicolas.com/?s=PUB'); await fp.waitForSelector('.hfoot', { timeout: 15000 });
     assert.equal(await fp.locator('.appver').count(), 0, 'fans must not see the version / What\'s new link');
     assert.ok(!/What's new|Version \d/.test(await fp.locator('.hfoot').innerText()), 'no version text in the fan footer');
-    assert.ok(await fp.locator('.hfoot [data-refresh]').count() > 0, 'Refresh stays in the fan footer');
+    assert.equal(await fp.locator('.hfoot [data-refresh]').count(), 0, 'no Refresh in the fan footer');
     assert.equal(await fp.locator('.hfoot .hlinks a[href="/admin"]').count(), 1, 'the Admin link is the last link of the footer (it only opens the sign-in)');
-    assert.equal(await fp.locator('.hfoot .hlinks a').last().getAttribute('href'), '/admin', 'Admin comes last, after Refresh'); await fc.close(); }
+    assert.equal(await fp.locator('.hfoot .hlinks a').last().getAttribute('href'), '/admin', 'Admin comes last'); await fc.close(); }
   await page.evaluate(() => renderVault()); await page.waitForSelector('[data-whatsnew]');
   assert.ok(await page.evaluate(() => /Only you see this/.test(document.querySelector('[data-whatsnew]').innerText)), 'Settings has a What\'s new row for the owner');
-  await page.evaluate(() => closeModal && closeModal()); await page.evaluate(() => renderHome()); await page.waitForSelector('[data-refresh]');
+  await page.evaluate(() => { document.querySelectorAll('details.sset').forEach((d) => { d.open = true; }); }); await page.waitForSelector('[data-refresh]');   // Settings > Refresh the app (Home has no Refresh link any more)
   const urls = []; page.on('request', (rq) => { if (rq.isNavigationRequest()) urls.push(rq.url()); });
-  const nav = page.waitForNavigation({ timeout: 8000 }); await page.click('a[data-refresh]'); await nav;
+  const nav = page.waitForNavigation({ timeout: 8000 }); await page.click('[data-refresh]'); await nav;
   assert.ok(urls.some((u) => /[?&]r=\d+/.test(u)), 'it reloads on a fresh address nothing has saved: ' + urls.join(' '));
   await page.waitForFunction(() => !new URL(location.href).searchParams.has('r'), null, { timeout: 5000 });   // ...and that extra part is removed again
 });
@@ -1117,7 +1122,7 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   assert.ok(lay.h.some((x) => /On the road/.test(x)) && lay.h.some((x) => /Shop|Watch|New music/.test(x)), 'section headings present: ' + lay.h);
   assert.deepEqual(lay.grids, [2, 2], 'new music and videos sit two across');
   assert.ok(lay.titles >= 2, 'covers and videos show their titles');
-  assert.ok(lay.links.length >= 5 && lay.links.length <= 7 && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (Privacy, Add to Home Screen, Offline music, Refresh and Admin; Notifications and NuRenaissance account show once switched on): ' + lay.links);
+  assert.ok(lay.links.length >= 4 && lay.links.length <= 6 && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (Privacy, Add to Home Screen, Offline music and Admin; NuRenaissance account and, signed in, Notifications show once switched on): ' + lay.links);
   await noSideways('home with road card');
   if (process.env.SHOT_HOME) await page.screenshot({ path: process.env.SHOT_HOME, fullPage: true });
   await page.click('#roadHome .roadmain'); await page.waitForFunction(() => S.view === 'tour', null, { timeout: 5000 });

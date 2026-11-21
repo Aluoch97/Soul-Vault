@@ -8,9 +8,9 @@ const pushStandalone = () => (window.matchMedia && window.matchMedia('(display-m
 const pushCan = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 function pushInfo() { if (!S.pushInfoP) S.pushInfoP = run('pushInfo').catch(() => ({ on: false })); return S.pushInfoP; }
 function pushKeyBytes(text) { const t = text.replace(/-/g, '+').replace(/_/g, '/'), s = atob(t + '='.repeat((4 - (t.length % 4)) % 4)); return Uint8Array.from(s, c => c.charCodeAt(0)); }
-async function fillPushLink() {   // the footer link appears only when notifications are switched on
-  const a = $('[data-push-open]'); if (!a) return;
-  const info = await pushInfo(); const now = $('[data-push-open]'); if (now) now.hidden = !(info && info.on);
+async function fillPushLink() {   // the footer link appears only when notifications are switched on AND the visitor is signed in to their NuRenaissance account
+  const a = $('[data-push-open]'); if (!a) return;   // (Nov 21, 2026, Nick: notifications live with the account, the same in every NuRenaissance app; nrnGet is in 18-nrn-account.js)
+  const info = await pushInfo(); const now = $('[data-push-open]'); if (now) now.hidden = !(info && info.on && nrnGet());
 }
 async function pushMine() {
   try { const reg = await navigator.serviceWorker.getRegistration('/sw.js'); return reg ? await reg.pushManager.getSubscription() : null; } catch (e) { return null; }

@@ -17,7 +17,7 @@ const nrnTicket = (() => {   // runs once when the app loads: take the ticket ou
   if (!m) return null;
   try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* ignore */ }
   return fetch(NRN + '/api/account/redeem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket: m[1] }) })
-    .then(r => r.json()).then(j => { if (j && j.ok && j.user) { nrnSet(j.user); toast('Signed in as ' + (j.user.name || j.user.email)); } else toast((j && j.message) || 'That sign-in did not work. Try again.'); })
+    .then(r => r.json()).then(j => { if (j && j.ok && j.user) { nrnSet(j.user); if (typeof fillPushLink === 'function') fillPushLink(); toast('Signed in as ' + (j.user.name || j.user.email)); } else toast((j && j.message) || 'That sign-in did not work. Try again.'); })
     .catch(() => toast('Could not reach NuRenaissance. Try again.'))
     .then(() => fillNrnAcct());
 })();
