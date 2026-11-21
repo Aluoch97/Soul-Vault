@@ -4,6 +4,10 @@ Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.3
 The newest version is on top, and it is the number shown to the owner at the bottom of Home and in Settings (visitors do not see it). Write each entry in plain words.
 To release: add a new `## x.y · date` block at the top of this file in the same pull request. The build picks it up by itself.
 
+## 5.7 · Nov 21, 2026
+A proper Android icon.
+- When Soul Vault is added to an Android Home Screen, the icon now fits the phone's round or square icon shape instead of being cropped. Nothing else changed.
+
 ## 5.6 · Nov 21, 2026
 Your NuRenaissance account does more here.
 - **Save songs**: when you are signed in, Now Playing has a ♡ Save button. Saved songs show on the Music tab as **Saved songs** and follow you to any phone or computer where you sign in.
