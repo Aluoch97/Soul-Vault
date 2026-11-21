@@ -4,6 +4,10 @@ Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.3
 The newest version is on top, and it is the number shown to the owner at the bottom of Home and in Settings (visitors do not see it). Write each entry in plain words.
 To release: add a new `## x.y · date` block at the top of this file in the same pull request. The build picks it up by itself.
 
+## 5.4 · Nov 21, 2026
+NuRenaissance account.
+- The bottom of Home has a **NuRenaissance account** link: sign in once at nrnszn.com (Google or an e-mail link) and come straight back here signed in. The same account works on Certified, NuDirectory and luoh. Once signed in, the link shows your name. Nothing on Soul Vault needs an account; it only appears once accounts are switched on.
+
 ## 5.3 · Nov 19, 2026
 An Admin link at the bottom of Home.
 - The row of small links at the bottom of Home (Privacy, Add to Home Screen, Offline music, Refresh) now ends with **Admin**. It opens the owner sign-in; if you are already signed in on this device it takes you straight in. Visitors only ever see the sign-in.

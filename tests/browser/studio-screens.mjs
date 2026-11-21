@@ -593,6 +593,31 @@ await step('opening the app and tapping around never starts any sound (it would 
   assert.deepEqual(r.plays, [], 'no sound was started by just opening the app and tapping: ' + JSON.stringify(r));
   await c.close();
 });
+await step('NuRenaissance account: the footer link hides until nrnszn.com says on; coming back with a one-time ticket removes it from the address, trades it once and shows the name as text', async () => {
+  const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('nrn page error: ' + e.message));
+  let on = false; const redeems = [];
+  await pg.route('https://www.nrnszn.com/api/account/**', (r) => {
+    const h = { 'access-control-allow-origin': 'https://soulnicolas.com' };
+    if (r.request().url().endsWith('/me')) return r.fulfill({ status: 200, contentType: 'application/json', headers: h, body: JSON.stringify({ on, user: null }) });
+    redeems.push(JSON.parse(r.request().postData() || '{}').ticket);
+    return r.fulfill({ status: 200, contentType: 'application/json', headers: h, body: JSON.stringify({ ok: true, user: { email: 'jo@example.com', name: '<img src=x onerror=alert(1)>Jo' } }) });
+  });
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('.hfoot', { timeout: 15000 }); await pg.waitForTimeout(600);
+  assert.equal(await pg.locator('[data-nrn-acct]').isVisible(), false, 'hidden while accounts are off');
+  on = true; const T = 'Abc_-' + 'x'.repeat(38);
+  await pg.goto('about:blank'); await pg.goto('https://soulnicolas.com/?s=PUB#nrn_ticket=' + T); await pg.waitForSelector('.hfoot', { timeout: 15000 });
+  await pg.waitForFunction(() => /Signed in:/.test((document.querySelector('[data-nrn-acct]') || {}).textContent || ''), null, { timeout: 5000 });
+  assert.ok(!pg.url().includes('nrn_ticket'), 'the ticket is gone from the address: ' + pg.url());
+  assert.deepEqual(redeems, [T], 'traded exactly once');
+  const a = await pg.evaluate(() => { const x = document.querySelector('[data-nrn-acct]'); return { text: x.textContent, href: x.href, imgs: document.querySelectorAll('.hfoot img').length, h: Math.round(x.getBoundingClientRect().height) }; });
+  assert.equal(a.text, 'Signed in: <img src=x onerror=alert(1)>Jo', 'the name is plain text'); assert.equal(a.imgs, 0);
+  assert.equal(a.href, 'https://www.nrnszn.com/account'); assert.ok(a.h >= 44, 'tap room: ' + a.h);
+  await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('[data-nrn-acct]:not([hidden])', { timeout: 5000 });
+  assert.equal(redeems.length, 1, 'remembered on this device, nothing traded again');
+  await pg.evaluate(() => localStorage.removeItem('sv_nrn')); await pg.goto('https://soulnicolas.com/?s=PUB'); await pg.waitForSelector('[data-nrn-acct]:not([hidden])', { timeout: 5000 });
+  assert.equal(await pg.getAttribute('[data-nrn-acct]', 'href'), 'https://www.nrnszn.com/api/account/connect?return=' + encodeURIComponent('https://soulnicolas.com/'));
+  await c.close();
+});
 await step('phone notifications: a fan turns them on from the Home footer; Nick sends one from Settings > Notify fans (newest release); the fan link stays hidden until the keys exist', async () => {
   const c = await phoneContext(), pg = await c.newPage(); pg.on('pageerror', (e) => problems.push('push page error: ' + e.message));
   const phonePair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);   // a real key, so the server can really encrypt to it
@@ -1085,14 +1110,14 @@ await step('Home: "On the road" shows the Road to 100 ring and the next show, an
   const lay = await page.evaluate(() => {
     const h = [...document.querySelectorAll('.homepg h2')].map((e) => e.className + ':' + e.textContent.trim());
     const cols = (sel) => { const g = document.querySelector(sel); return g ? getComputedStyle(g).gridTemplateColumns.split(' ').length : 0; };
-    return { h, lathead: document.querySelectorAll('.homepg .lathead').length, grids: [...document.querySelectorAll('.homepg .hgrid2')].map((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length), titles: [...document.querySelectorAll('.homepg .lat .lattitle2')].map((e) => e.textContent.trim()).filter(Boolean).length, links: [...document.querySelectorAll('.hlinks a')].map((a) => Math.round(a.getBoundingClientRect().height)) };
+    return { h, lathead: document.querySelectorAll('.homepg .lathead').length, grids: [...document.querySelectorAll('.homepg .hgrid2')].map((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length), titles: [...document.querySelectorAll('.homepg .lat .lattitle2')].map((e) => e.textContent.trim()).filter(Boolean).length, links: [...document.querySelectorAll('.hlinks a:not([hidden])')].map((a) => Math.round(a.getBoundingClientRect().height)) };
   });
   assert.equal(lay.lathead, 0, 'no giant letter-spaced headings on Home: ' + lay.h);
   assert.ok(lay.h.every((x) => x.startsWith('sh:')), 'every Home heading uses the app heading style: ' + lay.h);
   assert.ok(lay.h.some((x) => /On the road/.test(x)) && lay.h.some((x) => /Shop|Watch|New music/.test(x)), 'section headings present: ' + lay.h);
   assert.deepEqual(lay.grids, [2, 2], 'new music and videos sit two across');
   assert.ok(lay.titles >= 2, 'covers and videos show their titles');
-  assert.ok((lay.links.length === 5 || lay.links.length === 6) && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (Privacy, Add to Home Screen, Offline music, Refresh and Admin; a sixth, Notifications, shows once the keys exist): ' + lay.links);
+  assert.ok(lay.links.length >= 5 && lay.links.length <= 7 && lay.links.every((n) => n >= 44), 'footer links have 44px tap room (Privacy, Add to Home Screen, Offline music, Refresh and Admin; Notifications and NuRenaissance account show once switched on): ' + lay.links);
   await noSideways('home with road card');
   if (process.env.SHOT_HOME) await page.screenshot({ path: process.env.SHOT_HOME, fullPage: true });
   await page.click('#roadHome .roadmain'); await page.waitForFunction(() => S.view === 'tour', null, { timeout: 5000 });
