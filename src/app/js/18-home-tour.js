@@ -27,5 +27,5 @@ async function fillRoad() {
 }
 // Everything on Home that needs data after the page is drawn.
 function fillHomeExtras() {
-  fillShop(); fillRoad(); fillPushLink();   // (Soul's Picks live on the Music tab only)
+  fillShop(); fillRoad(); fillPushLink(); fillNrnAcct();   // (Soul's Picks live on the Music tab only)
 }
