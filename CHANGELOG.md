@@ -4,6 +4,10 @@ Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.3
 The newest version is on top, and it is the number shown to the owner at the bottom of Home and in Settings (visitors do not see it). Write each entry in plain words.
 To release: add a new `## x.y · date` block at the top of this file in the same pull request. The build picks it up by itself.
 
+## 5.9 · Nov 22, 2026
+Terms of Use for the site.
+- The bottom of Home has a **Terms** link: what you may do with the music and photos, offline songs, the Shop and Support, and what we can't promise.
+
 ## 5.8 · Nov 22, 2026
 The privacy policy is brought up to date.
 - It now says the newsletter is sent through Resend (not Google), that new sign-ups are kept on Cloudflare only, and that your reaction clicks in the newsletter are saved on Cloudflare.
