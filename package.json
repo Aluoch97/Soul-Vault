@@ -8,6 +8,6 @@
     "test:screens": "node tests/browser/studio-screens.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.28.2"
   }
 }
