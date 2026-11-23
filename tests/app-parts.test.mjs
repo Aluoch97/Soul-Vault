@@ -71,3 +71,13 @@ test('no secret key sneaks into the page', () => {
     assert.notEqual(JSON.parse(Buffer.from(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()).role, 'service_role');
   }
 });
+
+test('the built _headers only lets this site and the NuRenaissance site frame the pages', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const fs = await import('node:fs');
+  execFileSync('node', ['build.js'], { stdio: 'ignore' });
+  const h = fs.readFileSync('dist/_headers', 'utf8');
+  const m = h.match(/frame-ancestors ([^;]+);/);
+  assert.ok(m, 'frame-ancestors is missing from the Content-Security-Policy');
+  assert.equal(m[1].trim(), "'self' https://www.nrnszn.com https://nrnszn.com https://app.nrnszn.com");
+});

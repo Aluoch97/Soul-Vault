@@ -4,6 +4,10 @@ Short version numbers: 5.0, 5.1, 5.2 ... A small change goes up by one step (5.3
 The newest version is on top, and it is the number shown to the owner at the bottom of Home and in Settings (visitors do not see it). Write each entry in plain words.
 To release: add a new `## x.y · date` block at the top of this file in the same pull request. The build picks it up by itself.
 
+## 5.10 · Nov 23, 2026
+Other websites can no longer show Soul Vault inside their own pages.
+- Only soulnicolas.com and the NuRenaissance site (nrnszn.com, which shows Soul Vault full screen) can put the site in a frame. This stops a trick where another site hides Soul Vault under its own page to get taps. Nothing looks different.
+
 ## 5.9 · Nov 22, 2026
 Terms of Use for the site.
 - The bottom of Home has a **Terms** link: what you may do with the music and photos, offline songs, the Shop and Support, and what we can't promise.
